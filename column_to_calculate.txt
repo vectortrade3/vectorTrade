@@ -1,0 +1,190 @@
+Data to calculate from raw
+* MA15
+* MA30
+* MA50
+* MA100
+* MA150
+* MA200
+* MA15 slope
+* MA30 slope
+* MA50 slope
+* MA100 slope
+* MA150 slope
+* MA200 slope
+* Close / MA15
+* Close / MA30
+* Close / MA50
+* Close / MA100
+* Close / MA150
+* Close / MA200
+* MA15 / MA30
+* MA30 / MA50
+* MA50 / MA100
+* MA50 / MA150
+* MA100 / MA200
+
+### Bollinger Bands
+
+* BB Upper
+* BB Middle
+* BB Lower
+* BB Width
+* BB Width %
+* BB %B
+* Close distance from Upper BB
+* Close distance from Middle BB
+* Close distance from Lower BB
+* BB Width slope/change
+
+### RSI / Momentum
+
+* RSI7
+* RSI14
+* RSI21
+* RSI slope
+* RSI 1D change
+* RSI 3D change
+* RSI 5D change
+* RSI <30 flag
+* RSI <40 flag
+* RSI >50 flag
+* RSI >70 flag
+* RSI crossing 30
+* RSI crossing 50
+* RSI crossing 70
+
+### Price Returns
+
+* 1D return
+* 3D return
+* 5D return
+* 7D return
+* 10D return
+* 20D return
+* 50D return
+
+### Recent Price Structure
+
+* 5D High
+* 5D Low
+* 10D High
+* 10D Low
+* 20D High
+* 20D Low
+* 50D High
+* 50D Low
+* Distance from 5D High
+* Distance from 5D Low
+* Distance from 20D High
+* Distance from 20D Low
+* Distance from 52W High
+* Distance from 52W Low
+
+### Candle Features
+
+* Candle body
+* Candle range
+* Upper wick
+* Lower wick
+* Body / range
+* Upper wick / range
+* Lower wick / range
+* Close position in range
+* Gap %
+* Bullish/bearish flag
+* Doji flag
+* Hammer flag
+* Shooting-star flag
+* Engulfing flag
+* Inside-candle flag
+* Outside-candle flag
+
+### Volume
+
+* 5D average volume
+* 20D average volume
+* 50D average volume
+* Volume / 20D average
+* Volume / 50D average
+* 1D volume change %
+* 5D volume change %
+* Volume spike flag
+* OBV
+* OBV slope
+
+### Volatility
+
+* ATR14
+* ATR20
+* ATR %
+* 5D volatility
+* 10D volatility
+* 20D volatility
+* 50D volatility
+* Volatility change
+
+### Trend Structure
+
+* MA15 > MA30
+* MA30 > MA50
+* MA50 > MA100
+* MA50 > MA150
+* MA100 > MA200
+* MA150 > MA200
+* MA15 > MA30 > MA50
+* MA15 < MA30 < MA50
+* Number of bullish/bearish MA relationships
+* MA crossover flags
+* Days since MA crossover
+
+### Support / Resistance
+
+* Distance from recent support
+* Distance from recent resistance
+* Number of recent support touches
+* Number of recent resistance touches
+
+### Market Context
+
+* NIFTY 1D return
+* NIFTY 5D return
+* NIFTY 7D return
+* NIFTY 20D return
+* NIFTY MA50
+* NIFTY MA200
+* NIFTY vs MA50
+* NIFTY vs MA200
+* NIFTY RSI
+* NIFTY trend
+* Sector 1D return
+* Sector 5D return
+* Sector 7D return
+* Sector 20D return
+* Sector vs MA50
+* Sector RSI
+
+### Relative Strength
+
+* Stock 5D return - NIFTY 5D return
+* Stock 7D return - NIFTY 7D return
+* Stock 20D return - NIFTY 20D return
+* Stock 5D return - Sector 5D return
+* Stock 20D return - Sector 20D return
+
+### Base Strategy
+
+* Base strategy signal
+* Signal strength/conditions count
+* Entry price
+* Stop Loss
+* Risk
+* Target 1:2
+* Target hit
+* SL hit
+* Timeout
+* Days to target/SL
+* 7D return after signal
+* 7D maximum gain
+* 7D maximum loss
+* MFE
+* MAE

@@ -1,0 +1,35 @@
+# Python Virtual Environment
+venv/
+env/
+.env
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data Folders & Files (Large datasets)
+5_year_data/
+archive_1_year/
+*.csv
+5_year_final_data.csv
+
+# Saved Models (Pickle files, logs, etc.)
+models/
+*.pkl
+*.joblib
+
+# Auto-generated feature lists and metadata (Optional: remove from here if you want to track them)
+dataset_metadata.json
+base_features.txt
+final_features.txt
+global_base_features.txt
+global_features.txt
+
+# OS Generated Files
+.DS_Store
+Thumbs.db

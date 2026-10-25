@@ -1,0 +1,10 @@
+pandas
+numpy
+yfinance
+pandas-ta
+scikit-learn
+xgboost
+flask
+joblib
+jupyter
+nbconvert

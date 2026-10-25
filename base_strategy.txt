@@ -1,0 +1,31 @@
+BASE STRATEGY :-
+
+50MA trend = up (atlest for 7 days)
+Lower BB is near low of candle(diff is -10 to 20)
+candle is green (close > open)
+
+we further classify this into 3:
+
+
+1- 
+when:-
+-> 50MA is near BB and Low (diff in 50MA and low is -10 to 30)
+
+2-
+when:-
+-> 50MA is below the BB / Low (cos both of these are close) - now diff of (low and 50MA is more than 30)
+
+3-
+when:-
+-> 50MA is above the candle , that means diff of low and 50MA is less then -10(- cos 50MA is above , means greater then low , and formula is low - 50MA)
+
+
+when these 3 setup :-
+
+buy = high of candle + 1 or 2
+sl = low of candle - 1
+risk = buy-sl
+target = buy + (2*risk)
+
+
+after this 1 most imp thing to check that the day after base strategy , the next day price range include buy price and also check if next day include buy price + SL , check which one hit first , if buy then sl its a faliuer , if sl then buy then watch all other days prices for outcome
