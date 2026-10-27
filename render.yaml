@@ -2,11 +2,13 @@ services:
   - type: web
     name: vectortrade-online
     runtime: python
-    buildCommand: pip install -r online/requirements_online.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn online.app:app --host 0.0.0.0 --port $PORT
     plan: free
     region: singapore
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: PYTHONPATH
         value: .
       - key: MONGODB_URI
