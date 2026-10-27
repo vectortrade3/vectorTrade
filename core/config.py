@@ -82,6 +82,16 @@ class Settings(BaseSettings):
         description="Maximum retry attempts with exponential backoff."
     )
 
+    # Account Capital & Risk Sizing
+    ACCOUNT_CAPITAL: float = Field(
+        default=100000.0,
+        description="Default trading account capital in INR if broker balance query is unavailable."
+    )
+    MAX_RISK_PER_TRADE_PCT: float = Field(
+        default=1.0,
+        description="Maximum capital-at-risk per individual trade (strictly <= 1.0%)."
+    )
+
     # Secure Inter-Process Communication (Offline <-> Online)
     INTERNAL_AUTH_TOKEN: str = Field(
         default="vt_sec_789f2a4bc81d45e69b03e2c4d8e1a7",

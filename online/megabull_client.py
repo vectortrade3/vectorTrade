@@ -156,6 +156,64 @@ class MegaBullClient:
             logger.error("Error fetching open positions: %s", str(e))
         return []
 
+    def get_account_funds(self) -> Optional[float]:
+        """
+        Queries MegaBull API to fetch live account balance / available cash.
+        Attempts standard MegaBull endpoints: /api/user/profile, /api/user/funds, /api/funds/my.
+        Returns float available funds or None if query fails or is unsupported.
+        """
+        endpoints = [
+            "/api/user/profile",
+            "/api/user/funds",
+            "/api/funds/my",
+            "/api/user/my",
+            "/api/account/balance"
+        ]
+        for ep in endpoints:
+            try:
+                url = f"{self.base_url}{ep}"
+                resp = self.session.get(url, headers=self.headers, timeout=min(self.timeout, 2.0))
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Check direct keys
+                    for key in ["availableCash", "cash", "margin", "balance", "net", "fund", "availableMargin", "wallet"]:
+                        if key in data and data[key] is not None:
+                            val = float(data[key])
+                            if val > 0:
+                                logger.info("[MEGABULL] Retrieved account funds from %s: Rs %.2f", ep, val)
+                                return val
+                    # Check nested under 'data'
+                    if isinstance(data, dict) and "data" in data and isinstance(data["data"], dict):
+                        d = data["data"]
+                        for key in ["availableCash", "cash", "margin", "balance", "net", "fund"]:
+                            if key in d and d[key] is not None:
+                                val = float(d[key])
+                                if val > 0:
+                                    logger.info("[MEGABULL] Retrieved account funds from %s: Rs %.2f", ep, val)
+                                    return val
+            except Exception:
+                continue
+        return None
+
+    def cancel_order(self, order_id: str) -> Dict[str, Any]:
+        """
+        Dispatches order cancellation to MegaBull API.
+        Attempts POST /api/order/cancel/{orderId} or DELETE /api/order/{orderId}.
+        """
+        url = f"{self.base_url}/api/order/cancel/{order_id}"
+        try:
+            resp = self.session.post(url, headers=self.headers, json={"orderId": order_id}, timeout=self.timeout)
+            if resp.status_code in (200, 204):
+                return {"success": True, "message": f"Order {order_id} cancelled successfully."}
+            # Fallback DELETE
+            del_url = f"{self.base_url}/api/order/{order_id}"
+            del_resp = self.session.delete(del_url, headers=self.headers, timeout=self.timeout)
+            if del_resp.status_code in (200, 204):
+                return {"success": True, "message": f"Order {order_id} cancelled via DELETE."}
+        except Exception as e:
+            logger.error("Failed to cancel order %s at MegaBull: %s", order_id, str(e))
+        return {"success": False, "message": f"Broker order cancellation not acknowledged for {order_id}."}
+
     def close(self) -> None:
         """Closes the underlying HTTP session connection pool."""
         self.session.close()

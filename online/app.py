@@ -8,10 +8,11 @@ Constraints: Zero heavy ML libraries (no numpy, pandas, scikit-learn, or xgboost
 from __future__ import annotations
 import sys
 import os
+import asyncio
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, Request, HTTPException, status
+from typing import Any, Dict, List, Optional, Set
+from fastapi import FastAPI, Request, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -40,40 +41,17 @@ if static_dir.exists():
 # Shared MegaBull client instance for fast dashboard price queries
 mb_client = MegaBullClient()
 
-
-@app.on_event("startup")
-def startup_event():
-    """Starts the execution worker polling loop in a resilient background thread."""
-    worker_thread = threading.Thread(target=execution_worker.start_polling, daemon=True)
-    worker_thread.start()
+# Active WebSocket connections registry
+active_websockets: Set[WebSocket] = set()
 
 
-@app.on_event("shutdown")
-def shutdown_event():
-    execution_worker.stop()
-    mb_client.close()
-
-
-@app.get("/", response_class=HTMLResponse)
-async def get_dashboard(request: Request):
-    """Renders real-time quantitative dashboard."""
-    return templates.TemplateResponse(request, "dashboard.html", {})
-
-
-@app.get("/api/state", response_class=JSONResponse)
-async def get_system_state():
-    """
-    Returns full state payload from MongoDB with real-time fail-safe alerts:
-    - signals_watchlist (ARMED & INVALIDATED setups)
-    - active_trades (OPEN positions with current live LTP and unrealized PnL)
-    - trade_history (Realized closed trades with audit metrics)
-    - system_status (Live alerts, broker auth validity, stale data notice)
-    """
+def compile_full_system_state() -> Dict[str, Any]:
+    """Compiles complete real-time snapshot of watchlist, open trades, history, and system status."""
     signals_col = db_manager.get_collection("signals_watchlist")
     active_col = db_manager.get_collection("active_trades")
     history_col = db_manager.get_collection("trade_history")
 
-    signals = list(signals_col.find({"status": {"$in": ["ARMED", "TRIGGERED", "INVALIDATED"]}}).sort("_id", -1).limit(50))
+    signals = list(signals_col.find({"status": {"$in": ["ARMED", "TRIGGERED", "INVALIDATED", "CANCELLED"]}}).sort("_id", -1).limit(50))
     active_trades = list(active_col.find({"status": "OPEN"}))
     history = list(history_col.find({}).sort("_id", -1).limit(50))
 
@@ -96,6 +74,115 @@ async def get_system_state():
         "trade_history": history,
         "system_status": execution_worker.system_status
     }
+
+
+async def broadcast_live_state() -> None:
+    """Broadcasts current snapshot to all active WebSocket clients."""
+    if not active_websockets:
+        return
+    state = compile_full_system_state()
+    dead = set()
+    for ws in list(active_websockets):
+        try:
+            await ws.send_json(state)
+        except Exception:
+            dead.add(ws)
+    for d in dead:
+        active_websockets.discard(d)
+
+
+async def periodic_websocket_broadcaster() -> None:
+    """Pushes live stream updates to connected dashboard WebSockets every 1.5 seconds."""
+    while True:
+        await asyncio.sleep(1.5)
+        try:
+            await broadcast_live_state()
+        except Exception:
+            pass
+
+
+@app.on_event("startup")
+def startup_event():
+    """Starts the execution worker and background WebSocket broadcaster."""
+    worker_thread = threading.Thread(target=execution_worker.start_polling, daemon=True)
+    worker_thread.start()
+    asyncio.create_task(periodic_websocket_broadcaster())
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    execution_worker.stop()
+    mb_client.close()
+
+
+@app.get("/", response_class=HTMLResponse)
+async def get_dashboard(request: Request):
+    """Renders real-time quantitative dashboard."""
+    return templates.TemplateResponse(request, "dashboard.html", {})
+
+
+@app.get("/api/state", response_class=JSONResponse)
+async def get_system_state():
+    """Returns full state payload from MongoDB with real-time fail-safe alerts."""
+    return compile_full_system_state()
+
+
+@app.post("/api/order/cancel")
+async def cancel_order_endpoint(request: Request):
+    """
+    Cancels an armed signal or emergency exits an active open position.
+    Updates MongoDB Atlas immediately and broadcasts to connected WebSocket clients.
+    """
+    try:
+        data = await request.json()
+        item_id = str(data.get("id", "")).strip()
+        item_type = str(data.get("type", "SIGNAL")).upper()
+
+        if not item_id:
+            raise HTTPException(status_code=400, detail="Missing required 'id' parameter.")
+
+        if item_type == "TRADE" or item_id.startswith("TRADE_"):
+            res = execution_worker.close_active_trade(item_id, reason="MANUAL_USER_CANCEL")
+        else:
+            res = execution_worker.cancel_signal(item_id)
+
+        # Broadcast updated state over WebSockets immediately
+        await broadcast_live_state()
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.websocket("/ws/live")
+async def websocket_live_stream(websocket: WebSocket):
+    """
+    Real-Time WebSocket Stream for VectorTrade Live Execution Dashboard.
+    Pushes live ticks, armed signals, active positions, and accepts manual cancel commands.
+    """
+    await websocket.accept()
+    active_websockets.add(websocket)
+    try:
+        # Push initial snapshot immediately on connection
+        initial_state = compile_full_system_state()
+        await websocket.send_json(initial_state)
+
+        while True:
+            # Receive client actions (e.g. order cancel)
+            msg = await websocket.receive_json()
+            action = msg.get("action")
+            if action == "CANCEL_ORDER":
+                item_id = str(msg.get("id", "")).strip()
+                item_type = str(msg.get("type", "SIGNAL")).upper()
+                if item_type == "TRADE" or item_id.startswith("TRADE_"):
+                    res = execution_worker.close_active_trade(item_id, reason="MANUAL_USER_CANCEL")
+                else:
+                    res = execution_worker.cancel_signal(item_id)
+                await websocket.send_json({"type": "ACTION_RESPONSE", "result": res})
+                await broadcast_live_state()
+    except WebSocketDisconnect:
+        active_websockets.discard(websocket)
+    except Exception:
+        active_websockets.discard(websocket)
 
 
 @app.get("/api/internal/trade-details")

@@ -448,6 +448,91 @@ class ExecutionWorker:
         except Exception as e:
             logger.error("Error expiring signals: %s", str(e))
 
+    def cancel_signal(self, signal_id: str) -> Dict[str, Any]:
+        """
+        Manually cancels an armed signal, preventing any buy execution.
+        Updates MongoDB and removes from in-memory tracking.
+        """
+        try:
+            signals_col = db_manager.get_collection("signals_watchlist")
+            now_iso = datetime.now(pytz.utc).isoformat()
+            signals_col.update_one(
+                {"_id": signal_id},
+                {"$set": {"status": "CANCELLED", "cancelled_at": now_iso}}
+            )
+            self.armed_signals.pop(str(signal_id), None)
+            logger.info("[MANUAL CANCEL] Signal %s marked CANCELLED in DB.", signal_id)
+            return {"status": "SUCCESS", "message": f"Signal {signal_id} cancelled successfully."}
+        except Exception as e:
+            logger.error("Error cancelling signal %s: %s", signal_id, str(e))
+            return {"status": "ERROR", "message": str(e)}
+
+    def close_active_trade(self, trade_id: str, reason: str = "MANUAL_USER_EXIT") -> Dict[str, Any]:
+        """
+        Manually exits an open position immediately by placing a SELL order to MegaBull,
+        updating MongoDB trade_history, and removing from active_trades.
+        """
+        try:
+            active_col = db_manager.get_collection("active_trades")
+            history_col = db_manager.get_collection("trade_history")
+
+            trade = active_col.find_one({"_id": trade_id}) or self.active_trades.get(trade_id)
+            if not trade:
+                return {"status": "ERROR", "message": f"Trade {trade_id} not found."}
+
+            token = str(trade.get("instrument_token", "")).strip()
+            qty = int(trade.get("quantity", 1))
+            fill_price = float(trade.get("fill_price", 0.0))
+            symbol = trade.get("symbol", "UNKNOWN")
+
+            ltp = self.mb_client.get_ltp(token) or fill_price
+
+            # Dispatch SELL order to MegaBull
+            self.mb_client.place_order(
+                instrument_token=token,
+                action="SELL",
+                quantity=qty,
+                order_type="LIMIT",
+                price=ltp,
+                duration="CNC"
+            )
+
+            pnl = round((ltp - fill_price) * qty, 2)
+            roi = round(((ltp - fill_price) / fill_price) * 100.0, 2) if fill_price > 0 else 0.0
+            now_iso = datetime.now(pytz.utc).isoformat()
+
+            hist_doc = {
+                "_id": f"HIST_MANUAL_{trade_id}_{int(time.time()*1000)}",
+                "trade_id": trade_id,
+                "symbol": symbol,
+                "instrument_token": token,
+                "strategy_id": trade.get("strategy_id", "50MA_PULLBACK"),
+                "entry_price": fill_price,
+                "exit_price": ltp,
+                "quantity": qty,
+                "pnl": pnl,
+                "roi_pct": roi,
+                "exit_reason": reason,
+                "entry_timestamp": trade.get("entry_timestamp", now_iso),
+                "exit_timestamp": now_iso,
+                "ml_outcome_label": 1 if pnl >= 0 else 0
+            }
+
+            history_col.insert_one(hist_doc)
+            active_col.delete_one({"_id": trade_id})
+            self.active_trades.pop(trade_id, None)
+
+            logger.info("[MANUAL EXIT] Closed trade %s (%s) at LTP %.2f. P&L: Rs %.2f", trade_id, symbol, ltp, pnl)
+            return {
+                "status": "SUCCESS",
+                "message": f"Trade {symbol} successfully exited at Rs {ltp:.2f} (P&L: Rs {pnl:.2f}).",
+                "pnl": pnl,
+                "exit_price": ltp
+            }
+        except Exception as e:
+            logger.error("Error closing trade %s: %s", trade_id, str(e))
+            return {"status": "ERROR", "message": str(e)}
+
     def stop(self) -> None:
         self.running = False
 

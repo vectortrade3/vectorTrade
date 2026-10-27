@@ -48,12 +48,14 @@ class PortfolioRiskManager:
         """
         Dynamic lot sizing based on stop loss distance:
         Quantity = floor(Risk_Amount / (Buy - SL))
+        Strictly guarantees risk <= risk_amount_per_trade (<= 1.0% capital).
+        If 1 share exceeds the risk budget, returns 0.
         """
         risk_per_share = buy_trigger - sl_price
         if risk_per_share <= 0:
             return 0
         quantity = int(self.risk_amount_per_trade // risk_per_share)
-        return max(quantity, 1)
+        return max(quantity, 0)
 
     def get_current_portfolio_state(self) -> Dict[str, Any]:
         """

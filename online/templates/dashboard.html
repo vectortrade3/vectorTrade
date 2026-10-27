@@ -124,10 +124,11 @@
                             <th class="py-3 px-4">Live LTP</th>
                             <th class="py-3 px-4">Live P&L</th>
                             <th class="py-3 px-4">Protection Status</th>
+                            <th class="py-3 px-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="activeTradesBody" class="divide-y divide-bordercolor font-medium">
-                        <tr><td colspan="9" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>
+                        <tr><td colspan="10" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -157,10 +158,11 @@
                             <th class="py-3 px-4">Potential Profit</th>
                             <th class="py-3 px-4">Potential Loss</th>
                             <th class="py-3 px-4">Live Status</th>
+                            <th class="py-3 px-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="signalsWatchlistBody" class="divide-y divide-bordercolor font-medium">
-                        <tr><td colspan="11" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>
+                        <tr><td colspan="12" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -275,7 +277,7 @@
             // Render Active Trades (Always Guarded)
             const activeBody = document.getElementById('activeTradesBody');
             if (data.active_trades.length === 0) {
-                activeBody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>';
+                activeBody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>';
             } else {
                 activeBody.innerHTML = data.active_trades.map(t => {
                     const ltp = t.current_ltp || t.fill_price;
@@ -295,6 +297,11 @@
                             <td class="py-3 px-4 mono font-bold text-white">₹${ltp.toFixed(2)}</td>
                             <td class="py-3 px-4 mono font-bold ${pnlClass}">₹${pnl.toFixed(2)}</td>
                             <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold text-[10px]">MONITORING SL/TP</span></td>
+                            <td class="py-3 px-4">
+                                <button onclick="closeTrade('${t._id}')" class="px-2.5 py-1 rounded-lg bg-rose-950 border border-rose-800 hover:bg-rose-900 text-rose-300 font-bold text-[10px] transition flex items-center gap-1 shadow">
+                                    <i data-lucide="x-circle" class="w-3 h-3"></i> Close
+                                </button>
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -303,13 +310,21 @@
             // Render Armed Watchlist
             const signalsBody = document.getElementById('signalsWatchlistBody');
             if (data.signals_watchlist.length === 0) {
-                signalsBody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>';
+                signalsBody.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>';
             } else {
                 signalsBody.innerHTML = data.signals_watchlist.map(s => {
                     const conf = s.ml_confidence ? (s.ml_confidence * 100).toFixed(0) : '50';
                     const statusClass = s.status === 'ARMED' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
                                       s.status === 'TRIGGERED' ? 'bg-blue-950 text-blue-300' :
-                                      s.status === 'INVALIDATED' ? 'bg-rose-950 text-rose-300' : 'bg-slate-800 text-slate-400';
+                                      s.status === 'INVALIDATED' ? 'bg-rose-950 text-rose-300' :
+                                      s.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 line-through' : 'bg-slate-800 text-slate-400';
+                    
+                    const actionBtn = s.status === 'ARMED' ? `
+                        <button onclick="cancelSignal('${s._id}')" class="px-2 py-0.5 rounded bg-rose-950 border border-rose-800 hover:bg-rose-900 text-rose-300 font-bold text-[10px] transition">
+                            Cancel
+                        </button>
+                    ` : `<span class="text-slate-600 text-[10px]">--</span>`;
+
                     return `
                         <tr class="hover:bg-slate-800/40 transition">
                             <td class="py-3 px-4 font-bold text-white">
@@ -326,6 +341,7 @@
                             <td class="py-3 px-4 mono text-emerald-400 font-semibold">+₹${(s.profit_at_target || 0).toFixed(2)}</td>
                             <td class="py-3 px-4 mono text-rose-400 font-semibold">-₹${(s.loss_at_sl || 0).toFixed(2)}</td>
                             <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold ${statusClass}">${s.status}</span></td>
+                            <td class="py-3 px-4">${actionBtn}</td>
                         </tr>
                     `;
                 }).join('');
@@ -359,8 +375,79 @@
             lucide.createIcons();
         }
 
-        setInterval(fetchData, 3500);
+        // Live WebSocket Stream Engine
+        let liveSocket = null;
+        function initWebSocket() {
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/live`;
+                liveSocket = new WebSocket(wsUrl);
+
+                liveSocket.onopen = () => {
+                    console.log("[WS] Connected to VectorTrade Live Stream.");
+                    document.getElementById('marketStatus').innerText = "Live WebSocket Stream";
+                    document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                };
+
+                liveSocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    renderDashboard(data);
+                };
+
+                liveSocket.onclose = () => {
+                    console.warn("[WS] Disconnected. Reconnecting in 3s (Falling back to HTTP)...");
+                    document.getElementById('marketStatus').innerText = "Reconnecting...";
+                    document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                    setTimeout(initWebSocket, 3000);
+                };
+
+                liveSocket.onerror = (err) => {
+                    console.error("[WS] Socket error:", err);
+                    liveSocket.close();
+                };
+            } catch (e) {
+                console.error("[WS] Initialization error:", e);
+                setTimeout(initWebSocket, 4000);
+            }
+        }
+
+        // Order Action Handlers
+        async function cancelSignal(signalId) {
+            if (!confirm(`Cancel armed signal for ${signalId}? It will be removed and not executed.`)) return;
+            try {
+                const res = await fetch('/api/order/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: signalId, type: 'SIGNAL' })
+                });
+                const data = await res.json();
+                console.log("Cancel result:", data);
+                fetchData();
+            } catch (err) {
+                alert(`Error cancelling signal: ${err.message}`);
+            }
+        }
+
+        async function closeTrade(tradeId) {
+            if (!confirm(`Emergency Exit: Close active position ${tradeId} now at market LTP?`)) return;
+            try {
+                const res = await fetch('/api/order/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: tradeId, type: 'TRADE' })
+                });
+                const data = await res.json();
+                console.log("Close result:", data);
+                fetchData();
+            } catch (err) {
+                alert(`Error closing trade: ${err.message}`);
+            }
+        }
+
+        // Fallback polling every 4 seconds in case WebSocket is blocked by proxy
+        setInterval(fetchData, 4000);
         fetchData();
+        initWebSocket();
     </script>
 </body>
 </html>

@@ -22,6 +22,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
 import joblib
 import numpy as np
@@ -37,6 +38,7 @@ sys.path.insert(0, str(OFFLINE_DIR))
 from core.config import settings
 from core.db import db_manager
 from core.secure_comms import request_online_trade_details
+from core.risk_manager import PortfolioRiskManager
 from offline.indicators import compute_indicators
 from offline.strategies.ma50_pullback import MA50PullbackStrategy
 from offline.strategies.global_forecast import GlobalForecastStrategy
@@ -86,11 +88,34 @@ class HeadlessDaemon:
     Production Headless Offline EOD Daemon with universal resilience.
     """
 
-    def __init__(self, force_run: bool = False, capital: float = 100000.0, risk_pct: float = 1.5) -> None:
+    def __init__(self, force_run: bool = False, capital: Optional[float] = None, risk_pct: Optional[float] = None) -> None:
         self.force_run = force_run
-        self.capital = float(capital)
-        self.risk_pct = float(risk_pct)
-        self.risk_amount_per_trade = self.capital * (self.risk_pct / 100.0)
+
+        # 1. Dynamically fetch account funds from MegaBull if API key is present
+        live_funds = None
+        try:
+            from online.megabull_client import MegaBullClient
+            mb = MegaBullClient()
+            live_funds = mb.get_account_funds()
+            mb.close()
+        except Exception as e:
+            logger.info("MegaBull balance query notice (using configured capital): %s", str(e))
+
+        if live_funds and live_funds > 0:
+            self.capital = float(live_funds)
+            logger.info("[CAPITAL RESOLUTION] Live MegaBull capital fetched: Rs %.2f", self.capital)
+        elif capital is not None and capital > 0:
+            self.capital = float(capital)
+            logger.info("[CAPITAL RESOLUTION] Using provided capital: Rs %.2f", self.capital)
+        else:
+            self.capital = float(settings.ACCOUNT_CAPITAL)
+            logger.info("[CAPITAL RESOLUTION] Using default settings.ACCOUNT_CAPITAL: Rs %.2f", self.capital)
+
+        # 2. Enforce strict max risk <= 1.0% of total capital
+        req_risk = float(risk_pct) if risk_pct is not None else float(settings.MAX_RISK_PER_TRADE_PCT)
+        self.risk_pct = min(req_risk, 1.0)  # Strictly capped at <= 1.0%
+        self.risk_amount_per_trade = round(self.capital * (self.risk_pct / 100.0), 2)
+        logger.info("[RISK BUDGET] Max Risk Per Trade (%.2f%%): Rs %.2f", self.risk_pct, self.risk_amount_per_trade)
 
         self.tz = pytz.timezone(settings.TIMEZONE)
         self.now_ist = datetime.now(self.tz)
@@ -205,8 +230,8 @@ class HeadlessDaemon:
         risk_per_share = round(buy_trigger - sl_price, 2)
         target_price = round(buy_trigger + (2.0 * risk_per_share), 2)
 
-        quantity = int(self.risk_amount_per_trade // risk_per_share) if risk_per_share > 0 else 1
-        quantity = max(quantity, 1)
+        quantity = int(self.risk_amount_per_trade // risk_per_share) if risk_per_share > 0 else 0
+        quantity = max(quantity, 0)
 
         total_capital_required = round(buy_trigger * quantity, 2)
         profit_at_target = round((target_price - buy_trigger) * quantity, 2)
@@ -307,13 +332,13 @@ class HeadlessDaemon:
         if not symbols:
             symbols = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "TATAMOTORS"]
 
-        logger.info("Processing %d symbols for EOD feature generation & strategy evaluation...", len(symbols))
+        logger.info("Processing %d NIFTY constituents with multithreaded engine...", len(symbols))
 
-        approved_signals: List[Dict[str, Any]] = []
+        raw_signals: List[Dict[str, Any]] = []
         buffer_bar_records: List[Dict[str, Any]] = []
         processed_count = 0
 
-        for sym in symbols:
+        def process_single_symbol(sym: str) -> Optional[Dict[str, Any]]:
             try:
                 clean_sym = sym.strip().upper()
                 token = self.tokens_cache.get(clean_sym, "")
@@ -322,7 +347,7 @@ class HeadlessDaemon:
 
                 df_bar = yf.download(f"{clean_sym}.NS", period="1y", progress=False)
                 if df_bar.empty or len(df_bar) < 50:
-                    continue
+                    return None
 
                 if isinstance(df_bar.columns, pd.MultiIndex):
                     df_bar.columns = df_bar.columns.get_level_values(0)
@@ -332,7 +357,7 @@ class HeadlessDaemon:
 
                 df_feat = compute_indicators(df_bar, nifty_df=nifty_df)
                 if df_feat.empty:
-                    continue
+                    return None
 
                 last_row = df_feat.iloc[-1].to_dict()
                 clean_feats = {}
@@ -348,17 +373,18 @@ class HeadlessDaemon:
                     else:
                         clean_feats[k] = str(v)
 
-                buffer_bar_records.append({
+                buffer_rec = {
                     "date": self.today_str,
                     "symbol": clean_sym,
                     "features": clean_feats,
                     "consumed_for_training": False
-                })
+                }
 
                 high_now = float(df_feat["high"].iloc[-1])
                 low_now = float(df_feat["low"].iloc[-1])
+                sym_signals = []
 
-                # Strategy 1
+                # Strategy 1 Evaluation
                 s1_signals = strategy_1.evaluate(df_feat, symbol=clean_sym, instrument_token=token)
                 for sig in s1_signals:
                     confidence = 0.5
@@ -377,9 +403,9 @@ class HeadlessDaemon:
                     sig["sector"] = sector
                     sig["status"] = "ARMED"
                     sig["valid_for_date"] = self.today_str
-                    approved_signals.append(sig)
+                    sym_signals.append(sig)
 
-                # Strategy 2
+                # Strategy 2 Evaluation
                 pred_gain = 0.0
                 pred_drop = 0.0
                 if self.glob_gain_model is not None and self.glob_drop_model is not None and self.glob_features:
@@ -402,11 +428,48 @@ class HeadlessDaemon:
                     sig["sector"] = sector
                     sig["status"] = "ARMED"
                     sig["valid_for_date"] = self.today_str
-                    approved_signals.append(sig)
+                    sym_signals.append(sig)
 
-                processed_count += 1
+                return {"buffer": buffer_rec, "signals": sym_signals}
             except Exception as e:
                 log_error(f"Processing symbol {sym}", e)
+                return None
+
+        # Execute symbol feature generation with concurrent threads
+        max_workers = min(8, len(symbols))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_sym = {executor.submit(process_single_symbol, s): s for s in symbols}
+            for future in as_completed(future_to_sym):
+                res = future.result()
+                processed_count += 1
+                if res:
+                    if res["buffer"]:
+                        buffer_bar_records.append(res["buffer"])
+                    if res["signals"]:
+                        raw_signals.extend(res["signals"])
+
+        logger.info("Generated %d raw candidates across %d symbols. Applying Portfolio Risk Gate...", len(raw_signals), processed_count)
+
+        # Portfolio Risk Manager Gate: Caps risk per trade <= 1.0%, checks 30% sector limit, sorts by ML confidence
+        risk_mgr = PortfolioRiskManager(
+            total_capital=self.capital,
+            risk_per_trade_pct=self.risk_pct,
+            max_open_positions=10,
+            max_sector_allocation_pct=30.0
+        )
+        approved_signals = risk_mgr.filter_and_size_signals(raw_signals, universe=self.universe)
+
+        # Ensure all metrics on approved signals
+        for sig in approved_signals:
+            sig["status"] = "ARMED"
+            sig["valid_for_date"] = self.today_str
+            buy_trig = float(sig["buy_trigger"])
+            sl_pr = float(sig["sl_price"])
+            qty = int(sig["quantity"])
+            sig["total_capital_required"] = round(buy_trig * qty, 2)
+            sig["profit_at_target"] = round((float(sig["target_price"]) - buy_trig) * qty, 2)
+            sig["loss_at_sl"] = round((buy_trig - sl_pr) * qty, 2)
+            sig["risk_reward_ratio"] = 2.0
 
         # Database Dispatch with Local Fallback
         db_dispatched = False
