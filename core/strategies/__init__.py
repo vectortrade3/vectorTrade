@@ -1,0 +1,1 @@
+"""VectorTrade core strategies package."""

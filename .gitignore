@@ -1,35 +1,70 @@
-# Python Virtual Environment
+# ==============================================================================
+# VectorTrade .gitignore
+# ==============================================================================
+
+# 1. Environment Secrets & API Keys (STRICT: NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# 2. PyInstaller Build Artifacts & Windows Executables
+dist/
+build/
+*.spec
+*.exe
+
+# 3. Python Virtual Environments & Caches
 venv/
 env/
-.env
-
-# Jupyter Notebook Checkpoints
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/
-
-# Python Cache
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
+*.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
 
-# Data Folders & Files (Large datasets)
+# 4. Large Datasets & Market Data Files
 5_year_data/
 archive_1_year/
 *.csv
+*.parquet
+*.feather
 5_year_final_data.csv
 
-# Saved Models (Pickle files, logs, etc.)
+# 5. Saved ML Models & Heavy Pickle Weights
 models/
+offline/models/*.pkl
+offline/models/*.joblib
 *.pkl
 *.joblib
 
-# Auto-generated feature lists and metadata (Optional: remove from here if you want to track them)
+# 6. Runtime Logs & State Files
+logs/*
+!logs/.gitkeep
+*.log
+*.log.gz
+*.sqlite
+*.db
+
+# 7. Offline Local Pending Queue (Keep directory, ignore queued JSONs)
+offline/pending_dispatches/*.json
+!offline/pending_dispatches/.gitkeep
+
+# 8. Auto-Generated Runtime Metadata & Caches
+tokens_cache.json
+nifty50_cache.pkl
+live_predictions.json
 dataset_metadata.json
 base_features.txt
 final_features.txt
 global_base_features.txt
 global_features.txt
 
-# OS Generated Files
+# 9. IDE, Editor & OS Artifacts
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
+desktop.ini

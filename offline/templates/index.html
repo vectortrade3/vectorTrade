@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VectorTrade — Offline Control Center</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0B0F17',
+                        cardbg: '#111827',
+                        bordercolor: '#1F2937'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0F17; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-bordercolor bg-cardbg/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-lg tracking-wider">
+                    V
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
+                        VectorTrade <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800">Offline Control Center</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Headless Quant Scheduler • System Tray Resident</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="statusPulse"></span>
+                    <span id="headerStatusText">Scheduler Idle</span>
+                    <span class="text-slate-600">|</span>
+                    <span id="clock" class="mono text-slate-400">--:--:-- IST</span>
+                </div>
+                <a href="http://localhost:8000" target="_blank" class="px-3 py-1.5 rounded-lg bg-cyan-950 border border-cyan-800 hover:bg-cyan-900 text-xs font-semibold text-cyan-300 transition flex items-center gap-1.5">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Open Online Hub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+        <!-- Top Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>NEXT SCHEDULED EOD RUN</span>
+                    <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="mt-2 text-xl font-bold mono text-white" id="statNextRun">16:00:00 IST</div>
+                <p class="text-xs text-slate-500 mt-1" id="statLastRunSub">Last run: --</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>TODAY'S ARMED SIGNALS</span>
+                    <i data-lucide="crosshair" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono text-emerald-400" id="statSignalsCount">0</div>
+                <p class="text-xs text-slate-500 mt-1" id="statDispatchedSub">Database Synced</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>RESOURCE FOOTPRINT</span>
+                    <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono text-slate-200" id="statResources">0 MB | 0%</div>
+                <p class="text-xs text-slate-500 mt-1">Ultra-Low Battery Overhead</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>MONGODB ATLAS STATE</span>
+                    <i data-lucide="database" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="mt-2 text-xl font-bold mono text-cyan-300" id="statDb">CONNECTED</div>
+                <p class="text-xs text-slate-500 mt-1" id="statPendingSub">0 Local Fallbacks</p>
+            </div>
+        </div>
+
+        <!-- Action Control Bar -->
+        <div class="bg-cardbg border border-bordercolor rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center space-x-2">
+                <button onclick="triggerAction('run-eod')" id="btnRunEOD" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-md">
+                    <i data-lucide="zap" class="w-4 h-4"></i> Run EOD Analysis Now
+                </button>
+                <button onclick="triggerAction('sync-dispatches')" id="btnSync" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Pending Dispatches
+                </button>
+                <button onclick="triggerAction('retrain')" id="btnRetrain" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
+                    <i data-lucide="brain" class="w-4 h-4"></i> Trigger Model Retraining
+                </button>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs text-slate-400" id="actionStatusMsg">Ready.</span>
+                <button onclick="refreshAll()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabbed Navigation -->
+        <div class="space-y-4">
+            <div class="flex border-b border-bordercolor space-x-4">
+                <button onclick="switchTab('signals')" id="tabBtnSignals" class="pb-3 text-xs font-bold border-b-2 border-amber-500 text-amber-400 flex items-center gap-2">
+                    <i data-lucide="crosshair" class="w-4 h-4"></i> Today's Generated Signals
+                    <span id="tabSignalsBadge" class="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 text-[10px]">0</span>
+                </button>
+                <button onclick="switchTab('telemetry')" id="tabBtnTelemetry" class="pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4"></i> Live Online Telemetry
+                </button>
+                <button onclick="switchTab('pending')" id="tabBtnPending" class="pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="hard-drive" class="w-4 h-4"></i> Pending Local Fallbacks
+                    <span id="tabPendingBadge" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 text-[10px]">0</span>
+                </button>
+                <button onclick="switchTab('logs')" id="tabBtnLogs" class="pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="terminal" class="w-4 h-4"></i> Execution Logs
+                </button>
+            </div>
+
+            <!-- TAB 1: Signals Table -->
+            <div id="tabSignals" class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/60 border-b border-bordercolor text-slate-400 uppercase tracking-wider font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">Symbol / Sector</th>
+                                <th class="py-3 px-4">Strategy</th>
+                                <th class="py-3 px-4">ML Conf</th>
+                                <th class="py-3 px-4">Buy Trigger</th>
+                                <th class="py-3 px-4">Stop Loss</th>
+                                <th class="py-3 px-4">Target (1:2)</th>
+                                <th class="py-3 px-4">Qty</th>
+                                <th class="py-3 px-4">Total Capital</th>
+                                <th class="py-3 px-4">Max Profit</th>
+                                <th class="py-3 px-4">Max Risk</th>
+                                <th class="py-3 px-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signalsTableBody" class="divide-y divide-bordercolor">
+                            <tr><td colspan="11" class="text-center py-8 text-slate-500">Loading signals...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: Live Telemetry -->
+            <div id="tabTelemetry" class="hidden bg-cardbg border border-bordercolor rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i data-lucide="radio" class="w-4 h-4 text-cyan-400 animate-pulse"></i>
+                            Encrypted Telemetry Stream from Online Engine
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Queried securely via HMAC-SHA256 authenticated channel.</p>
+                    </div>
+                    <button onclick="fetchTelemetry()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300">
+                        Refresh Telemetry
+                    </button>
+                </div>
+                <div id="telemetryContent" class="space-y-4 text-xs">
+                    <p class="text-slate-500">Loading online telemetry...</p>
+                </div>
+            </div>
+
+            <!-- TAB 3: Pending Dispatches -->
+            <div id="tabPending" class="hidden bg-cardbg border border-bordercolor rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Local Pending Dispatches</h3>
+                        <p class="text-xs text-slate-400">Signals buffered locally when MongoDB Atlas was unreachable.</p>
+                    </div>
+                </div>
+                <div id="pendingFilesList" class="space-y-2 text-xs">
+                    <p class="text-slate-500">No pending files.</p>
+                </div>
+            </div>
+
+            <!-- TAB 4: Execution Logs -->
+            <div id="tabLogs" class="hidden bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="flex items-center justify-between pb-3 border-b border-bordercolor">
+                    <span class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i> daemon_runs.log
+                    </span>
+                    <button onclick="fetchLogs()" class="text-xs text-amber-400 hover:underline">Refresh Logs</button>
+                </div>
+                <pre id="logsContent" class="mt-3 p-4 rounded-xl bg-slate-950 border border-slate-900 text-slate-300 font-mono text-[11px] h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+Loading logs...
+                </pre>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="border-t border-bordercolor py-4 text-center text-xs text-slate-600 bg-cardbg">
+        VectorTrade Offline Control Center • Low-Resource System Tray Worker
+    </footer>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+            document.getElementById('clock').innerText = timeStr + ' IST';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function switchTab(tab) {
+            ['signals', 'telemetry', 'pending', 'logs'].forEach(t => {
+                const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (t === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = 'pb-3 text-xs font-bold border-b-2 border-amber-500 text-amber-400 flex items-center gap-2';
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = 'pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2';
+                }
+            });
+            if (tab === 'telemetry') fetchTelemetry();
+            if (tab === 'logs') fetchLogs();
+            if (tab === 'pending') fetchPending();
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                document.getElementById('statNextRun').innerText = data.next_scheduled_run.split(' ')[1] + ' IST';
+                document.getElementById('statLastRunSub').innerText = data.last_run_date ? `Last: ${data.last_run_date} (${data.last_run_status})` : 'Last run: Never';
+                document.getElementById('statSignalsCount').innerText = data.last_signals_count;
+                document.getElementById('statResources').innerText = `${data.memory_usage_mb} MB | ${data.cpu_usage_pct}%`;
+                
+                const dbElem = document.getElementById('statDb');
+                dbElem.innerText = data.database_connected ? 'CONNECTED' : 'DISCONNECTED';
+                dbElem.className = `mt-2 text-xl font-bold mono ${data.database_connected ? 'text-cyan-300' : 'text-rose-400'}`;
+                
+                document.getElementById('statPendingSub').innerText = `${data.pending_dispatches_count} Local Fallbacks`;
+                document.getElementById('tabPendingBadge').innerText = data.pending_dispatches_count;
+
+                const headerStatus = document.getElementById('headerStatusText');
+                const pulse = document.getElementById('statusPulse');
+                if (data.is_busy) {
+                    headerStatus.innerText = data.last_action ? `Running ${data.last_action}...` : 'Running Pipeline...';
+                    pulse.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+                } else {
+                    headerStatus.innerText = 'Scheduler Idle';
+                    pulse.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                }
+            } catch (e) {
+                console.error("Status fetch error", e);
+            }
+        }
+
+        async function fetchResults() {
+            try {
+                const res = await fetch('/api/results');
+                const data = await res.json();
+                document.getElementById('tabSignalsBadge').innerText = data.count;
+
+                const tbody = document.getElementById('signalsTableBody');
+                if (!data.signals || data.signals.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-500">No signals generated for today yet. Run EOD Analysis above or wait for 16:00 IST.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.signals.map(s => {
+                    const conf = s.ml_confidence ? (s.ml_confidence * 100).toFixed(0) : '50';
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-4 font-bold text-white flex items-center gap-1.5">
+                                ${s.symbol}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">${s.sector || 'General'}</span>
+                            </td>
+                            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">${s.strategy_id}</td>
+                            <td class="py-3 px-4 mono font-bold text-amber-400">${conf}%</td>
+                            <td class="py-3 px-4 mono font-semibold text-white">₹${s.buy_trigger.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400">₹${s.sl_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">₹${s.target_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono font-bold text-slate-200">${s.quantity || 1}</td>
+                            <td class="py-3 px-4 mono font-medium">₹${(s.total_capital_required || 0).toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">+₹${(s.profit_at_target || 0).toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400 font-semibold">-₹${(s.loss_at_sl || 0).toFixed(2)}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">${s.status}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            } catch (e) {
+                console.error("Results fetch error", e);
+            }
+        }
+
+        async function fetchTelemetry() {
+            const container = document.getElementById('telemetryContent');
+            container.innerHTML = '<p class="text-slate-400 animate-pulse">Requesting telemetry from Online Engine...</p>';
+            try {
+                const res = await fetch('/api/telemetry');
+                const data = await res.json();
+                if (data.status === 'ERROR') {
+                    container.innerHTML = `<div class="p-4 rounded-xl bg-rose-950 border border-rose-800 text-rose-200">${data.message}</div>`;
+                    return;
+                }
+                const summary = data.summary || {};
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                            <span class="text-slate-400 text-[11px]">Today's Triggered Trades</span>
+                            <div class="text-xl font-bold mono text-white mt-1">${summary.triggered_count || 0}</div>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                            <span class="text-slate-400 text-[11px]">Trades Closed Today</span>
+                            <div class="text-xl font-bold mono text-emerald-400 mt-1">${summary.today_closed_count || 0}</div>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                            <span class="text-slate-400 text-[11px]">Active Open Positions</span>
+                            <div class="text-xl font-bold mono text-cyan-400 mt-1">${summary.active_open_count || 0}</div>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                            <span class="text-slate-400 text-[11px]">Today Realized P&L</span>
+                            <div class="text-xl font-bold mono text-white mt-1">₹${(summary.today_realized_pnl || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <pre class="p-3 bg-slate-950 rounded-xl border border-slate-900 text-slate-400 font-mono text-[10px] overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (e) {
+                container.innerHTML = `<p class="text-rose-400">Failed to reach telemetry endpoint: ${e.message}</p>`;
+            }
+        }
+
+        async function fetchPending() {
+            try {
+                const res = await fetch('/api/pending');
+                const data = await res.json();
+                const container = document.getElementById('pendingFilesList');
+                if (!data.pending_files || data.pending_files.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500">Zero pending fallback files. All dispatches are synchronized with MongoDB Atlas.</p>';
+                    return;
+                }
+                container.innerHTML = data.pending_files.map(f => `
+                    <div class="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+                        <div>
+                            <span class="font-bold text-white mono">${f.filename}</span>
+                            <span class="text-slate-500 ml-2">(${f.signals_count} signals, ${f.buffer_count} buffer bars)</span>
+                        </div>
+                        <button onclick="triggerAction('sync-dispatches')" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold">Sync Now</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error("Pending fetch error", e);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                const el = document.getElementById('logsContent');
+                el.innerText = data.lines.join('\n') || 'Log file is empty.';
+                el.scrollTop = el.scrollHeight;
+            } catch (e) {
+                console.error("Logs fetch error", e);
+            }
+        }
+
+        async function triggerAction(action) {
+            const statusMsg = document.getElementById('actionStatusMsg');
+            statusMsg.innerText = `Dispatching ${action}...`;
+            try {
+                const res = await fetch(`/api/action/${action}`, { method: 'POST' });
+                const data = await res.json();
+                statusMsg.innerText = data.message || 'Action executed successfully.';
+                setTimeout(refreshAll, 1000);
+            } catch (e) {
+                statusMsg.innerText = `Error: ${e.message}`;
+            }
+        }
+
+        function refreshAll() {
+            fetchStatus();
+            fetchResults();
+            lucide.createIcons();
+        }
+
+        setInterval(fetchStatus, 4000);
+        refreshAll();
+    </script>
+</body>
+</html>

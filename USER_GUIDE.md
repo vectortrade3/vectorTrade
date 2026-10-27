@@ -61,6 +61,42 @@ Just run Notebook 6 or 6.2, grab a cup of coffee, and when it finishes, open Not
 
 ---
 
+## 🔒 Phase 4: Secure Inter-Process Communication (Offline ↔ Online)
+
+VectorTrade features a decoupled architecture where the **Online Cloud Worker** and the **Offline Headless Daemon** communicate securely. Whenever the offline program requests trade details, execution metrics, or model feedback, it is protected by defense-in-depth security:
+
+### 🛡️ Direct Browser / URL Access Prevention
+* The internal endpoint `/api/internal/trade-details` **cannot** be accessed by typing the URL into a web browser.
+* Any unauthenticated visit (from a browser, unauthorized IP, or port scan) receives an immediate `401 Unauthorized` (`Access Denied: Missing or invalid security token. Direct browser access is strictly forbidden.`).
+* Sensitive data and trade telemetry are never exposed to the public internet.
+
+### 📬 Dual Communication Channels
+1. **Indirect Database Mailbox (Default — Zero Open Inbound Ports)**:
+   * The Offline program creates a cryptographically signed request document in MongoDB Atlas (`inter_service_requests`).
+   * The Online Worker picks up the request during its market polling loop, compiles the verified telemetry, signs the response with an HMAC-SHA256 signature, and stores it in the database.
+   * Offline consumes the response and verifies the signature. No inbound firewall rules, open ports, or public static IPs are needed on either machine.
+2. **Cryptographically Authenticated REST Channel**:
+   * Uses pre-shared key header `X-Vector-Internal-Token` and HMAC-SHA256 request signatures with timestamp replay protection.
+
+### 💻 Requesting Online Details via CLI
+Run the offline CLI tool anytime from your local terminal:
+```bash
+# 1. Fetch today's executed trades, fill prices, targets hit, and realized P&L:
+python offline/fetch_online_details.py --action GET_TODAY_EXECUTION
+
+# 2. Inspect currently active open positions and live unrealized P&L:
+python offline/fetch_online_details.py --action GET_ACTIVE_POSITIONS
+
+# 3. Check Online Engine health, broker authentication status, and alerts:
+python offline/fetch_online_details.py --action GET_SYSTEM_HEALTH
+
+# 4. Pull closed trade outcome labels (wins/losses) for continuous ML retraining:
+python offline/fetch_online_details.py --action GET_ML_TRAINING_FEEDBACK --limit 50
+```
+
+
+---
+
 ## 📦 Using the AI in Production (Live Bots)
 Whenever the AI trains (Notebooks 4 and 4.2), it saves its brain into the **`models/`** folder as `.pkl` files. 
 

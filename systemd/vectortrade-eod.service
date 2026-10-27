@@ -1,0 +1,16 @@
+[Unit]
+Description=VectorTrade EOD Offline Analytics & Signal Dispatcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/vectorTrade
+ExecStart=/opt/vectorTrade/venv/bin/python -m offline.daily_eod_daemon
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=1800
+KillMode=process
+
+[Install]
+WantedBy=default.target

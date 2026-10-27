@@ -8,3 +8,13 @@ flask
 joblib
 jupyter
 nbconvert
+pystray
+pillow
+psutil
+pyinstaller
+pymongo
+pydantic
+pydantic-settings
+python-dotenv
+requests
+pytz

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VectorTrade — Universal Real-Time Execution Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0B0F17',
+                        cardbg: '#111827',
+                        bordercolor: '#1F2937'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0F17; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Universal Alert Bar (Conditional Real-Time Render) -->
+    <div id="alertBannerContainer" class="hidden">
+        <!-- Rendered dynamically -->
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="border-b border-bordercolor bg-cardbg/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-white text-lg tracking-wider">
+                    V
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
+                        VectorTrade <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">Online Engine</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Headless Quant Architecture • Universal Fail-Safe Active</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="liveDot"></span>
+                    <span id="marketStatus">Live Polling</span>
+                    <span class="text-slate-600">|</span>
+                    <span id="clock" class="mono text-slate-400">--:--:-- IST</span>
+                </div>
+                <button onclick="fetchData()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+        <!-- Metrics Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>ACTIVE OPEN TRADES</span>
+                    <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono text-white" id="statActive">0</div>
+                <p class="text-xs text-slate-500 mt-1">Multi-Day Protective Tracking</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>ARMED SIGNALS (TODAY)</span>
+                    <i data-lucide="crosshair" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono text-amber-400" id="statArmed">0</div>
+                <p class="text-xs text-slate-500 mt-1" id="staleStatusNotice">Stale Data Rejected</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>TOTAL REALIZED P&L</span>
+                    <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono" id="statPnL">₹0.00</div>
+                <p class="text-xs text-slate-500 mt-1" id="statWinRate">0 Trades</p>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+                <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>WORKING CAPITAL ALLOCATED</span>
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i>
+                </div>
+                <div class="mt-2 text-2xl font-bold mono text-slate-200" id="statCapital">₹0</div>
+                <p class="text-xs text-slate-500 mt-1">Portfolio Risk Controlled</p>
+            </div>
+        </div>
+
+        <!-- Section 1: Active Portfolio Positions (Always Guarded) -->
+        <section class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 border-b border-bordercolor flex items-center justify-between bg-slate-900/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="briefcase" class="w-4 h-4 text-cyan-400"></i>
+                    <h2 class="text-sm font-bold text-white tracking-wide uppercase">Active Open Trades (Protected)</h2>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-cyan-950 text-cyan-300 font-mono" id="activeBadge">0 OPEN</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-bordercolor text-slate-400 bg-slate-900/60 uppercase tracking-wider font-semibold">
+                            <th class="py-3 px-4">Symbol & Sector</th>
+                            <th class="py-3 px-4">Strategy</th>
+                            <th class="py-3 px-4">Qty</th>
+                            <th class="py-3 px-4">Fill Price</th>
+                            <th class="py-3 px-4">Target Price</th>
+                            <th class="py-3 px-4">Stop Loss</th>
+                            <th class="py-3 px-4">Live LTP</th>
+                            <th class="py-3 px-4">Live P&L</th>
+                            <th class="py-3 px-4">Protection Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeTradesBody" class="divide-y divide-bordercolor font-medium">
+                        <tr><td colspan="9" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 2: Armed Watchlist & Financial Risk Pre-computations -->
+        <section class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 border-b border-bordercolor flex items-center justify-between bg-slate-900/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="target" class="w-4 h-4 text-amber-400"></i>
+                    <h2 class="text-sm font-bold text-white tracking-wide uppercase">Armed Watchlist (Today's Valid Setups)</h2>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 font-mono" id="armedBadge">0 SETUPS</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-bordercolor text-slate-400 bg-slate-900/60 uppercase tracking-wider font-semibold">
+                            <th class="py-3 px-4">Symbol / Sector</th>
+                            <th class="py-3 px-4">Strategy</th>
+                            <th class="py-3 px-4">ML Conf</th>
+                            <th class="py-3 px-4">Buy Trigger</th>
+                            <th class="py-3 px-4">Stop Loss</th>
+                            <th class="py-3 px-4">Target (1:2)</th>
+                            <th class="py-3 px-4">Quantity</th>
+                            <th class="py-3 px-4">Capital Req (₹)</th>
+                            <th class="py-3 px-4">Potential Profit</th>
+                            <th class="py-3 px-4">Potential Loss</th>
+                            <th class="py-3 px-4">Live Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="signalsWatchlistBody" class="divide-y divide-bordercolor font-medium">
+                        <tr><td colspan="11" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 3: Trade History & Realized Audit Log -->
+        <section class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 border-b border-bordercolor flex items-center justify-between bg-slate-900/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="history" class="w-4 h-4 text-purple-400"></i>
+                    <h2 class="text-sm font-bold text-white tracking-wide uppercase">Realized Trade History & Outcomes</h2>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-purple-950 text-purple-300 font-mono" id="historyBadge">0 CLOSED</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-bordercolor text-slate-400 bg-slate-900/60 uppercase tracking-wider font-semibold">
+                            <th class="py-3 px-4">Symbol</th>
+                            <th class="py-3 px-4">Strategy</th>
+                            <th class="py-3 px-4">Entry</th>
+                            <th class="py-3 px-4">Exit</th>
+                            <th class="py-3 px-4">Qty</th>
+                            <th class="py-3 px-4">Realized P&L</th>
+                            <th class="py-3 px-4">ROI %</th>
+                            <th class="py-3 px-4">Exit Reason</th>
+                            <th class="py-3 px-4">Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradeHistoryBody" class="divide-y divide-bordercolor font-medium">
+                        <tr><td colspan="9" class="text-center py-8 text-slate-500">No trade history recorded yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="border-t border-bordercolor py-4 text-center text-xs text-slate-600 bg-cardbg">
+        VectorTrade Universal Architecture • 100 Fail-Safe Edge Cases Handled
+    </footer>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+            document.getElementById('clock').innerText = timeStr + ' IST';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+                renderDashboard(data);
+            } catch (err) {
+                console.error("Dashboard refresh error:", err);
+            }
+        }
+
+        function renderDashboard(data) {
+            // Render Universal Alert Banners (if any)
+            const alertContainer = document.getElementById('alertBannerContainer');
+            if (data.system_status && data.system_status.alerts && data.system_status.alerts.length > 0) {
+                alertContainer.className = "space-y-2 px-6 pt-4";
+                alertContainer.innerHTML = data.system_status.alerts.map(a => {
+                    const isCrit = a.level === 'CRITICAL';
+                    const bg = isCrit ? 'bg-rose-950/80 border-rose-800 text-rose-200' : 'bg-amber-950/80 border-amber-800 text-amber-200';
+                    const icon = isCrit ? 'alert-octagon' : 'alert-triangle';
+                    return `
+                        <div class="border ${bg} px-4 py-2.5 rounded-xl flex items-center justify-between shadow-lg text-xs">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="${icon}" class="w-4 h-4"></i>
+                                <span class="font-bold uppercase tracking-wide">[${a.code}]</span>
+                                <span>${a.message}</span>
+                            </div>
+                            <span class="mono text-[10px] opacity-75">${new Date(a.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                alertContainer.className = "hidden";
+                alertContainer.innerHTML = "";
+            }
+
+            // Update Stats
+            document.getElementById('statActive').innerText = data.active_trades.length;
+            document.getElementById('statArmed').innerText = data.signals_watchlist.filter(s => s.status === 'ARMED').length;
+            document.getElementById('activeBadge').innerText = `${data.active_trades.length} OPEN`;
+            document.getElementById('armedBadge').innerText = `${data.signals_watchlist.length} SETUPS`;
+            document.getElementById('historyBadge').innerText = `${data.trade_history.length} CLOSED`;
+
+            // Calculate Total Realized PnL & Win Rate
+            let totalPnL = 0;
+            let wins = 0;
+            data.trade_history.forEach(t => {
+                totalPnL += (t.pnl || 0);
+                if ((t.pnl || 0) > 0) wins++;
+            });
+            const pnlElem = document.getElementById('statPnL');
+            pnlElem.innerText = `₹${totalPnL.toFixed(2)}`;
+            pnlElem.className = `mt-2 text-2xl font-bold mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            
+            const winRate = data.trade_history.length > 0 ? ((wins / data.trade_history.length) * 100).toFixed(0) : 0;
+            document.getElementById('statWinRate').innerText = `${data.trade_history.length} Trades (${winRate}% Win Rate)`;
+
+            let totalCap = 0;
+            data.active_trades.forEach(t => totalCap += (t.total_capital_required || (t.fill_price * t.quantity) || 0));
+            document.getElementById('statCapital').innerText = `₹${totalCap.toLocaleString('en-IN', {maximumFractionDigits: 0})}`;
+
+            // Render Active Trades (Always Guarded)
+            const activeBody = document.getElementById('activeTradesBody');
+            if (data.active_trades.length === 0) {
+                activeBody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-500">No active positions currently open.</td></tr>';
+            } else {
+                activeBody.innerHTML = data.active_trades.map(t => {
+                    const ltp = t.current_ltp || t.fill_price;
+                    const pnl = (ltp - t.fill_price) * t.quantity;
+                    const pnlClass = pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
+                                ${t.symbol}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">${t.sector || 'General'}</span>
+                            </td>
+                            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">${t.strategy_id}</td>
+                            <td class="py-3 px-4 mono">${t.quantity}</td>
+                            <td class="py-3 px-4 mono">₹${t.fill_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">₹${t.target_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400 font-semibold">₹${t.sl_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono font-bold text-white">₹${ltp.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono font-bold ${pnlClass}">₹${pnl.toFixed(2)}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold text-[10px]">MONITORING SL/TP</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Render Armed Watchlist
+            const signalsBody = document.getElementById('signalsWatchlistBody');
+            if (data.signals_watchlist.length === 0) {
+                signalsBody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-500">No armed setups for today.</td></tr>';
+            } else {
+                signalsBody.innerHTML = data.signals_watchlist.map(s => {
+                    const conf = s.ml_confidence ? (s.ml_confidence * 100).toFixed(0) : '50';
+                    const statusClass = s.status === 'ARMED' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
+                                      s.status === 'TRIGGERED' ? 'bg-blue-950 text-blue-300' :
+                                      s.status === 'INVALIDATED' ? 'bg-rose-950 text-rose-300' : 'bg-slate-800 text-slate-400';
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-4 font-bold text-white">
+                                ${s.symbol}
+                                <span class="text-[10px] ml-1.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">${s.sector || 'General'}</span>
+                            </td>
+                            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">${s.strategy_id}</td>
+                            <td class="py-3 px-4 mono font-semibold text-indigo-400">${conf}%</td>
+                            <td class="py-3 px-4 mono font-semibold text-white">₹${s.buy_trigger.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400">₹${s.sl_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-emerald-400">₹${s.target_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono font-bold text-slate-200">${s.quantity || 1}</td>
+                            <td class="py-3 px-4 mono">₹${(s.total_capital_required || 0).toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">+₹${(s.profit_at_target || 0).toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400 font-semibold">-₹${(s.loss_at_sl || 0).toFixed(2)}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold ${statusClass}">${s.status}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Render Trade History
+            const histBody = document.getElementById('tradeHistoryBody');
+            if (data.trade_history.length === 0) {
+                histBody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-500">No trade history recorded yet.</td></tr>';
+            } else {
+                histBody.innerHTML = data.trade_history.map(h => {
+                    const pnlClass = h.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    const exitBadge = h.exit_reason === 'TARGET_HIT' ? 'bg-emerald-950 text-emerald-300' :
+                                      h.exit_reason === 'SL_HIT' ? 'bg-rose-950 text-rose-300' : 'bg-slate-800 text-slate-300';
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-4 font-bold text-white">${h.symbol}</td>
+                            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">${h.strategy_id}</td>
+                            <td class="py-3 px-4 mono">₹${h.entry_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono">₹${h.exit_price.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono">${h.quantity}</td>
+                            <td class="py-3 px-4 mono font-bold ${pnlClass}">₹${h.pnl.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono ${pnlClass}">${h.roi_pct.toFixed(2)}%</td>
+                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${exitBadge}">${h.exit_reason}</span></td>
+                            <td class="py-3 px-4 mono font-semibold text-slate-300">${h.ml_outcome_label === 1 ? 'WIN (1)' : 'LOSS (0)'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            lucide.createIcons();
+        }
+
+        setInterval(fetchData, 3500);
+        fetchData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: vectortrade-online
+    runtime: python
+    buildCommand: pip install -r online/requirements_online.txt
+    startCommand: uvicorn online.app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    region: singapore
+    envVars:
+      - key: PYTHONPATH
+        value: .
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: vectortrade
+      - key: MEGABULL_API_KEY
+        sync: false
+      - key: MEGABULL_USER_ID
+        sync: false
+      - key: INTERNAL_AUTH_TOKEN
+        sync: false
+      - key: TIMEZONE
+        value: Asia/Kolkata
+      - key: APP_NAME
+        value: VectorTrade
+      - key: LOG_LEVEL
+        value: INFO
