@@ -66,6 +66,21 @@ class VectorTradeTrayApp:
         self.icon: pystray.Icon | None = None
         self.server_thread: threading.Thread | None = None
         self.scheduler = offline_scheduler
+        self.scheduler.set_auto_close_callback(self.auto_close_app)
+
+    def auto_close_app(self) -> None:
+        """Triggered automatically when the automated EOD analysis and upload finishes."""
+        logger.info("[AUTO-RUNNER] Auto-closing VectorTrade application (job completed).")
+        try:
+            self.scheduler.stop()
+        except Exception:
+            pass
+        if self.icon:
+            try:
+                self.icon.stop()
+            except Exception:
+                pass
+        os._exit(0)
 
     def open_dashboard(self, icon=None, item=None) -> None:
         """Launches the default web browser to the offline control center."""

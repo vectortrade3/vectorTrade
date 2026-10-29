@@ -46,6 +46,7 @@ class OfflineScheduler:
         self.running = False
         self.thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        self.auto_close_callback: Optional[Any] = None
 
         self.state: Dict[str, Any] = {
             "status": "IDLE",
@@ -205,31 +206,62 @@ class OfflineScheduler:
         finally:
             self._lock.release()
 
+    def set_auto_close_callback(self, cb: Any) -> None:
+        """Registers a callback function invoked when the automated 16:00 run completes."""
+        self.auto_close_callback = cb
+
     def _loop(self) -> None:
         """
-        Ultra-efficient main loop:
-        Wakes up every 30 seconds, checks IST time, and triggers automated EOD run if due.
-        Uses negligible CPU (< 0.1%) while sleeping.
+        Automated execution loop:
+        1. When started, checks current IST time.
+        2. If time >= 16:00 IST (4:00 PM):
+           - Runs EOD analysis immediately (all 207 stocks, features, predictions, risk sizing).
+           - Uploads results to MongoDB Atlas.
+           - Waits 5 seconds for telemetry / DB sync to flush.
+           - Calls auto_close_callback to close the entire application cleanly!
+        3. If time < 16:00 IST (before 4:00 PM):
+           - Checks IST time every 60 seconds.
+           - As soon as IST time reaches >= 16:00 IST, executes the analysis, uploads to MongoDB Atlas, and closes!
         """
-        logger.info("OfflineScheduler background worker loop started.")
+        logger.info("[SCHEDULER] Automated supervisor loop started.")
         while self.running:
             try:
                 now_ist = datetime.now(self.tz)
                 today_str = now_ist.strftime("%Y-%m-%d")
+                is_after_market = (now_ist.hour > self.target_hour or 
+                                   (now_ist.hour == self.target_hour and now_ist.minute >= self.target_minute))
 
-                # If past target hour and today's run has not been completed yet
-                if (now_ist.hour > self.target_hour or (now_ist.hour == self.target_hour and now_ist.minute >= self.target_minute)):
-                    if self.state["last_run_date"] != today_str and not self.state["is_busy"]:
-                        logger.info("[SCHEDULER] Target time reached (%02d:%02d IST). Triggering automated EOD run...", now_ist.hour, now_ist.minute)
-                        threading.Thread(target=self.run_eod_pipeline, kwargs={"force": False}, daemon=True).start()
+                if is_after_market:
+                    logger.info(
+                        "[SCHEDULER] Current time is %02d:%02d IST (>= %02d:%02d IST). Triggering automated analysis & upload...",
+                        now_ist.hour, now_ist.minute, self.target_hour, self.target_minute
+                    )
+                    # Run full pipeline with force=True so it analyzes all 207 stocks
+                    res = self.run_eod_pipeline(force=True)
+                    logger.info("[SCHEDULER] EOD Pipeline completed: %s", res)
+
+                    # Grace period to allow UI / DB writes to finalize
+                    logger.info("[SCHEDULER] Analysis & upload finished. Auto-closing VectorTrade in 5 seconds...")
+                    time.sleep(5)
+
+                    if self.auto_close_callback:
+                        self.auto_close_callback()
+                    else:
+                        os._exit(0)
+                    return
+                else:
+                    logger.info(
+                        "[SCHEDULER] Current time is %02d:%02d IST (< %02d:%02d IST). Checking time every minute until 16:00 IST...",
+                        now_ist.hour, now_ist.minute, self.target_hour, self.target_minute
+                    )
 
             except Exception as e:
-                logger.error("[SCHEDULER] Loop exception: %s", str(e))
+                logger.error("[SCHEDULER] Error in scheduler loop: %s", str(e))
 
-            # Deep sleep for 30 seconds to conserve battery and CPU
-            for _ in range(30):
+            # Sleep 60 seconds (1-second intervals for responsive shutdown)
+            for _ in range(60):
                 if not self.running:
-                    break
+                    return
                 time.sleep(1)
 
     def start(self) -> None:

@@ -289,13 +289,23 @@ class HeadlessDaemon:
         logger.info("==================================================")
 
         if not self.check_execution_guard():
-            sys.exit(0)
+            return {
+                "status": "GUARD_ABORTED",
+                "message": "Execution aborted by time guard or redundant run check.",
+                "signals_armed": 0,
+                "db_dispatched": False
+            }
 
         # Check internet connectivity
         online = check_internet()
         if not online and not self.force_run:
             logger.warning("[NETWORK DROP] No internet connectivity detected. Safe exit without crashing.")
-            sys.exit(0)
+            return {
+                "status": "OFFLINE",
+                "message": "No internet connectivity detected.",
+                "signals_armed": 0,
+                "db_dispatched": False
+            }
 
         # Flush any previously cached offline dispatches
         self.sync_pending_offline_dispatches()
