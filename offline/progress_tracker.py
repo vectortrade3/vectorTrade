@@ -94,7 +94,7 @@ class AnalysisProgressTracker:
         try:
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(STATE_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.state, f, indent=2)
+                json.dump(self.state, f, indent=2, default=str)
         except Exception as e:
             logger.warning("Could not persist analysis_progress.json: %s", str(e))
 

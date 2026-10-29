@@ -150,6 +150,11 @@ class VectorTradeTrayApp:
         )
 
         logger.info("VectorTrade resident in System Tray. Dashboard available at http://127.0.0.1:%d", self.port)
+
+        # If launched with --open-browser or --dashboard, automatically open in default web browser
+        if "--open-browser" in sys.argv or "--dashboard" in sys.argv:
+            threading.Timer(1.2, self.open_dashboard).start()
+
         self.icon.run()
 
 

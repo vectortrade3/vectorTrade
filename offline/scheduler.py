@@ -215,13 +215,13 @@ class OfflineScheduler:
         Automated execution loop:
         1. When started, checks current IST time.
         2. If time >= 16:00 IST (4:00 PM):
-           - Runs EOD analysis immediately (all 207 stocks, features, predictions, risk sizing).
-           - Uploads results to MongoDB Atlas.
-           - Waits 5 seconds for telemetry / DB sync to flush.
-           - Calls auto_close_callback to close the entire application cleanly!
+           - Checks if today's EOD pipeline has already completed.
+           - If not completed today, runs EOD analysis for all 207 stocks,
+             computes indicators, evaluates dual ML brains, applies 1% risk gate,
+             and dispatches armed signals to MongoDB Atlas.
+           - Keeps the Flask dashboard active so the user can inspect progress & results!
         3. If time < 16:00 IST (before 4:00 PM):
-           - Checks IST time every 60 seconds.
-           - As soon as IST time reaches >= 16:00 IST, executes the analysis, uploads to MongoDB Atlas, and closes!
+           - Checks IST time every 60 seconds until 16:00 IST market close.
         """
         logger.info("[SCHEDULER] Automated supervisor loop started.")
         while self.running:
@@ -232,23 +232,15 @@ class OfflineScheduler:
                                    (now_ist.hour == self.target_hour and now_ist.minute >= self.target_minute))
 
                 if is_after_market:
-                    logger.info(
-                        "[SCHEDULER] Current time is %02d:%02d IST (>= %02d:%02d IST). Triggering automated analysis & upload...",
-                        now_ist.hour, now_ist.minute, self.target_hour, self.target_minute
-                    )
-                    # Run full pipeline with force=True so it analyzes all 207 stocks
-                    res = self.run_eod_pipeline(force=True)
-                    logger.info("[SCHEDULER] EOD Pipeline completed: %s", res)
-
-                    # Grace period to allow UI / DB writes to finalize
-                    logger.info("[SCHEDULER] Analysis & upload finished. Auto-closing VectorTrade in 5 seconds...")
-                    time.sleep(5)
-
-                    if self.auto_close_callback:
-                        self.auto_close_callback()
+                    if self.state["last_run_date"] != today_str or self.state["last_run_status"] != "SUCCESS":
+                        logger.info(
+                            "[SCHEDULER] Current time is %02d:%02d IST (>= %02d:%02d IST). Triggering automated analysis & upload...",
+                            now_ist.hour, now_ist.minute, self.target_hour, self.target_minute
+                        )
+                        res = self.run_eod_pipeline(force=True)
+                        logger.info("[SCHEDULER] EOD Pipeline completed: %s. Dashboard remains active.", res)
                     else:
-                        os._exit(0)
-                    return
+                        logger.debug("[SCHEDULER] Today's run (%s) already completed. Waiting for next schedule.", today_str)
                 else:
                     logger.info(
                         "[SCHEDULER] Current time is %02d:%02d IST (< %02d:%02d IST). Checking time every minute until 16:00 IST...",
