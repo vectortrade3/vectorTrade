@@ -26,6 +26,11 @@
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0F17; }
         .mono { font-family: 'JetBrains Mono', monospace; }
+        @keyframes pulse-bar {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .anim-pulse-bar { animation: pulse-bar 1.5s infinite ease-in-out; }
     </style>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col antialiased">
@@ -34,19 +39,19 @@
     <header class="border-b border-bordercolor bg-cardbg/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-lg tracking-wider">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-lg tracking-wider shadow-lg shadow-orange-500/20">
                     V
                 </div>
                 <div>
                     <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
-                        VectorTrade <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800">Offline Control Center</span>
+                        VectorTrade <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800">Offline Quant Hub</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Headless Quant Scheduler • System Tray Resident</p>
+                    <p class="text-xs text-slate-400">Headless ML Engine • 1% Capital Risk Gate</p>
                 </div>
             </div>
             <div class="flex items-center space-x-4">
                 <div class="flex items-center space-x-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="statusPulse"></span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-500" id="statusPulse"></span>
                     <span id="headerStatusText">Scheduler Idle</span>
                     <span class="text-slate-600">|</span>
                     <span id="clock" class="mono text-slate-400">--:--:-- IST</span>
@@ -63,7 +68,7 @@
 
         <!-- Top Metrics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-sm">
                 <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
                     <span>NEXT SCHEDULED EOD RUN</span>
                     <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
@@ -71,7 +76,7 @@
                 <div class="mt-2 text-xl font-bold mono text-white" id="statNextRun">16:00:00 IST</div>
                 <p class="text-xs text-slate-500 mt-1" id="statLastRunSub">Last run: --</p>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-sm">
                 <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
                     <span>TODAY'S ARMED SIGNALS</span>
                     <i data-lucide="crosshair" class="w-4 h-4 text-emerald-400"></i>
@@ -79,7 +84,7 @@
                 <div class="mt-2 text-2xl font-bold mono text-emerald-400" id="statSignalsCount">0</div>
                 <p class="text-xs text-slate-500 mt-1" id="statDispatchedSub">Database Synced</p>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-sm">
                 <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
                     <span>RESOURCE FOOTPRINT</span>
                     <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i>
@@ -87,7 +92,7 @@
                 <div class="mt-2 text-2xl font-bold mono text-slate-200" id="statResources">0 MB | 0%</div>
                 <p class="text-xs text-slate-500 mt-1">Ultra-Low Battery Overhead</p>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-sm">
                 <div class="text-xs font-semibold text-slate-400 flex items-center justify-between">
                     <span>MONGODB ATLAS STATE</span>
                     <i data-lucide="database" class="w-4 h-4 text-cyan-400"></i>
@@ -100,21 +105,120 @@
         <!-- Action Control Bar -->
         <div class="bg-cardbg border border-bordercolor rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div class="flex items-center space-x-2">
-                <button onclick="triggerAction('run-eod')" id="btnRunEOD" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-md">
-                    <i data-lucide="zap" class="w-4 h-4"></i> Run EOD Analysis Now
+                <button onclick="triggerAnalysis()" id="btnRunAnalysisBar" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95">
+                    <i data-lucide="zap" class="w-4 h-4 fill-white"></i> Analyse All Stocks (207)
                 </button>
-                <button onclick="triggerAction('sync-dispatches')" id="btnSync" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
+                <button onclick="triggerAction('sync-dispatches')" id="btnSync" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Pending Dispatches
                 </button>
-                <button onclick="triggerAction('retrain')" id="btnRetrain" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
+                <button onclick="triggerAction('retrain')" id="btnRetrain" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5 border border-slate-700">
                     <i data-lucide="brain" class="w-4 h-4"></i> Trigger Model Retraining
                 </button>
             </div>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-3">
                 <span class="text-xs text-slate-400" id="actionStatusMsg">Ready.</span>
-                <button onclick="refreshAll()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                <button onclick="refreshAll()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Refresh UI">
                     <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                 </button>
+            </div>
+        </div>
+
+        <!-- Granular Multi-Stage Analysis Progress Card -->
+        <div id="analysisProgressCard" class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-bordercolor pb-3">
+                <div class="flex items-center space-x-3">
+                    <div id="stageIconContainer" class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <i data-lucide="cpu" class="w-5 h-5" id="stageMainIcon"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-bold text-white tracking-wide" id="stageMainTitle">Stock Analysis Pipeline</h3>
+                            <span id="stageBadge" class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono font-bold border border-slate-700">IDLE</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5" id="stageSubtitle">Click "Analyse All Stocks" to download 1y candles, compute features, run ML brains, and size orders.</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3 text-xs mono">
+                    <span class="text-slate-500" id="analysisTimer">Elapsed: 0.0s</span>
+                    <button onclick="triggerAnalysis()" id="btnRunAnalysisMain" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95">
+                        <i data-lucide="play" class="w-4 h-4 fill-white"></i> Start Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4 Distinct Progress Stages -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <!-- Stage 1: Download -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-amber-950 border border-amber-800 text-amber-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                            Downloading Market Data
+                        </span>
+                        <span class="mono font-bold text-amber-400" id="barDownloadPct">0.0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-800">
+                        <div id="barDownloadFill" class="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 mono">
+                        <span id="barDownloadCount">0 / 207 stocks</span>
+                        <span id="barDownloadSymbol" class="text-slate-500 truncate max-w-[150px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Stage 2: Calculate Features & Clean Data -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                            Calculating Features & Data Cleaning
+                        </span>
+                        <span class="mono font-bold text-cyan-400" id="barCalculatePct">0.0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-800">
+                        <div id="barCalculateFill" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 mono">
+                        <span id="barCalculateCount">0 / 207 stocks</span>
+                        <span id="barCalculateSymbol" class="text-slate-500 truncate max-w-[150px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Stage 3: Strategy Evaluation & ML Predictions -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                            Strategy & ML Brain Predictions
+                        </span>
+                        <span class="mono font-bold text-indigo-400" id="barPredictPct">0.0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-800">
+                        <div id="barPredictFill" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 mono">
+                        <span id="barPredictCount">0 / 207 stocks</span>
+                        <span id="barPredictSymbol" class="text-slate-500 truncate max-w-[150px]">50MA + Global XGBoost</span>
+                    </div>
+                </div>
+
+                <!-- Stage 4: 1% Risk Sizing Gate & MongoDB Upload -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-300 flex items-center justify-center text-[10px] font-bold">4</span>
+                            1% Risk Sizing Gate & MongoDB Upload
+                        </span>
+                        <span class="mono font-bold text-emerald-400" id="barUploadStatus">READY</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-800">
+                        <div id="barUploadFill" class="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 mono">
+                        <span id="barUploadInfo">Dynamic Lot Sizing (Max 1.0% Account Risk)</span>
+                        <span id="barUploadResult" class="text-emerald-400 font-bold">--</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -145,19 +249,20 @@
                             <tr>
                                 <th class="py-3 px-4">Symbol / Sector</th>
                                 <th class="py-3 px-4">Strategy</th>
-                                <th class="py-3 px-4">ML Conf</th>
+                                <th class="py-3 px-4">Action</th>
                                 <th class="py-3 px-4">Buy Trigger</th>
                                 <th class="py-3 px-4">Stop Loss</th>
                                 <th class="py-3 px-4">Target (1:2)</th>
-                                <th class="py-3 px-4">Qty</th>
+                                <th class="py-3 px-4">Quantity</th>
                                 <th class="py-3 px-4">Total Capital</th>
-                                <th class="py-3 px-4">Max Profit</th>
-                                <th class="py-3 px-4">Max Risk</th>
+                                <th class="py-3 px-4">Profit at Target</th>
+                                <th class="py-3 px-4">Risk at SL (≤1%)</th>
+                                <th class="py-3 px-4">ML Conf</th>
                                 <th class="py-3 px-4">Status</th>
                             </tr>
                         </thead>
                         <tbody id="signalsTableBody" class="divide-y divide-bordercolor">
-                            <tr><td colspan="11" class="text-center py-8 text-slate-500">Loading signals...</td></tr>
+                            <tr><td colspan="12" class="text-center py-8 text-slate-500">Loading signals...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -265,7 +370,7 @@ Loading logs...
                     pulse.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
                 } else {
                     headerStatus.innerText = 'Scheduler Idle';
-                    pulse.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                    pulse.className = 'w-2 h-2 rounded-full bg-emerald-500';
                 }
             } catch (e) {
                 console.error("Status fetch error", e);
@@ -280,34 +385,198 @@ Loading logs...
 
                 const tbody = document.getElementById('signalsTableBody');
                 if (!data.signals || data.signals.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-500">No signals generated for today yet. Run EOD Analysis above or wait for 16:00 IST.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-500">No signals generated for today yet. Click "Analyse All Stocks" above to execute.</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = data.signals.map(s => {
-                    const conf = s.ml_confidence ? (s.ml_confidence * 100).toFixed(0) : '50';
+                    const conf = s.ml_confidence ? (s.ml_confidence > 1 ? s.ml_confidence.toFixed(1) : (s.ml_confidence * 100).toFixed(0)) : '50';
+                    const stratBadge = s.strategy_id === '50MA_PULLBACK' ? 
+                        'bg-amber-950/80 text-amber-300 border-amber-800' : 
+                        'bg-indigo-950/80 text-indigo-300 border-indigo-800';
+                    
+                    const buy = parseFloat(s.buy_trigger || 0);
+                    const sl = parseFloat(s.sl_price || 0);
+                    const target = parseFloat(s.target_price || 0);
+                    const qty = parseInt(s.quantity || 1);
+                    const capital = parseFloat(s.total_capital_required || (buy * qty));
+                    const profit = parseFloat(s.profit_at_target || ((target - buy) * qty));
+                    const risk = parseFloat(s.loss_at_sl || ((buy - sl) * qty));
+
                     return `
                         <tr class="hover:bg-slate-800/40 transition">
                             <td class="py-3 px-4 font-bold text-white flex items-center gap-1.5">
                                 ${s.symbol}
                                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">${s.sector || 'General'}</span>
                             </td>
-                            <td class="py-3 px-4 text-cyan-400 font-mono text-[11px]">${s.strategy_id}</td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold border ${stratBadge}">${s.strategy_id}</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">BUY (CNC)</span>
+                            </td>
+                            <td class="py-3 px-4 mono font-semibold text-white">₹${buy.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400">₹${sl.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-semibold flex items-center gap-1">
+                                ₹${target.toFixed(2)}
+                                <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-400 font-normal border border-emerald-800/50">1:2</span>
+                            </td>
+                            <td class="py-3 px-4 mono font-bold text-slate-100">
+                                ${qty} <span class="text-[10px] text-slate-500 font-normal">shs</span>
+                            </td>
+                            <td class="py-3 px-4 mono font-medium text-slate-200">₹${capital.toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
+                            <td class="py-3 px-4 mono text-emerald-400 font-bold">+₹${profit.toFixed(2)}</td>
+                            <td class="py-3 px-4 mono text-rose-400 font-bold">-₹${risk.toFixed(2)}</td>
                             <td class="py-3 px-4 mono font-bold text-amber-400">${conf}%</td>
-                            <td class="py-3 px-4 mono font-semibold text-white">₹${s.buy_trigger.toFixed(2)}</td>
-                            <td class="py-3 px-4 mono text-rose-400">₹${s.sl_price.toFixed(2)}</td>
-                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">₹${s.target_price.toFixed(2)}</td>
-                            <td class="py-3 px-4 mono font-bold text-slate-200">${s.quantity || 1}</td>
-                            <td class="py-3 px-4 mono font-medium">₹${(s.total_capital_required || 0).toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
-                            <td class="py-3 px-4 mono text-emerald-400 font-semibold">+₹${(s.profit_at_target || 0).toFixed(2)}</td>
-                            <td class="py-3 px-4 mono text-rose-400 font-semibold">-₹${(s.loss_at_sl || 0).toFixed(2)}</td>
-                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">${s.status}</span></td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1 w-max">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> ${s.status || 'ARMED'}
+                                </span>
+                            </td>
                         </tr>
                     `;
                 }).join('');
                 lucide.createIcons();
             } catch (e) {
                 console.error("Results fetch error", e);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Live Multi-Stage Progress Engine (Persists Across Refresh)
+        // -------------------------------------------------------------
+        let analysisPollingTimer = null;
+        let analysisStartTime = null;
+
+        async function checkAnalysisStatus() {
+            try {
+                const res = await fetch('/api/analysis-status');
+                const data = await res.json();
+                renderAnalysisProgress(data);
+
+                if (data.is_running) {
+                    if (!analysisPollingTimer) {
+                        analysisPollingTimer = setInterval(checkAnalysisStatus, 800);
+                    }
+                } else {
+                    if (analysisPollingTimer) {
+                        clearInterval(analysisPollingTimer);
+                        analysisPollingTimer = null;
+                        // Refresh results when completed
+                        fetchResults();
+                    }
+                }
+            } catch (e) {
+                console.error("Analysis status error:", e);
+            }
+        }
+
+        function renderAnalysisProgress(data) {
+            const btnBar = document.getElementById('btnRunAnalysisBar');
+            const btnMain = document.getElementById('btnRunAnalysisMain');
+            const title = document.getElementById('stageMainTitle');
+            const subtitle = document.getElementById('stageSubtitle');
+            const badge = document.getElementById('stageBadge');
+            const timer = document.getElementById('analysisTimer');
+
+            if (data.is_running) {
+                btnBar.disabled = true;
+                btnBar.className = "px-5 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs cursor-not-allowed flex items-center gap-2";
+                btnMain.disabled = true;
+                btnMain.className = "px-4 py-2 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs cursor-not-allowed flex items-center gap-2";
+                btnMain.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin text-amber-400"></i> Analysing...`;
+
+                title.innerText = data.stage_name || "Running Analysis...";
+                subtitle.innerText = data.message || "Processing universe...";
+                badge.innerText = `STAGE ${data.stage_index}/4: ${data.stage}`;
+                badge.className = "text-[10px] px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 font-mono font-bold border border-amber-800 animate-pulse";
+                
+                if (data.started_at) {
+                    timer.innerText = `Started: ${data.started_at}`;
+                }
+            } else if (data.stage === 'COMPLETED') {
+                btnBar.disabled = false;
+                btnBar.className = "px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95";
+                btnMain.disabled = false;
+                btnMain.className = "px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95";
+                btnMain.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-white"></i> Re-Analyse All Stocks`;
+
+                title.innerText = "Analysis Completed Successfully";
+                subtitle.innerText = `${data.message || 'Complete.'} All approved trades sized strictly at ≤ 1.0% capital risk.`;
+                badge.innerText = "COMPLETED";
+                badge.className = "text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 font-mono font-bold border border-emerald-800";
+                timer.innerText = `Finished in ${data.duration_seconds}s`;
+            } else if (data.stage === 'ERROR') {
+                btnBar.disabled = false;
+                btnMain.disabled = false;
+                badge.innerText = "ERROR";
+                badge.className = "text-[10px] px-2.5 py-0.5 rounded-full bg-rose-950 text-rose-300 font-mono font-bold border border-rose-800";
+                subtitle.innerText = data.error || data.message;
+            }
+
+            // Stage 1: Download
+            const dl = data.download || {};
+            document.getElementById('barDownloadPct').innerText = `${(dl.percentage || 0).toFixed(1)}%`;
+            document.getElementById('barDownloadFill').style.width = `${dl.percentage || 0}%`;
+            document.getElementById('barDownloadCount').innerText = `${dl.current || 0} / ${dl.total || 207} stocks`;
+            document.getElementById('barDownloadSymbol').innerText = dl.symbol ? `Latest: ${dl.symbol}` : '--';
+
+            // Stage 2: Calculate
+            const calc = data.calculate || {};
+            document.getElementById('barCalculatePct').innerText = `${(calc.percentage || 0).toFixed(1)}%`;
+            document.getElementById('barCalculateFill').style.width = `${calc.percentage || 0}%`;
+            document.getElementById('barCalculateCount').innerText = `${calc.current || 0} / ${calc.total || 207} stocks`;
+            document.getElementById('barCalculateSymbol').innerText = calc.symbol ? `Latest: ${calc.symbol}` : '--';
+
+            // Stage 3: Predict
+            const pred = data.predict || {};
+            document.getElementById('barPredictPct').innerText = `${(pred.percentage || 0).toFixed(1)}%`;
+            document.getElementById('barPredictFill').style.width = `${pred.percentage || 0}%`;
+            document.getElementById('barPredictCount').innerText = `${pred.current || 0} / ${pred.total || 207} stocks`;
+            document.getElementById('barPredictSymbol').innerText = pred.symbol ? `Latest: ${pred.symbol}` : '50MA + Global XGBoost';
+
+            // Stage 4: Upload
+            const up = data.upload || {};
+            document.getElementById('barUploadStatus').innerText = up.status || 'PENDING';
+            if (up.status === 'DISPATCHED' || data.stage === 'COMPLETED') {
+                document.getElementById('barUploadFill').style.width = '100%';
+                document.getElementById('barUploadStatus').className = 'mono font-bold text-emerald-400';
+                document.getElementById('barUploadResult').innerText = `✓ Dispatched to MongoDB Atlas (${data.signals ? data.signals.length : 0} signals)`;
+            } else if (up.status === 'IN_PROGRESS') {
+                document.getElementById('barUploadFill').style.width = '60%';
+                document.getElementById('barUploadStatus').className = 'mono font-bold text-amber-400 animate-pulse';
+                document.getElementById('barUploadResult').innerText = 'Uploading to Atlas...';
+            } else {
+                document.getElementById('barUploadFill').style.width = '0%';
+                document.getElementById('barUploadResult').innerText = '--';
+            }
+
+            lucide.createIcons();
+        }
+
+        async function triggerAnalysis() {
+            const statusMsg = document.getElementById('actionStatusMsg');
+            statusMsg.innerText = "Triggering multi-stage analysis...";
+            try {
+                const res = await fetch('/api/action/run-analysis', { method: 'POST' });
+                const data = await res.json();
+                statusMsg.innerText = data.message || "Analysis triggered.";
+                checkAnalysisStatus();
+            } catch (e) {
+                statusMsg.innerText = `Error: ${e.message}`;
+            }
+        }
+
+        async function triggerAction(action) {
+            const statusMsg = document.getElementById('actionStatusMsg');
+            statusMsg.innerText = `Dispatching ${action}...`;
+            try {
+                const res = await fetch(`/api/action/${action}`, { method: 'POST' });
+                const data = await res.json();
+                statusMsg.innerText = data.message || 'Action executed successfully.';
+                setTimeout(refreshAll, 1000);
+            } catch (e) {
+                statusMsg.innerText = `Error: ${e.message}`;
             }
         }
 
@@ -383,26 +652,14 @@ Loading logs...
             }
         }
 
-        async function triggerAction(action) {
-            const statusMsg = document.getElementById('actionStatusMsg');
-            statusMsg.innerText = `Dispatching ${action}...`;
-            try {
-                const res = await fetch(`/api/action/${action}`, { method: 'POST' });
-                const data = await res.json();
-                statusMsg.innerText = data.message || 'Action executed successfully.';
-                setTimeout(refreshAll, 1000);
-            } catch (e) {
-                statusMsg.innerText = `Error: ${e.message}`;
-            }
-        }
-
         function refreshAll() {
             fetchStatus();
             fetchResults();
+            checkAnalysisStatus();
             lucide.createIcons();
         }
 
-        setInterval(fetchStatus, 4000);
+        setInterval(fetchStatus, 5000);
         refreshAll();
     </script>
 </body>

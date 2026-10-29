@@ -214,13 +214,26 @@
         setInterval(updateClock, 1000);
         updateClock();
 
+        let isWsConnected = false;
+        let wsRetryDelay = 3000;
+        let wsHeartbeatInterval = null;
+
         async function fetchData() {
             try {
                 const res = await fetch('/api/state');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 renderDashboard(data);
+                if (!isWsConnected) {
+                    document.getElementById('marketStatus').innerText = "Live (HTTP Sync)";
+                    document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-emerald-500";
+                }
             } catch (err) {
                 console.error("Dashboard refresh error:", err);
+                if (!isWsConnected) {
+                    document.getElementById('marketStatus').innerText = "Reconnecting...";
+                    document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                }
             }
         }
 
@@ -379,35 +392,58 @@
         let liveSocket = null;
         function initWebSocket() {
             try {
+                if (liveSocket && (liveSocket.readyState === WebSocket.OPEN || liveSocket.readyState === WebSocket.CONNECTING)) {
+                    return;
+                }
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}/ws/live`;
                 liveSocket = new WebSocket(wsUrl);
 
                 liveSocket.onopen = () => {
                     console.log("[WS] Connected to VectorTrade Live Stream.");
-                    document.getElementById('marketStatus').innerText = "Live WebSocket Stream";
+                    isWsConnected = true;
+                    wsRetryDelay = 3000;
+                    document.getElementById('marketStatus').innerText = "Live (WebSocket)";
                     document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+
+                    // Keep-alive heartbeat every 20s
+                    clearInterval(wsHeartbeatInterval);
+                    wsHeartbeatInterval = setInterval(() => {
+                        if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
+                            liveSocket.send(JSON.stringify({ action: "PING" }));
+                        }
+                    }, 20000);
                 };
 
                 liveSocket.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    renderDashboard(data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === "PONG") return;
+                        renderDashboard(data);
+                    } catch (e) {
+                        // ignore non-json
+                    }
                 };
 
                 liveSocket.onclose = () => {
-                    console.warn("[WS] Disconnected. Reconnecting in 3s (Falling back to HTTP)...");
-                    document.getElementById('marketStatus').innerText = "Reconnecting...";
-                    document.getElementById('liveDot').className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
-                    setTimeout(initWebSocket, 3000);
+                    isWsConnected = false;
+                    clearInterval(wsHeartbeatInterval);
+                    console.warn(`[WS] Disconnected. Reconnecting in ${wsRetryDelay/1000}s (HTTP polling active)...`);
+                    // Use HTTP status rather than saying stuck
+                    fetchData();
+                    setTimeout(initWebSocket, wsRetryDelay);
+                    wsRetryDelay = Math.min(wsRetryDelay * 1.5, 20000);
                 };
 
                 liveSocket.onerror = (err) => {
                     console.error("[WS] Socket error:", err);
-                    liveSocket.close();
+                    isWsConnected = false;
+                    try { liveSocket.close(); } catch (_) {}
                 };
             } catch (e) {
                 console.error("[WS] Initialization error:", e);
-                setTimeout(initWebSocket, 4000);
+                isWsConnected = false;
+                setTimeout(initWebSocket, 5000);
             }
         }
 

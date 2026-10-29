@@ -4,6 +4,7 @@ Verification Test Suite: WebSocket Live Stream, Order Cancellation, and 1% Capit
 
 import sys
 import os
+os.environ["TESTING"] = "1"
 import unittest
 from pathlib import Path
 

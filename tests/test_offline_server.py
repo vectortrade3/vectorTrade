@@ -78,6 +78,18 @@ class TestOfflineServer(unittest.TestCase):
         data = res.get_json()
         self.assertEqual(data["status"], "SUCCESS")
 
+    def test_07_analysis_status_and_trigger(self):
+        """Verifies /api/analysis-status returns multi-stage structure."""
+        res = self.client.get("/api/analysis-status")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("download", data)
+        self.assertIn("calculate", data)
+        self.assertIn("predict", data)
+        self.assertIn("upload", data)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -400,6 +400,9 @@ class ExecutionWorker:
 
     def start_polling(self) -> None:
         """Starts continuous fail-safe polling loop during market hours."""
+        if os.environ.get("TESTING") == "1":
+            logger.info("TESTING mode active: skipping background live broker polling loop.")
+            return
         self.running = True
         logger.info("ExecutionWorker polling started with universal fail-safe engine.")
         self.load_signals_and_trades()

@@ -13,6 +13,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 from fastapi import FastAPI, Request, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -55,11 +56,11 @@ def compile_full_system_state() -> Dict[str, Any]:
     active_trades = list(active_col.find({"status": "OPEN"}))
     history = list(history_col.find({}).sort("_id", -1).limit(50))
 
-    # Enrich active trades with live LTP
+    # Enrich active trades with instantaneous cached LTP (Zero latency, no blocking HTTP calls)
     for t in active_trades:
-        token = str(t.get("instrument_token", "")).strip()
-        ltp = mb_client.get_ltp(token) if token else None
-        t["current_ltp"] = ltp if ltp is not None else float(t.get("fill_price", 0.0))
+        cached = execution_worker.active_trades.get(str(t.get("_id")), {})
+        ltp = cached.get("highest_ltp") or t.get("highest_ltp") or t.get("fill_price")
+        t["current_ltp"] = float(ltp) if ltp is not None else float(t.get("fill_price", 0.0))
 
     # Clean ObjectIds for JSON serialization
     for doc_list in [signals, active_trades, history]:
@@ -67,13 +68,13 @@ def compile_full_system_state() -> Dict[str, Any]:
             if "_id" in d:
                 d["_id"] = str(d["_id"])
 
-    return {
+    return jsonable_encoder({
         "status": "OK",
         "signals_watchlist": signals,
         "active_trades": active_trades,
         "trade_history": history,
         "system_status": execution_worker.system_status
-    }
+    })
 
 
 async def broadcast_live_state() -> None:
@@ -92,10 +93,12 @@ async def broadcast_live_state() -> None:
 
 
 async def periodic_websocket_broadcaster() -> None:
-    """Pushes live stream updates to connected dashboard WebSockets every 1.5 seconds."""
+    """Pushes live stream updates to connected dashboard WebSockets every 2.0 seconds."""
     while True:
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(2.0)
         try:
+            if os.environ.get("TESTING") == "1":
+                continue
             await broadcast_live_state()
         except Exception:
             pass
@@ -104,6 +107,8 @@ async def periodic_websocket_broadcaster() -> None:
 @app.on_event("startup")
 def startup_event():
     """Starts the execution worker and background WebSocket broadcaster."""
+    if os.environ.get("TESTING") == "1":
+        return
     worker_thread = threading.Thread(target=execution_worker.start_polling, daemon=True)
     worker_thread.start()
     asyncio.create_task(periodic_websocket_broadcaster())
@@ -162,15 +167,18 @@ async def websocket_live_stream(websocket: WebSocket):
     await websocket.accept()
     active_websockets.add(websocket)
     try:
-        # Push initial snapshot immediately on connection
+        # Push initial snapshot immediately on connection (guaranteed jsonable primitives)
         initial_state = compile_full_system_state()
         await websocket.send_json(initial_state)
 
         while True:
-            # Receive client actions (e.g. order cancel)
+            # Receive client actions (e.g. order cancel, heartbeat)
             msg = await websocket.receive_json()
-            action = msg.get("action")
-            if action == "CANCEL_ORDER":
+            action = msg.get("action") if isinstance(msg, dict) else None
+            if action == "PING":
+                await websocket.send_json({"type": "PONG"})
+                continue
+            elif action == "CANCEL_ORDER":
                 item_id = str(msg.get("id", "")).strip()
                 item_type = str(msg.get("type", "SIGNAL")).upper()
                 if item_type == "TRADE" or item_id.startswith("TRADE_"):
@@ -181,7 +189,10 @@ async def websocket_live_stream(websocket: WebSocket):
                 await broadcast_live_state()
     except WebSocketDisconnect:
         active_websockets.discard(websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("WebSocket client connection ended: %s", str(e))
+        active_websockets.discard(websocket)
+    finally:
         active_websockets.discard(websocket)
 
 

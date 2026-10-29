@@ -16,6 +16,15 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError, AutoR
 
 from core.config import settings
 
+# Configure ultra-fast DNS resolver for MongoDB Atlas SRV lookup
+try:
+    import dns.resolver
+    dns.resolver.default_resolver = dns.resolver.Resolver()
+    dns.resolver.default_resolver.nameservers = ["8.8.8.8", "1.1.1.1"] + [ns for ns in dns.resolver.default_resolver.nameservers if ns not in ("8.8.8.8", "1.1.1.1")]
+    dns.resolver.default_resolver.lifetime = 3.0
+except Exception:
+    pass
+
 logger = logging.getLogger("VectorTrade.DB")
 
 
@@ -50,9 +59,19 @@ class DatabaseManager:
                 raise RuntimeError("mongomock package is required for offline mock execution. Run: pip install mongomock")
         else:
             logger.info("Connecting to MongoDB Atlas cluster at: %s", settings.MONGODB_URI.split("@")[-1])
-            self._client = self._connect_with_retry()
-            self._db = self._client[settings.MONGODB_DB_NAME]
-            self._is_mock = False
+            try:
+                self._client = self._connect_with_retry()
+                self._db = self._client[settings.MONGODB_DB_NAME]
+                self._is_mock = False
+            except Exception as e:
+                logger.error("MongoDB Atlas connection failed: %s. Falling back to in-memory mongomock database.", str(e))
+                try:
+                    import mongomock
+                    self._client = mongomock.MongoClient()
+                    self._db = self._client[settings.MONGODB_DB_NAME]
+                    self._is_mock = True
+                except ImportError:
+                    raise ConnectionError(f"Could not connect to MongoDB Atlas and mongomock is not installed: {str(e)}")
 
         self._ensure_indexes()
 
@@ -73,11 +92,11 @@ class DatabaseManager:
                 client.admin.command("ping")
                 logger.info("Successfully established connection to MongoDB Atlas.")
                 return client
-            except (ConnectionFailure, ServerSelectionTimeoutError, AutoReconnect) as e:
+            except (ConnectionFailure, ServerSelectionTimeoutError, AutoReconnect, Exception) as e:
                 backoff = 2 ** attempt
                 logger.warning("MongoDB connection attempt %d/%d failed: %s. Retrying in %ds...", attempt, max_attempts, str(e), backoff)
                 if attempt < max_attempts:
-                    time.sleep(backoff)
+                    time.sleep(min(backoff, 4))
                 else:
                     logger.error("Failed to connect to MongoDB Atlas after %d attempts.", max_attempts)
                     raise ConnectionError(f"Could not connect to MongoDB Atlas: {str(e)}") from e

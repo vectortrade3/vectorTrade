@@ -24,6 +24,7 @@ from core.config import settings
 from core.db import db_manager
 from core.secure_comms import request_online_trade_details
 from offline.scheduler import offline_scheduler
+from offline.progress_tracker import progress_tracker
 
 logger = logging.getLogger("VectorTrade.OfflineServer")
 
@@ -58,9 +59,18 @@ def get_results():
 
     signals_col = db_manager.get_collection("signals_watchlist")
     query = {"valid_for_date": today_str}
-    docs = list(signals_col.find(query).sort("_id", -1))
+    docs = []
+    try:
+        docs = list(signals_col.find(query).sort("_id", -1))
+    except Exception:
+        pass
 
-    # If DB has 0 for today, check pending_dispatches locally
+    # If DB has 0 for today, check progress tracker state
+    if not docs:
+        snapshot = progress_tracker.get_snapshot()
+        docs = list(snapshot.get("signals", []))
+
+    # If still 0, check pending_dispatches locally
     if not docs:
         pending_file = OFFLINE_DIR / "pending_dispatches" / f"signals_{today_str}.json"
         if pending_file.exists():
@@ -81,6 +91,16 @@ def get_results():
         "date": today_str,
         "count": len(docs),
         "signals": docs
+    })
+
+
+@app.route("/api/analysis-status", methods=["GET"])
+def get_analysis_status():
+    """Returns real-time multi-stage progress for the stock analysis pipeline."""
+    snap = progress_tracker.get_snapshot()
+    return jsonify({
+        "status": "SUCCESS",
+        **snap
     })
 
 
@@ -151,14 +171,25 @@ def get_logs():
     return jsonify({"status": "SUCCESS", "lines": lines})
 
 
+@app.route("/api/action/run-analysis", methods=["POST"])
 @app.route("/api/action/run-eod", methods=["POST"])
 def trigger_run_eod():
-    """Triggers immediate EOD analysis in background."""
-    if offline_scheduler.state["is_busy"]:
-        return jsonify({"status": "BLOCKED", "message": "A task is already running in background."}), 409
+    """Triggers immediate multi-stage EOD stock analysis in background."""
+    snapshot = progress_tracker.get_snapshot()
+    if snapshot.get("is_running") or offline_scheduler.state["is_busy"]:
+        return jsonify({"status": "BLOCKED", "message": "An analysis task is already running in background."}), 409
 
-    threading.Thread(target=offline_scheduler.run_eod_pipeline, kwargs={"force": True}, daemon=True).start()
-    return jsonify({"status": "STARTED", "message": "EOD Pipeline triggered in background."})
+    def _worker():
+        from offline.headless_daemon import HeadlessDaemon
+        try:
+            daemon = HeadlessDaemon(force_run=True)
+            daemon.run()
+        except Exception as e:
+            logger.error("Analysis background worker failed: %s", str(e))
+            progress_tracker.fail_analysis(str(e))
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return jsonify({"status": "STARTED", "message": "Multi-stage stock analysis triggered in background."})
 
 
 @app.route("/api/action/sync-dispatches", methods=["POST"])
