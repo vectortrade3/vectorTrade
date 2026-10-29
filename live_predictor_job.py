@@ -8,10 +8,12 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import joblib
+from pathlib import Path
 from datetime import datetime
 
-OUT_FILE = 'live_predictions.json'
-NIFTY_CACHE_FILE = 'nifty50_cache.pkl'
+BASE_DIR = Path(__file__).resolve().parent
+OUT_FILE = str(BASE_DIR / 'live_predictions.json')
+NIFTY_CACHE_FILE = str(BASE_DIR / 'nifty50_cache.pkl')
 
 def calc_rsi(series, period=14):
     delta = series.diff()
@@ -220,35 +222,52 @@ COLUMN_MAPPING = {
 }
 
 
-def run_predictor():
-    raw_symbol = sys.argv[1].strip() if len(sys.argv) > 1 and sys.argv[1].strip() else 'RELIANCE'
+def run_predictor(symbol_arg: str = None):
+    raw_symbol = symbol_arg if symbol_arg else (sys.argv[1].strip() if len(sys.argv) > 1 and sys.argv[1].strip() else 'RELIANCE')
     
     # Load stock metadata (names and sectors)
     stock_meta = {}
-    if os.path.exists('stock_names.json'):
-        try:
-            with open('stock_names.json') as f:
-                stock_meta = json.load(f)
-        except Exception:
-            pass
+    for p in [Path('stock_names.json'), BASE_DIR / 'stock_names.json']:
+        if p.exists():
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    stock_meta = json.load(f)
+                break
+            except Exception:
+                pass
+
+    # Locate models folder (supports models/ and offline/models/)
+    def get_model_file(fn):
+        for p in [Path("models") / fn, Path("offline/models") / fn, Path(__file__).resolve().parent / "offline" / "models" / fn, Path(__file__).resolve().parent / "models" / fn]:
+            if p.exists():
+                return p
+        return Path("models") / fn
+
+    def get_feature_file(fn):
+        for p in [Path(fn), Path(__file__).resolve().parent / fn]:
+            if p.exists():
+                return p
+        return Path(fn)
 
     # Load Saved Models (Lightweight < 300KB each)
     try:
-        strat_model = joblib.load('models/5_year_xgboost_model.pkl')
-        strat_scaler = joblib.load('models/5_year_scaler.pkl')
-        strat_imputer = joblib.load('models/5_year_imputer.pkl')
-        with open('final_features.txt', 'r') as f:
+        strat_model = joblib.load(str(get_model_file('5_year_xgboost_model.pkl')))
+        strat_scaler = joblib.load(str(get_model_file('5_year_scaler.pkl')))
+        strat_imputer = joblib.load(str(get_model_file('5_year_imputer.pkl')))
+        feat_path = get_feature_file('final_features.txt')
+        with open(feat_path, 'r') as f:
             strat_feats = [line.strip() for line in f if line.strip()]
     except Exception as e:
         print(f"Error loading strategy models: {e}")
         sys.exit(1)
 
     try:
-        gain_model = joblib.load('models/5_year_global_gain_model.pkl')
-        drop_model = joblib.load('models/5_year_global_drop_model.pkl')
-        glob_scaler = joblib.load('models/5_year_global_scaler.pkl')
-        glob_imputer = joblib.load('models/5_year_global_imputer.pkl')
-        with open('global_features.txt', 'r') as f:
+        gain_model = joblib.load(str(get_model_file('5_year_global_gain_model.pkl')))
+        drop_model = joblib.load(str(get_model_file('5_year_global_drop_model.pkl')))
+        glob_scaler = joblib.load(str(get_model_file('5_year_global_scaler.pkl')))
+        glob_imputer = joblib.load(str(get_model_file('5_year_global_imputer.pkl')))
+        glob_feat_path = get_feature_file('global_features.txt')
+        with open(glob_feat_path, 'r') as f:
             glob_feats = [line.strip() for line in f if line.strip()]
         has_global = True
     except Exception as e:
@@ -482,6 +501,7 @@ def run_predictor():
         json.dump(out_data, f, indent=2)
 
     print("Live prediction task completed successfully!")
+    return predictions
 
 
 if __name__ == '__main__':

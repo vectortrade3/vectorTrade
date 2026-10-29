@@ -23,6 +23,8 @@ def build_exe(onefile: bool = False):
     templates_dir = OFFLINE_DIR / "templates"
     models_dir = OFFLINE_DIR / "models"
     stock_names = BASE_DIR / "stock_names.json"
+    final_features = BASE_DIR / "final_features.txt"
+    global_features = BASE_DIR / "global_features.txt"
 
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -33,6 +35,8 @@ def build_exe(onefile: bool = False):
         "--add-data", f"{templates_dir};offline/templates",
         "--add-data", f"{models_dir};offline/models",
         "--add-data", f"{stock_names};.",
+        "--add-data", f"{final_features};.",
+        "--add-data", f"{global_features};.",
         "--hidden-import", "pystray._win32",
         "--hidden-import", "PIL",
         "--hidden-import", "flask",
@@ -50,6 +54,7 @@ def build_exe(onefile: bool = False):
         "--hidden-import", "sklearn",
         "--hidden-import", "xgboost",
         "--hidden-import", "joblib",
+        "--hidden-import", "live_predictor_job",
         str(TRAY_SCRIPT)
     ]
 

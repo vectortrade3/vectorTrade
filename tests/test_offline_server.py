@@ -89,6 +89,50 @@ class TestOfflineServer(unittest.TestCase):
         self.assertIn("predict", data)
         self.assertIn("upload", data)
 
+    def test_08_predictor_and_dashboard_endpoints(self):
+        """Verifies newly merged 5_years_7_dashboard endpoints."""
+        # 1. Stock list
+        res = self.client.get("/api/stock_list")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertGreater(data["count"], 0)
+
+        # 2. Model performance
+        res = self.client.get("/api/model_performance")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("models", data)
+
+        # 3. Dataset snapshot
+        res = self.client.get("/api/dataset_snapshot")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("total_stocks", data)
+
+        # 4. Predictions
+        res = self.client.get("/api/predictions")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+
+        # 5. Predict status
+        res = self.client.get("/api/predict_status")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIn("status", data)
+
+        # 6. Unified Task status
+        res = self.client.get("/api/task_status")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIn("predict", data)
+        self.assertIn("analysis", data)
+        self.assertIn("data", data)
+        self.assertIn("retrain", data)
+
 
 
 if __name__ == "__main__":
