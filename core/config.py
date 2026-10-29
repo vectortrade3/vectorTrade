@@ -14,6 +14,15 @@ from dotenv import load_dotenv
 
 # Base Directory of VectorTrade
 BASE_DIR = Path(__file__).resolve().parent.parent
+if not (BASE_DIR / "stock_names.json").exists():
+    if (Path.cwd() / "stock_names.json").exists():
+        BASE_DIR = Path.cwd()
+    elif (BASE_DIR.parent / "stock_names.json").exists():
+        BASE_DIR = BASE_DIR.parent
+    elif (BASE_DIR.parent.parent / "stock_names.json").exists():
+        BASE_DIR = BASE_DIR.parent.parent
+    elif Path("D:/Master_Folder/vectorTrade").exists():
+        BASE_DIR = Path("D:/Master_Folder/vectorTrade")
 
 # Load .env file explicitly
 ENV_FILE = BASE_DIR / ".env"

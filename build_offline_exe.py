@@ -27,6 +27,7 @@ def build_exe(onefile: bool = False):
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name", "VectorTradeOffline",
+        "-y",           # Overwrite output directory without asking
         "--noconsole",  # Hides command prompt window on boot
         "--clean",
         "--add-data", f"{templates_dir};offline/templates",
@@ -37,6 +38,15 @@ def build_exe(onefile: bool = False):
         "--hidden-import", "flask",
         "--hidden-import", "jinja2",
         "--hidden-import", "pymongo",
+        "--hidden-import", "mongomock",
+        "--hidden-import", "dns",
+        "--hidden-import", "dns.resolver",
+        "--hidden-import", "pydantic",
+        "--hidden-import", "pydantic_settings",
+        "--hidden-import", "dotenv",
+        "--hidden-import", "pytz",
+        "--hidden-import", "requests",
+        "--hidden-import", "urllib3",
         "--hidden-import", "sklearn",
         "--hidden-import", "xgboost",
         "--hidden-import", "joblib",
