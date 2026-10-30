@@ -159,8 +159,21 @@ class VectorTradeTrayApp:
 
 
 def main():
-    app = VectorTradeTrayApp(port=5000)
-    app.run()
+    try:
+        app = VectorTradeTrayApp(port=5000)
+        app.run()
+    except Exception as e:
+        import traceback
+        from datetime import datetime
+        logs_dir = BASE_DIR / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(logs_dir / "tray_app_startup_error.log", "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.now().isoformat()}] FATAL: {traceback.format_exc()}\n")
+        except Exception:
+            pass
+        logger.critical("Fatal error in VectorTrade Tray App: %s", str(e), exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
