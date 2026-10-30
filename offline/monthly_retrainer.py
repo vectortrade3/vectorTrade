@@ -27,6 +27,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 from core.config import settings
 from core.db import db_manager
+from offline.operations_logger import operations_logger
 
 log_file = settings.LOGS_DIR / "monthly_retrainer.log"
 logging.basicConfig(
@@ -154,6 +155,17 @@ class MonthlyRetrainer:
             "duration_seconds": duration_sec
         }
         audit_col.insert_one(audit_entry)
+
+        # Persist structured JSON history to logs/operations_history.json
+        try:
+            operations_logger.log_model_training(
+                status="SUCCESS",
+                models_updated=retrained_models,
+                duration_seconds=duration_sec,
+                message=f"Retrained {len(retrained_models)} models with backup in {backup_dir if backup_created else 'none'}."
+            )
+        except Exception:
+            pass
 
         logger.info(
             "Monthly Retraining Complete: %d models updated | Backup: %s | Duration: %.2fs",

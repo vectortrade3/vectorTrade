@@ -44,6 +44,7 @@ from offline.indicators import compute_indicators
 from offline.strategies.ma50_pullback import MA50PullbackStrategy
 from offline.strategies.global_forecast import GlobalForecastStrategy
 from offline.progress_tracker import progress_tracker
+from offline.operations_logger import operations_logger
 
 logs_dir = BASE_DIR / "logs"
 logs_dir.mkdir(parents=True, exist_ok=True)
@@ -586,6 +587,18 @@ class HeadlessDaemon:
                 "db_dispatched": db_dispatched,
                 "duration_seconds": duration_sec
             })
+        except Exception:
+            pass
+
+        # Persist structured JSON history to logs/operations_history.json
+        try:
+            operations_logger.log_stocks_analysis(
+                status="SUCCESS",
+                symbols_processed=total_syms,
+                signals_armed=len(approved_signals),
+                duration_seconds=duration_sec,
+                message=f"Completed EOD analysis for {total_syms} stocks ({len(approved_signals)} signals armed and risk-approved)."
+            )
         except Exception:
             pass
 

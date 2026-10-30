@@ -97,6 +97,8 @@ def build_exe(onefile: bool = False):
         "--hidden-import", "sklearn",
         "--hidden-import", "joblib",
         "--hidden-import", "live_predictor_job",
+        "--hidden-import", "offline.operations_logger",
+        "--hidden-import", "offline.data_downloader",
     ]
 
     # Add XGBoost binaries and data

@@ -26,6 +26,8 @@ from core.db import db_manager
 from core.secure_comms import request_online_trade_details
 from offline.scheduler import offline_scheduler
 from offline.progress_tracker import progress_tracker
+from offline.operations_logger import operations_logger
+from offline.data_downloader import stock_data_downloader
 
 logger = logging.getLogger("VectorTrade.OfflineServer")
 
@@ -348,43 +350,32 @@ def get_dataset_snapshot():
     })
 
 
+@app.route("/api/operations-log", methods=["GET"])
+def get_operations_log():
+    """Returns persistent structured JSON telemetry for all system operations."""
+    return jsonify(operations_logger.load_log())
+
+
 @app.route("/api/start_data", methods=["POST"])
 def start_data():
-    """Triggers background data update job."""
-    if DATA_STATUS["status"].startswith("Running"):
-        return jsonify({"status": "ALREADY_RUNNING", "message": "Data job is already running."}), 409
-
-    DATA_STATUS["status"] = "Running... (Syncing Missing Market Days)"
-    DATA_STATUS["start_time"] = time.time()
-    DATA_STATUS["elapsed_seconds"] = 0
-    DATA_STATUS["error"] = None
+    """Triggers background incremental data update job."""
+    if stock_data_downloader.status["status"] == "RUNNING":
+        return jsonify({"status": "ALREADY_RUNNING", "message": "Market data download is already running."}), 409
 
     def _data_worker():
         try:
-            import subprocess
-            proc = subprocess.run([sys.executable, str(BASE_DIR / "5_years_6.0_data_update_job.py")],
-                                  capture_output=True, text=True, timeout=900)
-            if proc.returncode == 0:
-                DATA_STATUS["status"] = "Completed"
-            else:
-                DATA_STATUS["status"] = f"Error: {proc.stderr[:100]}"
-                DATA_STATUS["error"] = proc.stderr
+            stock_data_downloader.run_download_and_append(force=False)
         except Exception as e:
-            DATA_STATUS["status"] = f"Error: {str(e)[:80]}"
-            DATA_STATUS["error"] = str(e)
-        finally:
-            DATA_STATUS["elapsed_seconds"] = int(time.time() - DATA_STATUS["start_time"])
+            logger.error("Data download worker failed: %s", str(e))
 
     threading.Thread(target=_data_worker, daemon=True, name="DataSyncWorker").start()
-    return jsonify({"status": "STARTED"})
+    return jsonify({"status": "STARTED", "message": "Incremental market data download started."})
 
 
 @app.route("/api/data_status", methods=["GET"])
 def get_data_status():
-    """Returns status of the dataset update job."""
-    if DATA_STATUS["status"].startswith("Running") and DATA_STATUS["start_time"] > 0:
-        DATA_STATUS["elapsed_seconds"] = int(time.time() - DATA_STATUS["start_time"])
-    return jsonify(DATA_STATUS)
+    """Returns real-time status of the market data download & append job."""
+    return jsonify(stock_data_downloader.status)
 
 
 @app.route("/api/start_update/<task_key>", methods=["POST"])
@@ -414,14 +405,13 @@ def get_all_task_status():
     """Returns unified status across all background tasks for the universal progress banner."""
     if PREDICT_STATUS["status"].startswith("Analyzing") and PREDICT_STATUS["start_time"] > 0:
         PREDICT_STATUS["elapsed_seconds"] = int(time.time() - PREDICT_STATUS["start_time"])
-    if DATA_STATUS["status"].startswith("Running") and DATA_STATUS["start_time"] > 0:
-        DATA_STATUS["elapsed_seconds"] = int(time.time() - DATA_STATUS["start_time"])
 
     return jsonify({
         "predict": PREDICT_STATUS,
         "analysis": progress_tracker.get_snapshot(),
-        "data": DATA_STATUS,
+        "data": stock_data_downloader.status,
         "retrain": RETRAIN_STATUS,
+        "operations": operations_logger.load_log(),
         "scheduler": offline_scheduler.get_system_status()
     })
 

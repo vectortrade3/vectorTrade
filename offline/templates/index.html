@@ -134,6 +134,87 @@
             </div>
         </div>
 
+        <!-- Dedicated Operations Command Center & JSON Telemetry -->
+        <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i>
+                        Automated Operations Command Center
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">JSON Logged</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        Dedicated actions for market data download & append, machine learning model retraining, and full NIFTY 200 stock analysis.
+                    </p>
+                </div>
+
+                <!-- 3 Dedicated Action Buttons + JSON Viewer Button -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="triggerDataSync()" id="btnMasterDataSync" class="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-600/20 active:scale-95 transition flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Download & Append Data</span>
+                    </button>
+
+                    <button onclick="triggerRetrainAll()" id="btnMasterRetrain" class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition flex items-center gap-2">
+                        <i data-lucide="brain" class="w-4 h-4"></i>
+                        <span>Retrain AI Models</span>
+                    </button>
+
+                    <button onclick="triggerAnalysis()" id="btnMasterAnalysis" class="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 active:scale-95 transition flex items-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4 fill-white"></i>
+                        <span>Run Stock Analysis</span>
+                    </button>
+
+                    <button onclick="toggleOperationsLogModal()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5" title="View Full JSON Operations Log">
+                        <i data-lucide="file-json" class="w-4 h-4 text-amber-400"></i>
+                        <span>JSON Logs</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3 Operational Status Cards (JSON Live Feed) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <!-- 1. Last Data Download Card -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-1">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            LAST DATA DOWNLOAD
+                        </span>
+                        <span id="opDownloadBadge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400">IDLE</span>
+                    </div>
+                    <div class="text-sm font-bold mono text-white truncate" id="opDownloadTime">--:--:--</div>
+                    <p class="text-[11px] text-slate-400 truncate" id="opDownloadSub">Dataset check & incremental append</p>
+                </div>
+
+                <!-- 2. Last Model Retraining Card -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-1">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            LAST MODEL RETRAINING
+                        </span>
+                        <span id="opRetrainBadge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400">IDLE</span>
+                    </div>
+                    <div class="text-sm font-bold mono text-white truncate" id="opRetrainTime">--:--:--</div>
+                    <p class="text-[11px] text-slate-400 truncate" id="opRetrainSub">XGBoost Strategy & Global Models</p>
+                </div>
+
+                <!-- 3. Last Stock Analysis Card -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-1">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="crosshair" class="w-3.5 h-3.5 text-amber-400"></i>
+                            LAST STOCKS ANALYSIS
+                        </span>
+                        <span id="opAnalysisBadge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400">IDLE</span>
+                    </div>
+                    <div class="text-sm font-bold mono text-white truncate" id="opAnalysisTime">--:--:--</div>
+                    <p class="text-[11px] text-slate-400 truncate" id="opAnalysisSub">207 stocks scanned • 1% risk gate</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Master Tabs Navigation (Inspired by 5_years_7_dashboard.py + VectorTrade) -->
         <div class="flex items-center justify-between border-b border-bordercolor pb-2">
             <div class="flex flex-wrap gap-2">
@@ -681,6 +762,33 @@
                 <button onclick="fetchLogs()" class="text-xs text-amber-400 hover:underline">Refresh Logs</button>
             </div>
             <pre id="logsContent" class="mt-3 p-4 rounded-xl bg-slate-950 border border-slate-900 text-slate-300 font-mono text-[11px] h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">Loading logs...</pre>
+        </div>
+
+        <!-- JSON Operations Log Modal -->
+        <div id="operationsLogModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                <div class="p-4 border-b border-bordercolor flex items-center justify-between bg-slate-900/60">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="file-json" class="w-5 h-5 text-amber-400"></i>
+                        <h3 class="font-bold text-white text-sm">System Operations Audit Log (JSON)</h3>
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">logs/operations_history.json</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="copyOperationsJson()" id="btnCopyJson" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-1.5 transition">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy JSON
+                        </button>
+                        <button onclick="fetchOperationsLog()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Refresh">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="toggleOperationsLogModal()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 overflow-y-auto flex-1 font-mono text-xs">
+                    <pre id="operationsJsonContent" class="text-slate-300 bg-slate-950 p-4 rounded-xl border border-slate-900 overflow-x-auto leading-relaxed">Loading JSON telemetry...</pre>
+                </div>
+            </div>
         </div>
 
     </main>
@@ -1344,13 +1452,146 @@
             }
         }
 
-        async function triggerDataSync() {
+        let currentOperationsJson = {};
+        async function fetchOperationsLog() {
             try {
-                await fetch('/api/start_data', { method: 'POST' });
-                document.getElementById('dataSyncStatusBadge').innerText = "Running (Syncing Missing Market Days)...";
-                document.getElementById('dataSyncBarFill').style.width = "60%";
+                const res = await fetch('/api/operations-log');
+                const data = await res.json();
+                currentOperationsJson = data;
+
+                // Update JSON Modal content
+                const pre = document.getElementById('operationsJsonContent');
+                if (pre) pre.innerText = JSON.stringify(data, null, 2);
+
+                // 1. Last Data Download Card
+                const dl = data.last_data_download || {};
+                const elDlTime = document.getElementById('opDownloadTime');
+                const elDlBadge = document.getElementById('opDownloadBadge');
+                const elDlSub = document.getElementById('opDownloadSub');
+                if (elDlTime) elDlTime.innerText = dl.formatted_time || (dl.date ? `${dl.date}` : 'Never');
+                if (elDlBadge) {
+                    elDlBadge.innerText = dl.status || 'NEVER_RUN';
+                    elDlBadge.className = dl.status === 'SUCCESS' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                                         dl.status === 'RUNNING' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 animate-pulse' :
+                                         'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400';
+                }
+                if (elDlSub) elDlSub.innerText = dl.last_date_in_dataset ? `Up to ${dl.last_date_in_dataset} (${dl.stocks_updated || 0} stocks)` : (dl.message || 'No records');
+
+                // 2. Last Model Retraining Card
+                const tr = data.last_model_training || {};
+                const elTrTime = document.getElementById('opRetrainTime');
+                const elTrBadge = document.getElementById('opRetrainBadge');
+                const elTrSub = document.getElementById('opRetrainSub');
+                if (elTrTime) elTrTime.innerText = tr.formatted_time || (tr.date ? `${tr.date}` : 'Never');
+                if (elTrBadge) {
+                    elTrBadge.innerText = tr.status || 'NEVER_RUN';
+                    elTrBadge.className = tr.status === 'SUCCESS' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                                         tr.status === 'RUNNING' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 animate-pulse' :
+                                         'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400';
+                }
+                if (elTrSub) elTrSub.innerText = tr.models_updated && tr.models_updated.length ? `${tr.models_updated.length} models (${tr.duration_seconds || 0}s)` : (tr.message || 'No records');
+
+                // 3. Last Stock Analysis Card
+                const an = data.last_stocks_analysis || {};
+                const elAnTime = document.getElementById('opAnalysisTime');
+                const elAnBadge = document.getElementById('opAnalysisBadge');
+                const elAnSub = document.getElementById('opAnalysisSub');
+                if (elAnTime) elAnTime.innerText = an.formatted_time || (an.date ? `${an.date}` : 'Never');
+                if (elAnBadge) {
+                    elAnBadge.innerText = an.status || 'NEVER_RUN';
+                    elAnBadge.className = an.status === 'SUCCESS' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                                         an.status === 'RUNNING' ? 'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 animate-pulse' :
+                                         'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400';
+                }
+                if (elAnSub) elAnSub.innerText = an.symbols_processed ? `${an.symbols_processed} stocks • ${an.signals_armed || 0} armed (${an.duration_seconds || 0}s)` : (an.message || 'No records');
+
             } catch (e) {
+                console.error("Operations log fetch error:", e);
+            }
+        }
+
+        function toggleOperationsLogModal() {
+            const modal = document.getElementById('operationsLogModal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                fetchOperationsLog();
+            } else {
+                modal.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function copyOperationsJson() {
+            navigator.clipboard.writeText(JSON.stringify(currentOperationsJson, null, 2)).then(() => {
+                const btn = document.getElementById('btnCopyJson');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Copied!';
+                lucide.createIcons();
+                setTimeout(() => { btn.innerHTML = orig; lucide.createIcons(); }, 1500);
+            });
+        }
+
+        let activeDataSyncPolling = null;
+        async function triggerDataSync() {
+            const btn = document.getElementById('btnMasterDataSync');
+            if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+            const statusBadge = document.getElementById('dataSyncStatusBadge');
+            if (statusBadge) statusBadge.innerText = "Running (Checking dates & downloading)...";
+
+            try {
+                const res = await fetch('/api/start_data', { method: 'POST' });
+                const data = await res.json();
+                
+                if (activeDataSyncPolling) clearInterval(activeDataSyncPolling);
+                activeDataSyncPolling = setInterval(async () => {
+                    const stRes = await fetch('/api/data_status');
+                    const st = await stRes.json();
+                    
+                    if (st.status === 'RUNNING') {
+                        const pct = st.progress_pct || 10;
+                        if (statusBadge) statusBadge.innerText = `Running (${pct}% - ${st.current_symbol || '...' })`;
+                        const fill = document.getElementById('dataSyncBarFill');
+                        if (fill) fill.style.width = `${pct}%`;
+                    } else {
+                        clearInterval(activeDataSyncPolling);
+                        activeDataSyncPolling = null;
+                        if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+                        if (statusBadge) statusBadge.innerText = st.status || 'Completed';
+                        fetchOperationsLog();
+                        fetchDatasetSnapshot();
+                    }
+                }, 1000);
+            } catch (e) {
+                if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
                 alert(`Error starting data sync: ${e.message}`);
+            }
+        }
+
+        async function triggerRetrainAll() {
+            const btn = document.getElementById('btnMasterRetrain');
+            if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+
+            try {
+                const res = await fetch('/api/action/retrain', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'BLOCKED') {
+                    alert(data.message || 'Task is already running.');
+                    if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+                    return;
+                }
+
+                let retrainInterval = setInterval(async () => {
+                    const stRes = await fetch('/api/status');
+                    const st = await stRes.json();
+                    if (!st.is_busy) {
+                        clearInterval(retrainInterval);
+                        if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+                        fetchOperationsLog();
+                    }
+                }, 1500);
+            } catch (e) {
+                if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+                alert(`Error: ${e.message}`);
             }
         }
 
@@ -1449,12 +1690,15 @@
             fetchPredictions();
             fetchResults();
             checkAnalysisStatus();
+            fetchOperationsLog();
+            fetchDatasetSnapshot();
             lucide.createIcons();
         }
 
         // Initialize on load
         loadStockList();
         setInterval(fetchStatus, 5000);
+        setInterval(fetchOperationsLog, 5000);
         refreshAll();
     </script>
 </body>
