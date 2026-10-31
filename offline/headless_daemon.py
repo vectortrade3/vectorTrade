@@ -349,6 +349,19 @@ class HeadlessDaemon:
         logger.info("Initializing 4-stage pipeline for %d constituents with progress tracking...", total_syms)
         progress_tracker.start_analysis(total_syms)
 
+        try:
+            return self._execute_pipeline(symbols, total_syms, start_time, strategy_1, strategy_2, nifty_df)
+        except Exception as fatal_e:
+            log_error("Fatal error during EOD pipeline execution", fatal_e)
+            progress_tracker.fail_analysis(str(fatal_e))
+            return {
+                "status": "ERROR",
+                "message": str(fatal_e),
+                "signals_armed": 0,
+                "db_dispatched": False
+            }
+
+    def _execute_pipeline(self, symbols: List[str], total_syms: int, start_time: datetime, strategy_1: Any, strategy_2: Any, nifty_df: pd.DataFrame) -> Dict[str, Any]:
         # ----------------------------------------------------------------------
         # STAGE 1: Downloading Market Data (0 to 207)
         # ----------------------------------------------------------------------
@@ -433,79 +446,85 @@ class HeadlessDaemon:
         for clean_sym, df_feat in features_dict.items():
             pred_count += 1
             progress_tracker.update_predict_progress(pred_count, total_feats, clean_sym)
-            token = self.tokens_cache.get(clean_sym, "")
-            meta = self.universe.get(clean_sym, {})
-            sector = meta.get("sector", "General")
+            try:
+                if df_feat is None or df_feat.empty:
+                    continue
 
-            last_row = df_feat.iloc[-1].to_dict()
-            clean_feats = {}
-            for k, v in last_row.items():
-                if isinstance(v, (np.floating, float)):
-                    clean_feats[k] = round(float(v), 4) if np.isfinite(v) else 0.0
-                elif isinstance(v, (np.integer, int)):
-                    clean_feats[k] = int(v)
-                elif isinstance(v, (np.bool_, bool)):
-                    clean_feats[k] = bool(v)
-                elif isinstance(v, (pd.Timestamp, datetime)):
-                    clean_feats[k] = v.strftime("%Y-%m-%d")
-                else:
-                    clean_feats[k] = str(v)
+                token = self.tokens_cache.get(clean_sym, "")
+                meta = self.universe.get(clean_sym, {})
+                sector = meta.get("sector", "General")
 
-            buffer_bar_records.append({
-                "date": self.today_str,
-                "symbol": clean_sym,
-                "features": clean_feats,
-                "consumed_for_training": False
-            })
+                last_row = df_feat.iloc[-1].to_dict()
+                clean_feats = {}
+                for k, v in last_row.items():
+                    if isinstance(v, (np.floating, float)):
+                        clean_feats[k] = round(float(v), 4) if np.isfinite(v) else 0.0
+                    elif isinstance(v, (np.integer, int)):
+                        clean_feats[k] = int(v)
+                    elif isinstance(v, (np.bool_, bool)):
+                        clean_feats[k] = bool(v)
+                    elif isinstance(v, (pd.Timestamp, datetime)):
+                        clean_feats[k] = v.strftime("%Y-%m-%d")
+                    else:
+                        clean_feats[k] = str(v)
 
-            high_now = float(df_feat["high"].iloc[-1])
-            low_now = float(df_feat["low"].iloc[-1])
+                buffer_bar_records.append({
+                    "date": self.today_str,
+                    "symbol": clean_sym,
+                    "features": clean_feats,
+                    "consumed_for_training": False
+                })
 
-            # Strategy 1 Evaluation
-            s1_signals = strategy_1.evaluate(df_feat, symbol=clean_sym, instrument_token=token)
-            for sig in s1_signals:
-                confidence = 0.5
-                if self.strat_model is not None and self.strat_features:
+                high_now = float(df_feat["high"].iloc[-1])
+                low_now = float(df_feat["low"].iloc[-1])
+
+                # Strategy 1 Evaluation
+                s1_signals = strategy_1.evaluate(df_feat, symbol=clean_sym, instrument_token=token)
+                for sig in s1_signals:
+                    confidence = 0.5
+                    if self.strat_model is not None and self.strat_features:
+                        try:
+                            feat_row = df_feat.iloc[[-1]][self.strat_features]
+                            x_strat = self.strat_scaler.transform(self.strat_imputer.transform(feat_row))
+                            pred_val = float(self.strat_model.predict(x_strat)[0])
+                            confidence = round(float(np.clip(pred_val, 0.0, 1.0)), 3)
+                        except Exception as e:
+                            log_error(f"Inference Strategy 1 ({clean_sym})", e)
+
+                    fin_metrics = self.calculate_trade_metrics(high_now, low_now)
+                    sig.update(fin_metrics)
+                    sig["ml_confidence"] = confidence
+                    sig["sector"] = sector
+                    sig["status"] = "ARMED"
+                    sig["valid_for_date"] = self.today_str
+                    raw_signals.append(sig)
+
+                # Strategy 2 Evaluation
+                pred_gain = 0.0
+                pred_drop = 0.0
+                if self.glob_gain_model is not None and self.glob_drop_model is not None and self.glob_features:
                     try:
-                        feat_row = df_feat.iloc[[-1]][self.strat_features]
-                        x_strat = self.strat_scaler.transform(self.strat_imputer.transform(feat_row))
-                        pred_val = float(self.strat_model.predict(x_strat)[0])
-                        confidence = round(float(np.clip(pred_val, 0.0, 1.0)), 3)
+                        feat_row = df_feat.iloc[[-1]][self.glob_features]
+                        x_glob = self.glob_scaler.transform(self.glob_imputer.transform(feat_row))
+                        pred_gain = float(self.glob_gain_model.predict(x_glob)[0])
+                        pred_drop = float(self.glob_drop_model.predict(x_glob)[0])
                     except Exception as e:
-                        log_error(f"Inference Strategy 1 ({clean_sym})", e)
+                        log_error(f"Inference Strategy 2 ({clean_sym})", e)
 
-                fin_metrics = self.calculate_trade_metrics(high_now, low_now)
-                sig.update(fin_metrics)
-                sig["ml_confidence"] = confidence
-                sig["sector"] = sector
-                sig["status"] = "ARMED"
-                sig["valid_for_date"] = self.today_str
-                raw_signals.append(sig)
-
-            # Strategy 2 Evaluation
-            pred_gain = 0.0
-            pred_drop = 0.0
-            if self.glob_gain_model is not None and self.glob_drop_model is not None and self.glob_features:
-                try:
-                    feat_row = df_feat.iloc[[-1]][self.glob_features]
-                    x_glob = self.glob_scaler.transform(self.glob_imputer.transform(feat_row))
-                    pred_gain = float(self.glob_gain_model.predict(x_glob)[0])
-                    pred_drop = float(self.glob_drop_model.predict(x_glob)[0])
-                except Exception as e:
-                    log_error(f"Inference Strategy 2 ({clean_sym})", e)
-
-            s2_signals = strategy_2.evaluate(
-                df_feat, symbol=clean_sym, instrument_token=token,
-                predicted_gain_pct=pred_gain, predicted_drop_pct=pred_drop
-            )
-            for sig in s2_signals:
-                fin_metrics = self.calculate_trade_metrics(high_now, low_now)
-                sig.update(fin_metrics)
-                sig["ml_confidence"] = round(float(pred_gain / 10.0), 3)
-                sig["sector"] = sector
-                sig["status"] = "ARMED"
-                sig["valid_for_date"] = self.today_str
-                raw_signals.append(sig)
+                s2_signals = strategy_2.evaluate(
+                    df_feat, symbol=clean_sym, instrument_token=token,
+                    predicted_gain_pct=pred_gain, predicted_drop_pct=pred_drop
+                )
+                for sig in s2_signals:
+                    fin_metrics = self.calculate_trade_metrics(high_now, low_now)
+                    sig.update(fin_metrics)
+                    sig["ml_confidence"] = round(float(pred_gain / 10.0), 3)
+                    sig["sector"] = sector
+                    sig["status"] = "ARMED"
+                    sig["valid_for_date"] = self.today_str
+                    raw_signals.append(sig)
+            except Exception as stock_err:
+                log_error(f"Evaluating stock {clean_sym} in Stage 3", stock_err)
 
         logger.info("Generated %d raw candidates across %d symbols. Applying Portfolio Risk Gate...", len(raw_signals), total_feats)
 

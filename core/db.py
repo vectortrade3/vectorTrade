@@ -164,7 +164,7 @@ class DatabaseManager:
         if self._is_mock:
             return {"status": "ok", "mode": "mock_in_memory", "database": settings.MONGODB_DB_NAME}
         try:
-            self._client.admin.command("ping")
+            self._client.admin.command("ping", maxTimeMS=1500)
             return {"status": "ok", "mode": "atlas_cluster", "database": settings.MONGODB_DB_NAME}
         except Exception as e:
             logger.error("MongoDB ping failed: %s", str(e))

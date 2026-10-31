@@ -66,7 +66,9 @@ class VectorTradeTrayApp:
         self.icon: pystray.Icon | None = None
         self.server_thread: threading.Thread | None = None
         self.scheduler = offline_scheduler
-        self.scheduler.set_auto_close_callback(self.auto_close_app)
+        # Only enable auto-close in silent background auto-start mode (without --open-browser or --dashboard)
+        if "--open-browser" not in sys.argv and "--dashboard" not in sys.argv:
+            self.scheduler.set_auto_close_callback(self.auto_close_app)
 
     def auto_close_app(self) -> None:
         """Triggered automatically when the automated EOD analysis and upload finishes."""

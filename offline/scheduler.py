@@ -47,6 +47,8 @@ class OfflineScheduler:
         self.thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
         self.auto_close_callback: Optional[Any] = None
+        self._last_db_check_time: float = 0.0
+        self._cached_db_ok: bool = True
 
         self.state: Dict[str, Any] = {
             "status": "IDLE",
@@ -102,11 +104,16 @@ class OfflineScheduler:
         pending_dir = OFFLINE_DIR / "pending_dispatches"
         pending_files = list(pending_dir.glob("signals_*.json")) if pending_dir.exists() else []
 
-        db_ok = True
-        try:
-            db_manager.ping()
-        except Exception:
-            db_ok = False
+        now_ts = time.time()
+        if (now_ts - self._last_db_check_time) > 30.0:
+            try:
+                db_manager.ping()
+                self._cached_db_ok = True
+            except Exception:
+                self._cached_db_ok = False
+            self._last_db_check_time = now_ts
+
+        db_ok = self._cached_db_ok
 
         self._update_next_scheduled_time()
 
@@ -238,7 +245,18 @@ class OfflineScheduler:
                             now_ist.hour, now_ist.minute, self.target_hour, self.target_minute
                         )
                         res = self.run_eod_pipeline(force=True)
-                        logger.info("[SCHEDULER] EOD Pipeline completed: %s. Dashboard remains active.", res)
+                        logger.info("[SCHEDULER] EOD Pipeline completed: %s.", res)
+
+                        if self.auto_close_callback:
+                            logger.info("[SCHEDULER] Auto-close active. Displaying completion on dashboard for 20s then terminating...")
+                            for _ in range(20):
+                                if not self.running:
+                                    break
+                                time.sleep(1)
+                            try:
+                                self.auto_close_callback()
+                            except Exception as ce:
+                                logger.error("[SCHEDULER] Error calling auto-close: %s", ce)
                     else:
                         logger.debug("[SCHEDULER] Today's run (%s) already completed. Waiting for next schedule.", today_str)
                 else:

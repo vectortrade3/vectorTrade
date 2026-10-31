@@ -36,6 +36,7 @@ class AnalysisProgressTracker:
 
     def _initialize(self) -> None:
         self.tz = pytz.timezone(settings.TIMEZONE)
+        self._last_save_time: float = 0.0
         self.state: Dict[str, Any] = {
             "is_running": False,
             "stage": "IDLE",           # IDLE, DOWNLOADING, CALCULATING, PREDICTING, UPLOADING, COMPLETED, ERROR
@@ -90,13 +91,24 @@ class AnalysisProgressTracker:
             except Exception as e:
                 logger.warning("Could not read analysis_progress.json: %s", str(e))
 
-    def _save_to_disk(self) -> None:
+    def _save_to_disk(self, force: bool = False) -> None:
+        now = time.time()
+        if not force and (now - self._last_save_time < 0.25):
+            return
+        self._last_save_time = now
         try:
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(STATE_FILE, "w", encoding="utf-8") as f:
+            temp_file = STATE_FILE.with_suffix(".tmp")
+            with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(self.state, f, indent=2, default=str)
+            for _ in range(3):
+                try:
+                    temp_file.replace(STATE_FILE)
+                    break
+                except Exception:
+                    time.sleep(0.05)
         except Exception as e:
-            logger.warning("Could not persist analysis_progress.json: %s", str(e))
+            logger.debug("Could not persist analysis_progress.json: %s", str(e))
 
     def start_analysis(self, total_symbols: int) -> None:
         with self._lock:
@@ -114,7 +126,7 @@ class AnalysisProgressTracker:
             self.state["predict"] = {"current": 0, "total": total_symbols, "percentage": 0.0, "symbol": ""}
             self.state["upload"] = {"status": "PENDING", "signals_count": 0, "message": "Awaiting signals"}
             self.state["signals"] = []
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def update_download_progress(self, current: int, total: int, symbol: str) -> None:
         with self._lock:
@@ -139,7 +151,7 @@ class AnalysisProgressTracker:
             self.state["stage_name"] = "Stage 2: Computing Features & Cleaning Data"
             self.state["calculate"] = {"current": 0, "total": total_symbols, "percentage": 0.0, "symbol": ""}
             self.state["message"] = f"Computing indicators & cleaning data for {total_symbols} stocks..."
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def update_calculate_progress(self, current: int, total: int, symbol: str) -> None:
         with self._lock:
@@ -164,7 +176,7 @@ class AnalysisProgressTracker:
             self.state["stage_name"] = "Stage 3: Strategy & ML Brain Inference"
             self.state["predict"] = {"current": 0, "total": total_symbols, "percentage": 0.0, "symbol": ""}
             self.state["message"] = "Evaluating 50MA Pullback and Global Forecast XGBoost Brains..."
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def update_predict_progress(self, current: int, total: int, symbol: str) -> None:
         with self._lock:
@@ -193,7 +205,7 @@ class AnalysisProgressTracker:
                 "message": f"Applying 1% capital risk gate & dispatching {signals_count} signals..."
             }
             self.state["message"] = f"Sizing positions and uploading {signals_count} approved signals to MongoDB Atlas..."
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def complete_analysis(self, approved_signals: List[Dict[str, Any]], duration_seconds: float, db_dispatched: bool) -> None:
         with self._lock:
@@ -210,7 +222,7 @@ class AnalysisProgressTracker:
             }
             self.state["signals"] = approved_signals
             self.state["message"] = f"Completed analysis in {duration_seconds:.1f}s. Generated {len(approved_signals)} buy orders."
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def fail_analysis(self, error_message: str) -> None:
         with self._lock:
@@ -219,7 +231,7 @@ class AnalysisProgressTracker:
             self.state["stage_name"] = "Analysis Failed"
             self.state["error"] = error_message
             self.state["message"] = f"Error during analysis: {error_message}"
-            self._save_to_disk()
+            self._save_to_disk(force=True)
 
     def get_snapshot(self) -> Dict[str, Any]:
         with self._lock:
