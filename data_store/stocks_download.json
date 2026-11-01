@@ -1,8 +1,57 @@
 {
-  "last_downloaded_date": "2026-10-06",
+  "last_downloaded_date": "2026-10-20",
   "status": "COMPLETED",
   "total_stocks": 207,
-  "last_updated": "2026-10-06T18:55:00+05:30",
-  "message": "Baseline 5-year constituent market data synced up to 2026-10-06 across 207 stocks.",
-  "download_history": []
+  "last_updated": "2026-11-01T19:48:05.016482+05:30",
+  "message": "Reset dataset to test baseline 2026-10-20. Trimmed 0 rows.",
+  "download_history": [
+    {
+      "timestamp": "2026-11-01T19:48:05.016482+05:30",
+      "date_synced": "2026-10-20",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.1,
+      "message": "Reset dataset to test baseline 2026-10-20. Trimmed 0 rows."
+    },
+    {
+      "timestamp": "2026-11-01T19:46:25.356925+05:30",
+      "date_synced": "2026-10-20",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.1,
+      "message": "Reset dataset to test baseline 2026-10-20. Trimmed 1656 rows."
+    },
+    {
+      "timestamp": "2026-11-01T19:45:26.116781+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 93.81,
+      "message": "Successfully appended 1656 new market bars across 207 stocks up to 2026-10-30."
+    },
+    {
+      "timestamp": "2026-11-01T19:43:34.524330+05:30",
+      "date_synced": "2026-10-20",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.1,
+      "message": "Reset dataset to test baseline 2026-10-20. Trimmed 1656 rows."
+    },
+    {
+      "timestamp": "2026-11-01T19:33:24.608438+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 93.35,
+      "message": "Appended records up to 2026-10-30 across 207 constituents in 93.3s."
+    },
+    {
+      "timestamp": "2026-11-01T19:25:30.332997+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 90.16,
+      "message": "Appended records up to 2026-10-30 across 207 constituents in 90.2s."
+    }
+  ]
 }

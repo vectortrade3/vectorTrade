@@ -3,6 +3,54 @@
     {
       "task_name": "STOCKS_DOWNLOAD",
       "status": "COMPLETED",
+      "timestamp": "2026-11-01T19:45:26.133566+05:30",
+      "readable_time": "2026-11-01 19:45:26 India Standard Time",
+      "message": "Successfully appended 1656 new market bars across 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T19:43:52.307791+05:30",
+      "readable_time": "2026-11-01 19:43:52 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-10-21 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T19:33:24.628643+05:30",
+      "readable_time": "2026-11-01 19:33:24 India Standard Time",
+      "message": "Completed. Synced 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T19:31:51.283799+05:30",
+      "readable_time": "2026-11-01 19:31:51 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T19:25:30.349091+05:30",
+      "readable_time": "2026-11-01 19:25:30 India Standard Time",
+      "message": "Completed. Synced 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T19:24:00.197419+05:30",
+      "readable_time": "2026-11-01 19:24:00 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-10-07 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
       "timestamp": "2026-11-01T19:04:51.401186+05:30",
       "readable_time": "2026-11-01 19:04:51 India Standard Time",
       "message": "Completed. Synced 207 stocks up to 2026-10-30.",
@@ -75,5 +123,5 @@
   ],
   "last_task": "STOCKS_DOWNLOAD",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-01T19:04:51.401186+05:30"
+  "last_updated": "2026-11-01T19:45:26.133566+05:30"
 }

@@ -182,6 +182,7 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
     # STAGE 3: APPENDING / UPDATING (1 to 207)
     # -------------------------------------------------------------------------
     latest_seen_date = last_date_str
+    total_rows_appended = 0
     cols_needed = [
         'Stock Symbol', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume', 
         'Sector', 'Sector Index', 
@@ -265,6 +266,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
                 df_to_append = df_final[~df_final.index.strftime("%Y-%m-%d").isin(existing_dates)]
 
                 if not df_to_append.empty:
+                    total_rows_appended += len(df_to_append)
+                    csv_path.parent.mkdir(parents=True, exist_ok=True)
                     if csv_path.exists():
                         df_to_append.to_csv(csv_path, mode='a', header=False, index_label='Date')
                     else:
@@ -279,7 +282,10 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
     # STAGE 4: COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    completion_message = f"Completed. Synced {total_symbols} stocks up to {latest_seen_date}."
+    if total_rows_appended > 0:
+        completion_message = f"Successfully appended {total_rows_appended} new market bars across {total_symbols} stocks up to {latest_seen_date}."
+    else:
+        completion_message = f"All {total_symbols} stocks already up-to-date with latest market session ({latest_seen_date})."
 
     json_manager.update_download_progress(
         status="COMPLETED",
@@ -298,14 +304,14 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         last_date=latest_seen_date,
         status="COMPLETED",
         stocks_updated=total_symbols,
-        message=f"Appended records up to {latest_seen_date} across {total_symbols} constituents in {duration:.1f}s.",
+        message=completion_message,
         duration_seconds=duration
     )
 
     json_manager.log_app_event(
         event="STOCKS_DOWNLOAD_COMPLETED",
         status="Everything fine",
-        message=f"Downloaded and appended market data for {total_symbols} stocks up to {latest_seen_date} in {duration:.1f}s."
+        message=completion_message
     )
 
     json_manager.log_task_entry(
@@ -318,8 +324,50 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         "status": "SUCCESS",
         "last_downloaded_date": latest_seen_date,
         "stocks_updated": total_symbols,
+        "rows_appended": total_rows_appended,
         "duration_seconds": duration,
         "message": completion_message
+    }
+
+
+def reset_raw_dataset_to_date(cutoff_date: str = "2026-10-20") -> Dict[str, Any]:
+    """
+    Rolls back constituent CSV records and download state back to a cutoff date.
+    Used for testing the end-to-end download, appending, and real-time badge updates.
+    """
+    total_trimmed = 0
+    total_rows_removed = 0
+    for f in RAW_DATA_DIR.glob("*_data.csv"):
+        try:
+            df = pd.read_csv(f)
+            if 'Date' in df.columns:
+                filtered = df[df['Date'] <= cutoff_date]
+                removed = len(df) - len(filtered)
+                if removed > 0:
+                    filtered.to_csv(f, index=False)
+                    total_trimmed += 1
+                    total_rows_removed += removed
+        except Exception as e:
+            print(f"Error resetting {f.name}: {e}")
+
+    json_manager.update_stocks_download_info(
+        last_date=cutoff_date,
+        status="COMPLETED",
+        stocks_updated=len(symbols) if 'symbols' in locals() else 207,
+        message=f"Reset dataset to test baseline {cutoff_date}. Trimmed {total_rows_removed} rows.",
+        duration_seconds=0.1
+    )
+    json_manager.update_download_progress(
+        status="IDLE",
+        heading="Ready",
+        percentage=0.0,
+        message=f"Dataset reset to {cutoff_date}. Ready to test auto-append."
+    )
+    return {
+        "cutoff_date": cutoff_date,
+        "files_trimmed": total_trimmed,
+        "rows_removed": total_rows_removed,
+        "status": "SUCCESS"
     }
 
 

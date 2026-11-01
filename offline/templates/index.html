@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VectorTrade — Offline Engine</title>
+    <title>VectorTrade — Institutional Quant Terminal</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -23,14 +23,21 @@
                             'Helvetica',
                             'Arial',
                             'sans-serif'
+                        ],
+                        mono: [
+                            '"SF Mono"',
+                            'Menlo',
+                            'Monaco',
+                            'Consolas',
+                            'monospace'
                         ]
                     },
                     colors: {
                         apple: {
                             bg: '#000000',
-                            card: 'rgba(28, 28, 30, 0.72)',
+                            card: 'rgba(28, 28, 30, 0.65)',
                             cardBorder: 'rgba(255, 255, 255, 0.08)',
-                            subcard: 'rgba(44, 44, 46, 0.55)',
+                            subcard: 'rgba(44, 44, 46, 0.45)',
                             blue: '#0A84FF',
                             green: '#30D158',
                             orange: '#FF9F0A',
@@ -56,53 +63,40 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Glassmorphism */
+        /* Apple Glass Panel */
         .glass-panel {
-            background: rgba(28, 28, 30, 0.65);
+            background: rgba(28, 28, 30, 0.60);
             backdrop-filter: blur(28px);
             -webkit-backdrop-filter: blur(28px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
         }
 
         .glass-nav {
-            background: rgba(18, 18, 18, 0.75);
+            background: rgba(12, 12, 14, 0.75);
             backdrop-filter: blur(32px);
             -webkit-backdrop-filter: blur(32px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* Smooth Progress Bar Transitions */
-        .progress-bar-fill {
-            transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        /* Apple Spring Button Click */
+        /* Apple Spring Buttons */
         .apple-btn {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .apple-btn:hover {
             transform: scale(1.015);
-            box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35);
+            filter: brightness(1.08);
         }
         .apple-btn:active {
             transform: scale(0.975);
         }
 
-        .apple-purple-btn {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .apple-purple-btn:hover {
-            transform: scale(1.015);
-            box-shadow: 0 8px 24px rgba(191, 90, 242, 0.35);
-        }
-        .apple-purple-btn:active {
-            transform: scale(0.975);
-        }
-
-        /* Tab Transition */
         .tab-btn {
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .progress-bar-fill {
+            transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1);
         }
     </style>
 </head>
@@ -121,12 +115,12 @@
                         VectorTrade
                         <span class="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded-full bg-white/10 text-slate-300">Offline</span>
                     </span>
-                    <span class="text-[11px] text-apple-textSecondary">Local Quant Engine</span>
+                    <span class="text-[11px] text-apple-textSecondary">Local Quantitative Engine</span>
                 </div>
             </div>
 
             <!-- Navigation Links -->
-            <nav class="hidden md:flex items-center space-x-1.5 bg-black/40 p-1.5 rounded-full border border-white/5">
+            <nav class="hidden md:flex items-center space-x-1 bg-black/40 p-1.5 rounded-full border border-white/5">
                 <!-- 1. Download (Working) -->
                 <button id="nav-download" onclick="switchTab('download')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-white bg-white/15 shadow-sm">
                     Download
@@ -155,17 +149,16 @@
                     <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
                 </button>
 
-                <!-- 6. Logs (Coming Soon) -->
+                <!-- 6. Logs -->
                 <button id="nav-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Logs
-                    <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
+                    Task Logs
                 </button>
             </nav>
 
-            <!-- Status Indicator -->
+            <!-- Real-Time WebSocket Engine Status Indicator -->
             <div class="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
                 <span id="systemPulseDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span id="systemStatusText" class="text-xs font-medium text-slate-300">Ready</span>
+                <span id="systemStatusText" class="text-xs font-medium text-slate-300 font-mono">Ready</span>
             </div>
         </div>
     </header>
@@ -180,27 +173,30 @@
             
             <!-- Hero Card -->
             <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
-                <div class="absolute -right-20 -top-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                     <div class="space-y-2 max-w-xl">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
                             <i data-lucide="database" class="w-3.5 h-3.5"></i>
-                            Historical EOD Dataset
+                            Constituent EOD Synchronizer
                         </div>
                         <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
                             Market Data Synchronizer
                         </h1>
                         <p class="text-sm text-apple-textSecondary leading-relaxed">
-                            Incrementally synchronizes all 207 NIFTY constituents from the previous download date to current market close. New daily bars are cleanly formatted and appended to constituent CSV files.
+                            Incrementally downloads missing market sessions from the previous sync date to the latest market close and appends daily bars into all 207 raw constituent CSV files.
                         </p>
                     </div>
 
-                    <!-- Primary Download Action Button -->
+                    <!-- Action Controls -->
                     <div class="flex flex-col sm:flex-row items-center gap-3">
                         <button id="btnDownload" onclick="triggerDownload()" class="apple-btn w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-apple-blue text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-40 disabled:pointer-events-none">
                             <i data-lucide="download-cloud" class="w-4 h-4"></i>
                             <span>Download Data</span>
+                        </button>
+
+                        <button id="btnResetTest" onclick="triggerResetTest()" class="apple-btn w-full sm:w-auto px-4 py-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-apple-textSecondary hover:text-white text-xs font-medium border border-white/10 flex items-center justify-center gap-1.5" title="Rolls back records to 2026-10-20 so you can test auto-append anytime">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            <span>Test Reset (2026-10-20)</span>
                         </button>
                     </div>
                 </div>
@@ -208,9 +204,9 @@
                 <!-- Info Badges Bar -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5">
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Last Downloaded Date</div>
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Market Data As Of</div>
                         <div id="statLastDate" class="text-base font-semibold text-white mt-1 font-mono">
-                            {{ download_info.last_downloaded_date or '2026-10-06' }}
+                            {{ download_info.last_downloaded_date or '2026-10-20' }}
                         </div>
                     </div>
 
@@ -222,9 +218,9 @@
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Destination Folder</div>
-                        <div class="text-xs font-medium text-slate-300 mt-1 font-mono truncate">
-                            5_year_data/raw/
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Last Batch Result</div>
+                        <div id="statBatchDetail" class="text-xs font-medium text-slate-300 mt-1 font-mono truncate">
+                            {{ download_info.message or 'Ready to sync' }}
                         </div>
                     </div>
 
@@ -239,54 +235,46 @@
             </div>
 
             <!-- DYNAMIC MULTI-STAGE PROGRESS CARD (DOWNLOAD) -->
-            <div id="progressCard" class="glass-panel rounded-3xl p-6 transition-all duration-500">
+            <div id="progressCard" class="glass-panel rounded-3xl p-6 transition-all duration-300">
                 
-                <!-- Stage 1: CHECKING (No Progress Line, Indeterminate Loading State) -->
-                <div id="viewChecking" class="hidden py-4 text-center space-y-4">
+                <!-- Stage 1: CHECKING (No Progress Line) -->
+                <div id="viewChecking" class="hidden py-4 text-center space-y-3">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-1">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
                     </div>
                     <div class="space-y-1">
                         <h2 id="checkingHeading" class="text-lg font-semibold tracking-tight text-white">Checking</h2>
-                        <p id="checkingMessage" class="text-xs text-apple-textSecondary">
-                            Verifying dates and preparing Nifty 50 benchmark...
+                        <p id="checkingMessage" class="text-xs text-apple-textSecondary max-w-sm mx-auto">
+                            Verifying latest market sessions and preparing NIFTY 50 benchmark...
                         </p>
-                    </div>
-                    <div class="text-[11px] font-mono text-apple-textTertiary">
-                        Querying JSON manager for last downloaded baseline
                     </div>
                 </div>
 
-                <!-- Stage 2 & 3: DOWNLOADING & APPENDING (With Stock Count, Name, %, and Fluid Progress Line) -->
-                <div id="viewProgressing" class="hidden space-y-4">
+                <!-- Stage 2 & 3: DOWNLOADING & APPENDING (With Fluid Progress Line & Counter) -->
+                <div id="viewProgressing" class="hidden space-y-5 py-2">
                     <div class="flex items-center justify-between">
-                        <div class="space-y-0.5">
-                            <h2 id="progressHeading" class="text-base font-semibold text-white tracking-tight">
-                                Downloading
-                            </h2>
-                            <p id="progressMessage" class="text-xs text-apple-textSecondary">
-                                Fetching market records from exchange servers...
-                            </p>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <h2 id="progressHeading" class="text-base font-semibold text-white tracking-tight">Downloading</h2>
+                                <span id="stopwatchBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">0s</span>
+                            </div>
+                            <p id="progressMessage" class="text-xs text-apple-textSecondary">Processing constituents...</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span id="stopwatchBadge" class="text-xs font-mono text-apple-textSecondary bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                                0.0s
-                            </span>
+                        <div class="text-right">
+                            <span id="stockPercent" class="text-2xl font-bold font-mono tracking-tight text-white">0%</span>
                         </div>
                     </div>
 
-                    <!-- Progress Information Row (Left: Count + Stock, Right: Percentage) -->
-                    <div class="flex items-center justify-between text-xs pt-2">
+                    <!-- Stock Counter & Active Stock Indicator -->
+                    <div class="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
                         <div class="flex items-center gap-2">
-                            <span id="stockCounter" class="font-mono font-medium text-slate-300 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
-                                0/207
-                            </span>
-                            <span id="stockName" class="font-mono font-bold text-blue-400 text-sm">
-                                RELIANCE
-                            </span>
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-blue-400"></i>
+                            <span class="text-apple-textSecondary">Current Stock:</span>
+                            <span id="stockName" class="font-mono font-semibold text-white">RELIANCE</span>
                         </div>
-                        <div id="stockPercent" class="font-mono font-bold text-white text-sm">
-                            0.0%
+                        <div class="flex items-center gap-1.5 font-mono text-apple-textSecondary">
+                            <span>Index:</span>
+                            <span id="stockCounter" class="text-white font-semibold">1/207</span>
                         </div>
                     </div>
 
@@ -296,7 +284,7 @@
                     </div>
                 </div>
 
-                <!-- Stage 4: COMPLETED BANNER (AUTO-DISAPPEARS AFTER 2.5s) -->
+                <!-- Stage 4: COMPLETED BANNER (Auto-disappears after 3s) -->
                 <div id="viewCompleted" class="hidden py-4 text-center space-y-3">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
                         <i data-lucide="check-circle" class="w-6 h-6"></i>
@@ -309,17 +297,17 @@
                             Completed
                         </div>
                         <p id="completedDetail" class="text-xs text-apple-textSecondary pt-1">
-                            Successfully synced and appended all constituent CSV records.
+                            Successfully synced and appended constituent CSV records.
                         </p>
                     </div>
                 </div>
 
-                <!-- ERROR STATE (AUTO-DISAPPEARS AFTER 2.5s) -->
+                <!-- ERROR STATE (Auto-disappears after 3s) -->
                 <div id="viewError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
                     <div class="flex items-center gap-3">
                         <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
                         <div class="flex-1">
-                            <span class="text-sm font-semibold block text-red-300">Download Notice</span>
+                            <span class="text-sm font-semibold block text-red-300">Sync Notice</span>
                             <p id="errorDetail" class="text-xs text-red-400/90 pt-0.5">An error occurred.</p>
                         </div>
                     </div>
@@ -329,7 +317,7 @@
                 <div id="viewIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
                     <div class="flex items-center gap-2">
                         <i data-lucide="info" class="w-4 h-4 text-blue-400"></i>
-                        <span>Click <strong class="text-white">Download Data</strong> to begin incremental download.</span>
+                        <span>Click <strong class="text-white">Download Data</strong> to begin incremental download & append.</span>
                     </div>
                     <span class="text-apple-textTertiary font-mono">Zero Background CPU</span>
                 </div>
@@ -344,8 +332,6 @@
 
             <!-- Hero Card -->
             <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
-                <div class="absolute -right-20 -top-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                     <div class="space-y-2 max-w-xl">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium">
@@ -356,14 +342,14 @@
                             Quantitative Feature Engineering
                         </h1>
                         <p class="text-sm text-apple-textSecondary leading-relaxed">
-                            Generates multi-timeframe moving averages, Bollinger bands, RSI momentum indicators, price action candle structures, and forward simulation trade setups from <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-slate-300 font-mono">5_year_data/raw</code> into <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-slate-300 font-mono">5_year_data/generated</code>.
+                            Calculates multi-period RSI, Bollinger Bands, ATR volatility, candlestick morphology, sector relative strength, and 7-day trade forward simulations for all 207 constituents.
                         </p>
                     </div>
 
-                    <!-- Primary Feature Gen Action Button -->
-                    <div class="flex flex-col sm:flex-row items-center gap-3">
-                        <button id="btnFeatureGen" onclick="triggerFeatureGen()" class="apple-purple-btn w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-apple-purple text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 disabled:opacity-40 disabled:pointer-events-none">
-                            <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                    <!-- Action Button -->
+                    <div class="flex items-center gap-3">
+                        <button id="btnFeatureGen" onclick="triggerFeatureGen()" class="apple-btn px-6 py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 disabled:opacity-40 disabled:pointer-events-none">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
                             <span>Generate Features</span>
                         </button>
                     </div>
@@ -379,14 +365,14 @@
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Constituents</div>
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Engineered Scope</div>
                         <div class="text-base font-semibold text-white mt-1">
                             <span class="text-purple-400 font-mono">207</span> Stocks
                         </div>
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Destination Folder</div>
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Feature Destination</div>
                         <div class="text-xs font-medium text-slate-300 mt-1 font-mono truncate">
                             5_year_data/generated/
                         </div>
@@ -394,47 +380,42 @@
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
                         <div class="text-[11px] font-medium text-apple-textSecondary">Feature Engine State</div>
-                        <div id="statFeatureState" class="text-xs font-semibold text-purple-400 mt-1 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                        <div id="statFeatState" class="text-xs font-semibold text-emerald-400 mt-1 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                             {{ feature_gen_info.status or 'READY' }}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- DYNAMIC PROGRESS CARD (FEATURE GENERATION) -->
-            <div id="featProgressCard" class="glass-panel rounded-3xl p-6 transition-all duration-500">
+            <!-- DYNAMIC 3-STAGE PROGRESS CARD (FEATURE GEN) -->
+            <div id="featProgressCard" class="glass-panel rounded-3xl p-6 transition-all duration-300">
                 
-                <!-- Stage 1: GENERATING (With Stock Count, Name, %, and Fluid Progress Line) -->
-                <div id="viewFeatGenerating" class="hidden space-y-4">
+                <!-- Stage 1: GENERATING (Shows 1/207, Stock Name, %, and Progress Line) -->
+                <div id="viewFeatGenerating" class="hidden space-y-5 py-2">
                     <div class="flex items-center justify-between">
-                        <div class="space-y-0.5">
-                            <h2 class="text-base font-semibold text-white tracking-tight">
-                                Features Generating
-                            </h2>
-                            <p id="featGenMessage" class="text-xs text-apple-textSecondary">
-                                Computing technical indicators and forward simulations...
-                            </p>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-semibold text-white tracking-tight">Features Generating</h2>
+                                <span id="featStopwatchBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">0s</span>
+                            </div>
+                            <p id="featGenMessage" class="text-xs text-apple-textSecondary">Computing technical indicators & relative strength...</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span id="featStopwatchBadge" class="text-xs font-mono text-apple-textSecondary bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                                0.0s
-                            </span>
+                        <div class="text-right">
+                            <span id="featStockPercent" class="text-2xl font-bold font-mono tracking-tight text-white">0%</span>
                         </div>
                     </div>
 
-                    <!-- Progress Information Row (Left: Count + Stock, Right: Percentage) -->
-                    <div class="flex items-center justify-between text-xs pt-2">
+                    <!-- Stock Counter & Active Stock Indicator -->
+                    <div class="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
                         <div class="flex items-center gap-2">
-                            <span id="featStockCounter" class="font-mono font-medium text-slate-300 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
-                                0/207
-                            </span>
-                            <span id="featStockName" class="font-mono font-bold text-purple-400 text-sm">
-                                RELIANCE
-                            </span>
+                            <i data-lucide="cpu" class="w-4 h-4 text-purple-400"></i>
+                            <span class="text-apple-textSecondary">Active Stock:</span>
+                            <span id="featStockName" class="font-mono font-semibold text-white">RELIANCE</span>
                         </div>
-                        <div id="featStockPercent" class="font-mono font-bold text-white text-sm">
-                            0.0%
+                        <div class="flex items-center gap-1.5 font-mono text-apple-textSecondary">
+                            <span>Index:</span>
+                            <span id="featStockCounter" class="text-white font-semibold">1/207</span>
                         </div>
                     </div>
 
@@ -444,23 +425,22 @@
                     </div>
                 </div>
 
-                <!-- Stage 2: SAVING DATA (No progress line, just showing heading: Saving Data) -->
-                <div id="viewFeatSaving" class="hidden py-4 text-center space-y-4">
+                <!-- Stage 2: SAVING DATA (Heading = Saving Data, NO Progress Line) -->
+                <div id="viewFeatSaving" class="hidden py-6 text-center space-y-3">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-1">
                         <i data-lucide="hard-drive-download" class="w-6 h-6 animate-pulse"></i>
                     </div>
                     <div class="space-y-1">
-                        <h2 class="text-lg font-semibold tracking-tight text-white">Saving Data</h2>
-                        <p id="featSavingMessage" class="text-xs text-apple-textSecondary">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Saving Data
+                        </h2>
+                        <p id="featSavingMessage" class="text-xs text-apple-textSecondary max-w-sm mx-auto">
                             Flushing engineered features into 5_year_data/generated/...
                         </p>
                     </div>
-                    <div class="text-[11px] font-mono text-apple-textTertiary">
-                        Writing 207 constituent feature datasets to disk
-                    </div>
                 </div>
 
-                <!-- Stage 3: COMPLETED (Shows Done for 2-3s then progress bar disappears) -->
+                <!-- Stage 3: COMPLETED (Shows Done for 2-3s then auto-disappears) -->
                 <div id="viewFeatCompleted" class="hidden py-4 text-center space-y-3">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
                         <i data-lucide="check-circle" class="w-6 h-6"></i>
@@ -478,7 +458,7 @@
                     </div>
                 </div>
 
-                <!-- FEAT ERROR STATE (AUTO-DISAPPEARS AFTER 2.5s) -->
+                <!-- FEAT ERROR STATE -->
                 <div id="viewFeatError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
                     <div class="flex items-center gap-3">
                         <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
@@ -493,7 +473,7 @@
                 <div id="viewFeatIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
                     <div class="flex items-center gap-2">
                         <i data-lucide="info" class="w-4 h-4 text-purple-400"></i>
-                        <span>Click <strong class="text-white">Generate Features</strong> to compute indicators across all raw constituent CSVs.</span>
+                        <span>Click <strong class="text-white">Generate Features</strong> to compute indicators across all constituent CSVs.</span>
                     </div>
                     <span class="text-apple-textTertiary font-mono">207 Stocks Ready</span>
                 </div>
@@ -515,7 +495,7 @@
                     </span>
                     <h2 class="text-xl font-semibold text-white pt-2">Data Cleaning & Imputation</h2>
                     <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Performs NaN resolution, infinite value clipping, cross-sectional sector alignment, and outlier clipping.
+                        Performs NaN resolution, infinite value clipping, cross-sectional sector alignment, and outlier normalization.
                     </p>
                 </div>
             </div>
@@ -533,9 +513,9 @@
                     <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
                         Coming Soon
                     </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">AI Model Retraining</h2>
+                    <h2 class="text-xl font-semibold text-white pt-2">XGBoost & Dual-Head Ensemble Training</h2>
                     <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Refits the XGBoost strategy and global regression brains on latest market regimes with cross-validation.
+                        Trains the 50MA Pullback specialist model alongside Global Gain/Drop market regime regressors.
                     </p>
                 </div>
             </div>
@@ -553,30 +533,29 @@
                     <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
                         Coming Soon
                     </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">Quantitative Inference & Signals</h2>
+                    <h2 class="text-xl font-semibold text-white pt-2">Real-Time Daily Quant Scanner</h2>
                     <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Generates buy triggers, stop-losses, 1% capital risk position sizing, and dispatches to MongoDB Atlas.
+                        Evaluates all 207 constituent stocks against trained models, ranks probabilities, and formats orders according to the 1% risk allocation rule.
                     </p>
                 </div>
             </div>
         </section>
 
         <!-- ============================================================= -->
-        <!-- TAB 6: LOGS (COMING SOON) -->
+        <!-- TAB 6: TASK LOGS LEDGER -->
         <!-- ============================================================= -->
-        <section id="tab-logs-view" class="hidden">
-            <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
-                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                    <i data-lucide="file-text" class="w-7 h-7"></i>
+        <section id="tab-logs-view" class="hidden space-y-4">
+            <div class="glass-panel rounded-3xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="list" class="w-4 h-4 text-apple-textSecondary"></i>
+                        <h3 class="text-sm font-semibold text-white">Execution Audit Ledger</h3>
+                    </div>
+                    <span class="text-[11px] text-apple-textTertiary font-mono">Persisted in data_store/task_logs.json</span>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
-                        Coming Soon
-                    </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">Unified Task Logs</h2>
-                    <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        All pipeline executions (<code class="font-mono text-slate-300">STOCKS_DOWNLOAD</code>, <code class="font-mono text-slate-300">FEATURE_GENERATION</code>) with status (<strong class="text-emerald-400">RUNNING</strong>, <strong class="text-emerald-400">COMPLETED</strong>, <strong class="text-red-400">ERROR</strong>) are actively tracked in <code class="font-mono text-slate-300">data_store/task_logs.json</code>. An interactive visual log explorer will be activated here in the next milestone.
-                    </p>
+
+                <div id="logsContainer" class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    <div class="text-xs text-apple-textSecondary py-6 text-center">Loading execution logs...</div>
                 </div>
             </div>
         </section>
@@ -584,17 +563,26 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="glass-nav mt-auto py-4 text-center text-xs text-apple-textSecondary">
-        VectorTrade Offline Architecture &bull; Local Native Engine &bull; Battery Efficient
+    <footer class="border-t border-white/5 py-6 mt-auto">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-apple-textTertiary gap-3">
+            <div class="flex items-center space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>VectorTrade Offline Desktop Engine v2.0</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span>Native WebSocket Protocol</span>
+                <span>&bull;</span>
+                <span class="font-mono">Localhost :5000</span>
+            </div>
+        </div>
     </footer>
 
-    <!-- CLIENT SCRIPT -->
+    <!-- CLIENT SCRIPT (NATIVE WEBSOCKET + APPLE SPRING TRANSITIONS) -->
     <script>
-        // Initialize icons once
         lucide.createIcons();
 
         // ---------------------------------------------------------------------
-        // TAB SWITCHING (CLEAN STATE, NO JITTER)
+        // TAB SWITCHING
         // ---------------------------------------------------------------------
         let activeTabId = 'download';
 
@@ -619,10 +607,14 @@
                     if (view) view.classList.add('hidden');
                 }
             });
+
+            if (tab === 'logs') {
+                fetchTaskLogs();
+            }
         }
 
         // ---------------------------------------------------------------------
-        // UNIFIED SYSTEM STATUS CONTROLLER (NAVBAR PILL)
+        // UNIFIED SYSTEM STATUS CONTROLLER
         // ---------------------------------------------------------------------
         let statusResetTimer = null;
 
@@ -655,12 +647,12 @@
             }
 
             dot.className = `w-2 h-2 rounded-full ${colorClass} ${pulse ? 'animate-pulse' : ''}`;
-            label.className = `text-xs font-medium ${textClass}`;
+            label.className = `text-xs font-medium font-mono ${textClass}`;
 
             if (autoResetAfterMs > 0) {
                 statusResetTimer = setTimeout(() => {
                     dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                    label.className = "text-xs font-medium text-slate-300";
+                    label.className = "text-xs font-medium font-mono text-slate-300";
                     label.innerText = "Ready";
                     statusResetTimer = null;
                 }, autoResetAfterMs);
@@ -668,7 +660,7 @@
         }
 
         // ---------------------------------------------------------------------
-        // DOWNLOAD PIPELINE UI CONTROLLER
+        // DOWNLOAD PIPELINE CONTROLLER
         // ---------------------------------------------------------------------
         let downloadTimer = null;
 
@@ -742,13 +734,16 @@
                 btn.disabled = false;
 
                 document.getElementById('completedDetail').innerText = prog.message || "Completed successfully.";
-                updateSystemStatus("Sync Complete", "emerald", false, 2500);
+                updateSystemStatus("Sync Complete", "emerald", false, 3000);
+
+                // Fetch latest status to immediately refresh Last Downloaded Date
+                fetchSystemStatus();
 
                 if (!downloadTimer) {
                     downloadTimer = setTimeout(() => {
                         resetDownloadToIdle();
                         downloadTimer = null;
-                    }, 2500);
+                    }, 3000);
                 }
             }
             else if (status === 'ERROR') {
@@ -790,8 +785,23 @@
             }
         }
 
+        async function triggerResetTest() {
+            if (!confirm("This will roll back all constituent CSV files back to 2026-10-20 so you can test the full download & auto-append workflow. Proceed?")) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/download/reset_test', { method: 'POST' });
+                const data = await res.json();
+                document.getElementById('statLastDate').innerText = '2026-10-20';
+                document.getElementById('statBatchDetail').innerText = `Dataset reset to 2026-10-20 (${data.rows_removed} rows rolled back). Click Download to test auto-append!`;
+                alert(`Dataset successfully reset to 2026-10-20!\n\n${data.files_trimmed} files rolled back.\nNow click 'Download Data' to watch it download, auto-append all 8 missing trading days, and update the badge in real time!`);
+            } catch (err) {
+                alert("Failed to reset dataset: " + err);
+            }
+        }
+
         // ---------------------------------------------------------------------
-        // FEATURE GENERATION UI CONTROLLER
+        // FEATURE GENERATION CONTROLLER
         // ---------------------------------------------------------------------
         let featCompletedTimer = null;
 
@@ -862,13 +872,15 @@
                 btn.disabled = false;
 
                 document.getElementById('featCompletedDetail').innerText = prog.message || "Completed successfully.";
-                updateSystemStatus("Features Done", "emerald", false, 2500);
+                updateSystemStatus("Features Done", "emerald", false, 3000);
+
+                fetchSystemStatus();
 
                 if (!featCompletedTimer) {
                     featCompletedTimer = setTimeout(() => {
                         resetFeatureGenToIdle();
                         featCompletedTimer = null;
-                    }, 2500);
+                    }, 3000);
                 }
             }
             else if (status === 'ERROR') {
@@ -911,7 +923,70 @@
         }
 
         // ---------------------------------------------------------------------
-        // REAL-TIME WEBSOCKET STREAM (ZERO HTTP POLLING)
+        // AUDIT LOGS FETCH
+        // ---------------------------------------------------------------------
+        async function fetchTaskLogs() {
+            const container = document.getElementById('logsContainer');
+            try {
+                const res = await fetch('/api/tasks/logs');
+                const data = await res.json();
+                if (!data.task_logs || data.task_logs.length === 0) {
+                    container.innerHTML = '<div class="text-xs text-apple-textSecondary py-6 text-center">No execution records found.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.task_logs.map(log => {
+                    let pillClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                    if (log.status === 'RUNNING') {
+                        pillClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                    } else if (log.status === 'ERROR') {
+                        pillClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+                    }
+
+                    return `
+                        <div class="px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-white/[0.04] transition">
+                            <div class="space-y-0.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold text-white font-mono">${log.task_name}</span>
+                                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md border ${pillClass}">${log.status}</span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary">${log.message || ''}</p>
+                            </div>
+                            <span class="text-[11px] font-mono text-apple-textTertiary flex-shrink-0">${log.readable_time || log.timestamp}</span>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                container.innerHTML = `<div class="text-xs text-red-400 py-6 text-center">Failed to fetch task logs: ${err}</div>`;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // FETCH SYSTEM STATUS
+        // ---------------------------------------------------------------------
+        async function fetchSystemStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                if (data.download_info) {
+                    if (data.download_info.last_downloaded_date) {
+                        document.getElementById('statLastDate').innerText = data.download_info.last_downloaded_date;
+                    }
+                    if (data.download_info.message) {
+                        document.getElementById('statBatchDetail').innerText = data.download_info.message;
+                    }
+                }
+                if (data.feature_gen_info && data.feature_gen_info.last_feature_gen_date) {
+                    document.getElementById('statFeatureLastDate').innerText = data.feature_gen_info.last_feature_gen_date;
+                }
+            } catch (err) {
+                console.error("Error fetching system status:", err);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // REAL-TIME WEBSOCKET STREAM
         // ---------------------------------------------------------------------
         let socket = null;
 
@@ -933,6 +1008,9 @@
                         case 'INITIAL_STATE':
                             if (msg.download_info && msg.download_info.last_downloaded_date) {
                                 document.getElementById('statLastDate').innerText = msg.download_info.last_downloaded_date;
+                            }
+                            if (msg.download_info && msg.download_info.message) {
+                                document.getElementById('statBatchDetail').innerText = msg.download_info.message;
                             }
                             if (msg.feature_gen_info && msg.feature_gen_info.last_feature_gen_date) {
                                 document.getElementById('statFeatureLastDate').innerText = msg.feature_gen_info.last_feature_gen_date;
@@ -961,6 +1039,9 @@
                             if (msg.data.last_downloaded_date) {
                                 document.getElementById('statLastDate').innerText = msg.data.last_downloaded_date;
                             }
+                            if (msg.data.message) {
+                                document.getElementById('statBatchDetail').innerText = msg.data.message;
+                            }
                             break;
 
                         case 'FEATURE_GEN_INFO':
@@ -975,7 +1056,7 @@
             };
 
             socket.onclose = () => {
-                console.warn("[WebSocket] Connection closed. Reconnecting in 2.5s...");
+                console.warn("[WebSocket] Connection lost. Reconnecting in 2.5s...");
                 updateSystemStatus("Reconnecting...", "amber");
                 setTimeout(connectWebSocket, 2500);
             };
@@ -986,7 +1067,7 @@
             };
         }
 
-        // Start live WebSocket stream on load
+        // Initialize WebSocket stream on page boot
         connectWebSocket();
     </script>
 </body>
