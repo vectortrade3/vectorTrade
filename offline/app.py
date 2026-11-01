@@ -8,11 +8,13 @@ Logs application lifecycle events to data_store/app_logs.json on boot.
 from __future__ import annotations
 import sys
 import os
+import json
 import threading
 import logging
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request
+from flask_sock import Sock
 
 # Resolve directory paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,9 +26,55 @@ from offline import json_manager
 from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
 
-# Initialize Flask
+# Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
 app.config["SECRET_KEY"] = "vectortrade-offline-secure-key"
+sock = Sock(app)
+
+# WebSocket client registry
+ws_clients = set()
+ws_clients_lock = threading.Lock()
+
+def broadcast_ws_event(event_type: str, data: dict):
+    """Pushes real-time progress events to all connected WebSocket clients."""
+    payload = json.dumps({"type": event_type, "data": data})
+    with ws_clients_lock:
+        dead = set()
+        for ws in list(ws_clients):
+            try:
+                ws.send(payload)
+            except Exception:
+                dead.add(ws)
+        for ws in dead:
+            ws_clients.discard(ws)
+
+# Register WebSocket broadcaster with json_manager
+json_manager.register_progress_listener(broadcast_ws_event)
+
+@sock.route("/ws")
+def websocket_route(ws):
+    """Real-time bidirectional WebSocket stream for zero-polling instant updates."""
+    with ws_clients_lock:
+        ws_clients.add(ws)
+    try:
+        # Push immediate snapshot upon connection
+        initial_payload = {
+            "type": "INITIAL_STATE",
+            "download": json_manager.get_download_progress(),
+            "download_info": json_manager.get_stocks_download_info(),
+            "feature_gen": json_manager.get_feature_gen_progress(),
+            "feature_gen_info": json_manager.get_feature_gen_info(),
+        }
+        ws.send(json.dumps(initial_payload))
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+    except Exception:
+        pass
+    finally:
+        with ws_clients_lock:
+            ws_clients.discard(ws)
 
 # Configure lightweight logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -79,8 +127,7 @@ def start_download():
     """Triggers the stock download pipeline in a background thread."""
     global _download_thread
     with _download_lock:
-        curr_progress = json_manager.get_download_progress()
-        if curr_progress.get("status") in ["CHECKING", "DOWNLOADING", "APPENDING"]:
+        if _download_thread and _download_thread.is_alive():
             return jsonify({
                 "status": "BUSY",
                 "message": "A download pipeline is already running."
@@ -143,8 +190,7 @@ def start_feature_generation():
     """Triggers the Feature Generation pipeline in a background thread."""
     global _feat_thread
     with _feat_lock:
-        curr_progress = json_manager.get_feature_gen_progress()
-        if curr_progress.get("status") in ["GENERATING", "SAVING"]:
+        if _feat_thread and _feat_thread.is_alive():
             return jsonify({
                 "status": "BUSY",
                 "message": "A feature generation task is currently running."

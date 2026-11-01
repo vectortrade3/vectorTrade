@@ -1,12 +1,12 @@
 {
-  "status": "COMPLETED",
-  "heading": "Done",
-  "current_stock": "ALL",
-  "current_index": 207,
+  "status": "IDLE",
+  "heading": "Ready",
+  "current_stock": "",
+  "current_index": 0,
   "total_stocks": 207,
-  "percentage": 100.0,
-  "message": "Completed. Generated features for 207 stocks in 64.9s.",
-  "elapsed_seconds": 64.9,
+  "percentage": 0.0,
+  "message": "Ready to generate features.",
+  "elapsed_seconds": 0.0,
   "error": null,
-  "updated_at": "2026-11-01T17:46:14.051746+05:30"
+  "updated_at": "2026-11-01T18:42:00.000000+05:30"
 }

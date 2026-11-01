@@ -113,6 +113,26 @@ def get_last_downloaded_date() -> str:
     return info.get("last_downloaded_date", "2026-10-06")
 
 
+# ==============================================================================
+# Progress Notification Listeners (Real-Time WebSockets)
+# ==============================================================================
+
+_progress_listeners = []
+
+def register_progress_listener(listener):
+    """Registers a listener function fn(event_type: str, data: dict)."""
+    if listener not in _progress_listeners:
+        _progress_listeners.append(listener)
+
+def notify_progress_listeners(event_type: str, data: Dict[str, Any]):
+    """Dispatches real-time event updates to all registered listeners."""
+    for listener in list(_progress_listeners):
+        try:
+            listener(event_type, data)
+        except Exception as e:
+            logger.debug(f"Progress notification error: {e}")
+
+
 def update_stocks_download_info(
     last_date: str,
     status: str = "COMPLETED",
@@ -144,6 +164,7 @@ def update_stocks_download_info(
     current["download_history"] = history[:100]  # keep last 100 runs
     
     write_json_file(STOCKS_DOWNLOAD_FILE, current)
+    notify_progress_listeners("STOCKS_DOWNLOAD_INFO", current)
     return current
 
 
@@ -241,6 +262,7 @@ def update_download_progress(
         "updated_at": datetime.now().astimezone().isoformat()
     }
     write_json_file(DOWNLOAD_PROGRESS_FILE, progress_data)
+    notify_progress_listeners("DOWNLOAD_PROGRESS", progress_data)
 
 
 # ==============================================================================
@@ -352,6 +374,7 @@ def update_feature_gen_info(
     current["history"] = history[:100]
 
     write_json_file(FEATURE_GEN_FILE, current)
+    notify_progress_listeners("FEATURE_GEN_INFO", current)
     return current
 
 
@@ -396,6 +419,7 @@ def update_feature_gen_progress(
         "updated_at": datetime.now().astimezone().isoformat()
     }
     write_json_file(FEATURE_GEN_PROGRESS_FILE, data)
+    notify_progress_listeners("FEATURE_GEN_PROGRESS", data)
 
 
 # ==============================================================================

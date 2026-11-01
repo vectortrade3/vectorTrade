@@ -590,12 +590,16 @@
 
     <!-- CLIENT SCRIPT -->
     <script>
+        // Initialize icons once
         lucide.createIcons();
 
         // ---------------------------------------------------------------------
-        // TAB SWITCHING
+        // TAB SWITCHING (CLEAN STATE, NO JITTER)
         // ---------------------------------------------------------------------
+        let activeTabId = 'download';
+
         function switchTab(tab) {
+            activeTabId = tab;
             const tabs = ['download', 'features', 'cleaning', 'training', 'inference', 'logs'];
             tabs.forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
@@ -615,318 +619,375 @@
                     if (view) view.classList.add('hidden');
                 }
             });
-            lucide.createIcons();
         }
 
         // ---------------------------------------------------------------------
-        // DOWNLOAD PIPELINE TRIGGER & POLLING
+        // UNIFIED SYSTEM STATUS CONTROLLER (NAVBAR PILL)
         // ---------------------------------------------------------------------
+        let statusResetTimer = null;
+
+        function updateSystemStatus(text, color = 'emerald', pulse = false, autoResetAfterMs = 0) {
+            const dot = document.getElementById('systemPulseDot');
+            const label = document.getElementById('systemStatusText');
+            if (!dot || !label) return;
+
+            if (statusResetTimer) {
+                clearTimeout(statusResetTimer);
+                statusResetTimer = null;
+            }
+
+            label.innerText = text;
+
+            let colorClass = 'bg-emerald-400';
+            let textClass = 'text-slate-300';
+            if (color === 'blue') {
+                colorClass = 'bg-blue-400';
+                textClass = 'text-blue-300';
+            } else if (color === 'purple') {
+                colorClass = 'bg-purple-400';
+                textClass = 'text-purple-300';
+            } else if (color === 'red') {
+                colorClass = 'bg-red-400';
+                textClass = 'text-red-300';
+            } else if (color === 'amber') {
+                colorClass = 'bg-amber-400';
+                textClass = 'text-amber-300';
+            }
+
+            dot.className = `w-2 h-2 rounded-full ${colorClass} ${pulse ? 'animate-pulse' : ''}`;
+            label.className = `text-xs font-medium ${textClass}`;
+
+            if (autoResetAfterMs > 0) {
+                statusResetTimer = setTimeout(() => {
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                    label.className = "text-xs font-medium text-slate-300";
+                    label.innerText = "Ready";
+                    statusResetTimer = null;
+                }, autoResetAfterMs);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // DOWNLOAD PIPELINE UI CONTROLLER
+        // ---------------------------------------------------------------------
+        let downloadTimer = null;
+
+        function resetDownloadToIdle() {
+            const vIdle = document.getElementById('viewIdle');
+            const vChecking = document.getElementById('viewChecking');
+            const vProgressing = document.getElementById('viewProgressing');
+            const vCompleted = document.getElementById('viewCompleted');
+            const vError = document.getElementById('viewError');
+            const btn = document.getElementById('btnDownload');
+
+            vIdle.classList.remove('hidden');
+            vChecking.classList.add('hidden');
+            vProgressing.classList.add('hidden');
+            vCompleted.classList.add('hidden');
+            vError.classList.add('hidden');
+            btn.disabled = false;
+        }
+
+        function renderDownloadProgress(prog) {
+            const vIdle = document.getElementById('viewIdle');
+            const vChecking = document.getElementById('viewChecking');
+            const vProgressing = document.getElementById('viewProgressing');
+            const vCompleted = document.getElementById('viewCompleted');
+            const vError = document.getElementById('viewError');
+            const btn = document.getElementById('btnDownload');
+
+            const status = prog.status || 'IDLE';
+
+            if (status === 'CHECKING') {
+                vIdle.classList.add('hidden');
+                vChecking.classList.remove('hidden');
+                vProgressing.classList.add('hidden');
+                vCompleted.classList.add('hidden');
+                vError.classList.add('hidden');
+                btn.disabled = true;
+
+                document.getElementById('checkingHeading').innerText = prog.heading || "Checking";
+                document.getElementById('checkingMessage').innerText = prog.message || "Verifying trading dates...";
+                updateSystemStatus("Checking...", "amber", true);
+            }
+            else if (status === 'DOWNLOADING' || status === 'APPENDING') {
+                vIdle.classList.add('hidden');
+                vChecking.classList.add('hidden');
+                vProgressing.classList.remove('hidden');
+                vCompleted.classList.add('hidden');
+                vError.classList.add('hidden');
+                btn.disabled = true;
+
+                document.getElementById('progressHeading').innerText = prog.heading || (status === 'DOWNLOADING' ? "Downloading" : "Appending Data");
+                document.getElementById('progressMessage').innerText = prog.message || "";
+                document.getElementById('stopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
+
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                document.getElementById('stockCounter').innerText = `${curIdx}/${totStocks}`;
+                document.getElementById('stockName').innerText = prog.current_stock || "Constituent";
+
+                const pct = prog.percentage || 0;
+                document.getElementById('stockPercent').innerText = `${pct}%`;
+                document.getElementById('progressBarFill').style.width = `${pct}%`;
+
+                updateSystemStatus(`${status === 'DOWNLOADING' ? 'Downloading' : 'Appending'} (${curIdx}/${totStocks})`, "blue", true);
+            }
+            else if (status === 'COMPLETED') {
+                vIdle.classList.add('hidden');
+                vChecking.classList.add('hidden');
+                vProgressing.classList.add('hidden');
+                vError.classList.add('hidden');
+                vCompleted.classList.remove('hidden');
+                btn.disabled = false;
+
+                document.getElementById('completedDetail').innerText = prog.message || "Completed successfully.";
+                updateSystemStatus("Sync Complete", "emerald", false, 2500);
+
+                if (!downloadTimer) {
+                    downloadTimer = setTimeout(() => {
+                        resetDownloadToIdle();
+                        downloadTimer = null;
+                    }, 2500);
+                }
+            }
+            else if (status === 'ERROR') {
+                vIdle.classList.add('hidden');
+                vChecking.classList.add('hidden');
+                vProgressing.classList.add('hidden');
+                vCompleted.classList.add('hidden');
+                vError.classList.remove('hidden');
+                btn.disabled = false;
+
+                document.getElementById('errorDetail').innerText = prog.message || prog.error || "An error occurred during download.";
+                updateSystemStatus("Download Error", "red", false, 3000);
+
+                if (!downloadTimer) {
+                    downloadTimer = setTimeout(() => {
+                        resetDownloadToIdle();
+                        downloadTimer = null;
+                    }, 3000);
+                }
+            }
+            else {
+                resetDownloadToIdle();
+            }
+        }
+
         async function triggerDownload() {
             const btn = document.getElementById('btnDownload');
             btn.disabled = true;
-
             try {
                 const res = await fetch('/api/download/start', { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 409) {
                     alert(data.message);
+                    btn.disabled = false;
                 }
-                pollProgress();
             } catch (err) {
                 console.error("Failed to start download:", err);
                 btn.disabled = false;
             }
         }
 
-        let downloadTimer = null;
-
-        async function pollProgress() {
-            try {
-                const res = await fetch('/api/download/progress');
-                const prog = await res.json();
-
-                const vIdle = document.getElementById('viewIdle');
-                const vChecking = document.getElementById('viewChecking');
-                const vProgressing = document.getElementById('viewProgressing');
-                const vCompleted = document.getElementById('viewCompleted');
-                const vError = document.getElementById('viewError');
-                const btn = document.getElementById('btnDownload');
-                const pulseDot = document.getElementById('systemPulseDot');
-                const statusText = document.getElementById('systemStatusText');
-
-                const status = prog.status || 'IDLE';
-
-                if (status === 'CHECKING') {
-                    // State 1: Checking -> No progress line
-                    vIdle.classList.add('hidden');
-                    vChecking.classList.remove('hidden');
-                    vProgressing.classList.add('hidden');
-                    vCompleted.classList.add('hidden');
-                    vError.classList.add('hidden');
-                    btn.disabled = true;
-
-                    document.getElementById('checkingHeading').innerText = prog.heading || "Checking";
-                    document.getElementById('checkingMessage').innerText = prog.message || "Verifying dates and preparing Nifty 50 benchmark...";
-                    
-                    pulseDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-                    statusText.innerText = "Checking...";
-                }
-                else if (status === 'DOWNLOADING' || status === 'APPENDING') {
-                    // State 2 & 3: Downloading / Appending -> Shows stock count, name on left, % and progress line on right
-                    vIdle.classList.add('hidden');
-                    vChecking.classList.add('hidden');
-                    vProgressing.classList.remove('hidden');
-                    vCompleted.classList.add('hidden');
-                    vError.classList.add('hidden');
-                    btn.disabled = true;
-
-                    document.getElementById('progressHeading').innerText = prog.heading || (status === 'DOWNLOADING' ? "Downloading" : "Appending Data");
-                    document.getElementById('progressMessage').innerText = prog.message || "";
-                    document.getElementById('stopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
-
-                    const curIdx = prog.current_index || 0;
-                    const totStocks = prog.total_stocks || 207;
-                    document.getElementById('stockCounter').innerText = `${curIdx}/${totStocks}`;
-                    document.getElementById('stockName').innerText = prog.current_stock || "NIFTY50";
-
-                    const pct = prog.percentage || 0;
-                    document.getElementById('stockPercent').innerText = `${pct}%`;
-                    document.getElementById('progressBarFill').style.width = `${pct}%`;
-
-                    pulseDot.className = "w-2 h-2 rounded-full bg-blue-400 animate-pulse";
-                    statusText.innerText = status === 'DOWNLOADING' ? "Downloading..." : "Appending...";
-                }
-                else if (status === 'COMPLETED') {
-                    vIdle.classList.add('hidden');
-                    vChecking.classList.add('hidden');
-                    vProgressing.classList.add('hidden');
-                    vError.classList.add('hidden');
-                    vCompleted.classList.remove('hidden');
-                    btn.disabled = false;
-
-                    document.getElementById('completedDetail').innerText = prog.message || "Completed successfully.";
-                    pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                    statusText.innerText = "Completed";
-
-                    fetchSystemStatus();
-
-                    // Disappear after 2.5 seconds back to clean idle
-                    if (!downloadTimer) {
-                        downloadTimer = setTimeout(() => {
-                            vCompleted.classList.add('hidden');
-                            vIdle.classList.remove('hidden');
-                            downloadTimer = null;
-                        }, 2500);
-                    }
-                }
-                else if (status === 'ERROR') {
-                    vIdle.classList.add('hidden');
-                    vChecking.classList.add('hidden');
-                    vProgressing.classList.add('hidden');
-                    vCompleted.classList.add('hidden');
-                    vError.classList.remove('hidden');
-                    btn.disabled = false;
-
-                    document.getElementById('errorDetail').innerText = prog.message || prog.error || "An error occurred during download.";
-                    pulseDot.className = "w-2 h-2 rounded-full bg-red-400";
-                    statusText.innerText = "Error";
-
-                    // Disappear after 3 seconds back to clean idle
-                    if (!downloadTimer) {
-                        downloadTimer = setTimeout(() => {
-                            vError.classList.add('hidden');
-                            vIdle.classList.remove('hidden');
-                            downloadTimer = null;
-                        }, 3000);
-                    }
-                }
-                else {
-                    if (!downloadTimer) {
-                        vIdle.classList.remove('hidden');
-                        vChecking.classList.add('hidden');
-                        vProgressing.classList.add('hidden');
-                        vCompleted.classList.add('hidden');
-                        vError.classList.add('hidden');
-                        btn.disabled = false;
-
-                        pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                        statusText.innerText = "Ready";
-                    }
-                }
-
-            } catch (err) {
-                console.error("Progress polling error:", err);
-            }
-        }
-
         // ---------------------------------------------------------------------
-        // FEATURE GENERATION TRIGGER & POLLING
+        // FEATURE GENERATION UI CONTROLLER
         // ---------------------------------------------------------------------
         let featCompletedTimer = null;
+
+        function resetFeatureGenToIdle() {
+            const vFeatIdle = document.getElementById('viewFeatIdle');
+            const vFeatGenerating = document.getElementById('viewFeatGenerating');
+            const vFeatSaving = document.getElementById('viewFeatSaving');
+            const vFeatCompleted = document.getElementById('viewFeatCompleted');
+            const vFeatError = document.getElementById('viewFeatError');
+            const btn = document.getElementById('btnFeatureGen');
+
+            vFeatIdle.classList.remove('hidden');
+            vFeatGenerating.classList.add('hidden');
+            vFeatSaving.classList.add('hidden');
+            vFeatCompleted.classList.add('hidden');
+            vFeatError.classList.add('hidden');
+            btn.disabled = false;
+        }
+
+        function renderFeatureGenProgress(prog) {
+            const vFeatIdle = document.getElementById('viewFeatIdle');
+            const vFeatGenerating = document.getElementById('viewFeatGenerating');
+            const vFeatSaving = document.getElementById('viewFeatSaving');
+            const vFeatCompleted = document.getElementById('viewFeatCompleted');
+            const vFeatError = document.getElementById('viewFeatError');
+            const btn = document.getElementById('btnFeatureGen');
+
+            const status = prog.status || 'IDLE';
+
+            if (status === 'GENERATING') {
+                vFeatIdle.classList.add('hidden');
+                vFeatGenerating.classList.remove('hidden');
+                vFeatSaving.classList.add('hidden');
+                vFeatCompleted.classList.add('hidden');
+                vFeatError.classList.add('hidden');
+                btn.disabled = true;
+
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                document.getElementById('featStockCounter').innerText = `${curIdx}/${totStocks}`;
+                document.getElementById('featStockName').innerText = prog.current_stock || "Constituent";
+                document.getElementById('featGenMessage').innerText = prog.message || "Computing technical indicators...";
+                document.getElementById('featStopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
+
+                const pct = prog.percentage || 0;
+                document.getElementById('featStockPercent').innerText = `${pct}%`;
+                document.getElementById('featProgressBarFill').style.width = `${pct}%`;
+
+                updateSystemStatus(`Generating (${curIdx}/${totStocks})`, "purple", true);
+            }
+            else if (status === 'SAVING') {
+                vFeatIdle.classList.add('hidden');
+                vFeatGenerating.classList.add('hidden');
+                vFeatSaving.classList.remove('hidden');
+                vFeatCompleted.classList.add('hidden');
+                vFeatError.classList.add('hidden');
+                btn.disabled = true;
+
+                document.getElementById('featSavingMessage').innerText = prog.message || "Flushing engineered features into 5_year_data/generated/...";
+                updateSystemStatus("Saving Data...", "purple", true);
+            }
+            else if (status === 'COMPLETED') {
+                vFeatIdle.classList.add('hidden');
+                vFeatGenerating.classList.add('hidden');
+                vFeatSaving.classList.add('hidden');
+                vFeatError.classList.add('hidden');
+                vFeatCompleted.classList.remove('hidden');
+                btn.disabled = false;
+
+                document.getElementById('featCompletedDetail').innerText = prog.message || "Completed successfully.";
+                updateSystemStatus("Features Done", "emerald", false, 2500);
+
+                if (!featCompletedTimer) {
+                    featCompletedTimer = setTimeout(() => {
+                        resetFeatureGenToIdle();
+                        featCompletedTimer = null;
+                    }, 2500);
+                }
+            }
+            else if (status === 'ERROR') {
+                vFeatIdle.classList.add('hidden');
+                vFeatGenerating.classList.add('hidden');
+                vFeatSaving.classList.add('hidden');
+                vFeatCompleted.classList.add('hidden');
+                vFeatError.classList.remove('hidden');
+                btn.disabled = false;
+
+                document.getElementById('featErrorDetail').innerText = prog.message || prog.error || "An error occurred during feature generation.";
+                updateSystemStatus("Feature Error", "red", false, 3000);
+
+                if (!featCompletedTimer) {
+                    featCompletedTimer = setTimeout(() => {
+                        resetFeatureGenToIdle();
+                        featCompletedTimer = null;
+                    }, 3000);
+                }
+            }
+            else {
+                resetFeatureGenToIdle();
+            }
+        }
 
         async function triggerFeatureGen() {
             const btn = document.getElementById('btnFeatureGen');
             btn.disabled = true;
-
             try {
                 const res = await fetch('/api/feature_gen/start', { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 409) {
                     alert(data.message);
+                    btn.disabled = false;
                 }
-                pollFeatureGenProgress();
             } catch (err) {
                 console.error("Failed to start feature generation:", err);
                 btn.disabled = false;
             }
         }
 
-        async function pollFeatureGenProgress() {
-            try {
-                const res = await fetch('/api/feature_gen/progress');
-                const prog = await res.json();
+        // ---------------------------------------------------------------------
+        // REAL-TIME WEBSOCKET STREAM (ZERO HTTP POLLING)
+        // ---------------------------------------------------------------------
+        let socket = null;
 
-                const vFeatIdle = document.getElementById('viewFeatIdle');
-                const vFeatGenerating = document.getElementById('viewFeatGenerating');
-                const vFeatSaving = document.getElementById('viewFeatSaving');
-                const vFeatCompleted = document.getElementById('viewFeatCompleted');
-                const vFeatError = document.getElementById('viewFeatError');
-                const btn = document.getElementById('btnFeatureGen');
-                const pulseDot = document.getElementById('systemPulseDot');
-                const statusText = document.getElementById('systemStatusText');
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-                const status = prog.status || 'IDLE';
+            socket = new WebSocket(wsUrl);
 
-                if (status === 'GENERATING') {
-                    // Stage 1: GENERATING -> Shows 1/207, Stock Name, %, and Progress Line
-                    vFeatIdle.classList.add('hidden');
-                    vFeatGenerating.classList.remove('hidden');
-                    vFeatSaving.classList.add('hidden');
-                    vFeatCompleted.classList.add('hidden');
-                    vFeatError.classList.add('hidden');
-                    btn.disabled = true;
+            socket.onopen = () => {
+                console.log("[WebSocket] Connected to VectorTrade Engine.");
+                updateSystemStatus("Ready", "emerald");
+            };
 
-                    const curIdx = prog.current_index || 0;
-                    const totStocks = prog.total_stocks || 207;
-                    document.getElementById('featStockCounter').innerText = `${curIdx}/${totStocks}`;
-                    document.getElementById('featStockName').innerText = prog.current_stock || "Constituent";
-                    document.getElementById('featGenMessage').innerText = prog.message || "Computing technical indicators...";
-                    document.getElementById('featStopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    switch (msg.type) {
+                        case 'INITIAL_STATE':
+                            if (msg.download_info && msg.download_info.last_downloaded_date) {
+                                document.getElementById('statLastDate').innerText = msg.download_info.last_downloaded_date;
+                            }
+                            if (msg.feature_gen_info && msg.feature_gen_info.last_feature_gen_date) {
+                                document.getElementById('statFeatureLastDate').innerText = msg.feature_gen_info.last_feature_gen_date;
+                            }
+                            if (msg.download && (msg.download.status === 'DOWNLOADING' || msg.download.status === 'APPENDING' || msg.download.status === 'CHECKING')) {
+                                renderDownloadProgress(msg.download);
+                            } else {
+                                resetDownloadToIdle();
+                            }
+                            if (msg.feature_gen && (msg.feature_gen.status === 'GENERATING' || msg.feature_gen.status === 'SAVING')) {
+                                renderFeatureGenProgress(msg.feature_gen);
+                            } else {
+                                resetFeatureGenToIdle();
+                            }
+                            break;
 
-                    const pct = prog.percentage || 0;
-                    document.getElementById('featStockPercent').innerText = `${pct}%`;
-                    document.getElementById('featProgressBarFill').style.width = `${pct}%`;
+                        case 'DOWNLOAD_PROGRESS':
+                            renderDownloadProgress(msg.data);
+                            break;
 
-                    pulseDot.className = "w-2 h-2 rounded-full bg-purple-400 animate-pulse";
-                    statusText.innerText = "Features Generating...";
-                }
-                else if (status === 'SAVING') {
-                    // Stage 2: SAVING -> Heading = Saving Data, NO progress line
-                    vFeatIdle.classList.add('hidden');
-                    vFeatGenerating.classList.add('hidden');
-                    vFeatSaving.classList.remove('hidden');
-                    vFeatCompleted.classList.add('hidden');
-                    vFeatError.classList.add('hidden');
-                    btn.disabled = true;
+                        case 'FEATURE_GEN_PROGRESS':
+                            renderFeatureGenProgress(msg.data);
+                            break;
 
-                    document.getElementById('featSavingMessage').innerText = prog.message || "Flushing engineered features into 5_year_data/generated/...";
-                    pulseDot.className = "w-2 h-2 rounded-full bg-purple-400 animate-pulse";
-                    statusText.innerText = "Saving Data...";
-                }
-                else if (status === 'COMPLETED') {
-                    // Stage 3: COMPLETED -> Heading = Done for 2-3s, then disappears!
-                    vFeatIdle.classList.add('hidden');
-                    vFeatGenerating.classList.add('hidden');
-                    vFeatSaving.classList.add('hidden');
-                    vFeatError.classList.add('hidden');
-                    vFeatCompleted.classList.remove('hidden');
-                    btn.disabled = false;
+                        case 'STOCKS_DOWNLOAD_INFO':
+                            if (msg.data.last_downloaded_date) {
+                                document.getElementById('statLastDate').innerText = msg.data.last_downloaded_date;
+                            }
+                            break;
 
-                    document.getElementById('featCompletedDetail').innerText = prog.message || "Completed successfully.";
-                    pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                    statusText.innerText = "Features Done";
-
-                    fetchSystemStatus();
-
-                    // Disappear after 2.5 seconds back to clean idle
-                    if (!featCompletedTimer) {
-                        featCompletedTimer = setTimeout(() => {
-                            vFeatCompleted.classList.add('hidden');
-                            vFeatIdle.classList.remove('hidden');
-                            featCompletedTimer = null;
-                        }, 2500);
+                        case 'FEATURE_GEN_INFO':
+                            if (msg.data.last_feature_gen_date) {
+                                document.getElementById('statFeatureLastDate').innerText = msg.data.last_feature_gen_date;
+                            }
+                            break;
                     }
+                } catch (e) {
+                    console.error("[WebSocket] Parse error:", e);
                 }
-                else if (status === 'ERROR') {
-                    vFeatIdle.classList.add('hidden');
-                    vFeatGenerating.classList.add('hidden');
-                    vFeatSaving.classList.add('hidden');
-                    vFeatCompleted.classList.add('hidden');
-                    vFeatError.classList.remove('hidden');
-                    btn.disabled = false;
+            };
 
-                    document.getElementById('featErrorDetail').innerText = prog.message || prog.error || "An error occurred during feature generation.";
-                    pulseDot.className = "w-2 h-2 rounded-full bg-red-400";
-                    statusText.innerText = "Feature Error";
+            socket.onclose = () => {
+                console.warn("[WebSocket] Connection closed. Reconnecting in 2.5s...");
+                updateSystemStatus("Reconnecting...", "amber");
+                setTimeout(connectWebSocket, 2500);
+            };
 
-                    // Disappear after 3 seconds back to clean idle
-                    if (!featCompletedTimer) {
-                        featCompletedTimer = setTimeout(() => {
-                            vFeatError.classList.add('hidden');
-                            vFeatIdle.classList.remove('hidden');
-                            featCompletedTimer = null;
-                        }, 3000);
-                    }
-                }
-                else {
-                    // IDLE
-                    if (!featCompletedTimer) {
-                        vFeatIdle.classList.remove('hidden');
-                        vFeatGenerating.classList.add('hidden');
-                        vFeatSaving.classList.add('hidden');
-                        vFeatCompleted.classList.add('hidden');
-                        vFeatError.classList.add('hidden');
-                        btn.disabled = false;
-                    }
-                }
-
-            } catch (err) {
-                console.error("Feature progress polling error:", err);
-            }
+            socket.onerror = (err) => {
+                console.error("[WebSocket] Error occurred:", err);
+                socket.close();
+            };
         }
 
-        // ---------------------------------------------------------------------
-        // FETCH SYSTEM STATUS
-        // ---------------------------------------------------------------------
-        async function fetchSystemStatus() {
-            try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                if (data.download_info) {
-                    const lastDateEl = document.getElementById('statLastDate');
-                    if (lastDateEl && data.download_info.last_downloaded_date) {
-                        lastDateEl.innerText = data.download_info.last_downloaded_date;
-                    }
-                }
-                if (data.feature_gen_info) {
-                    const featLastDateEl = document.getElementById('statFeatureLastDate');
-                    if (featLastDateEl && data.feature_gen_info.last_feature_gen_date) {
-                        featLastDateEl.innerText = data.feature_gen_info.last_feature_gen_date;
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching system status:", err);
-            }
-        }
-
-        // Initialize polling intervals
-        setInterval(pollProgress, 1200);
-        setInterval(pollFeatureGenProgress, 1200);
-
-        // Initial loads
-        pollProgress();
-        pollFeatureGenProgress();
-        fetchSystemStatus();
+        // Start live WebSocket stream on load
+        connectWebSocket();
     </script>
 </body>
 </html>
