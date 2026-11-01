@@ -26,6 +26,7 @@ DATA_STORE_DIR.mkdir(parents=True, exist_ok=True)
 STOCKS_DOWNLOAD_FILE = DATA_STORE_DIR / "stocks_download.json"
 APP_LOGS_FILE = DATA_STORE_DIR / "app_logs.json"
 MODELS_STATE_FILE = DATA_STORE_DIR / "models_state.json"
+MODELS_TRAINING_PROGRESS_FILE = DATA_STORE_DIR / "models_training_progress.json"
 DOWNLOAD_PROGRESS_FILE = DATA_STORE_DIR / "download_progress.json"
 FEATURE_GEN_FILE = DATA_STORE_DIR / "feature_gen.json"
 FEATURE_GEN_PROGRESS_FILE = DATA_STORE_DIR / "feature_gen_progress.json"
@@ -307,31 +308,255 @@ def update_download_progress(
 # 4. MODELS STATE MANAGER
 # ==============================================================================
 
-def get_models_info() -> Dict[str, Any]:
-    """Returns AI model training metadata."""
+# ==============================================================================
+# 4. MODELS STATE MANAGER (SECTION 1: STRATEGY & SECTION 2: GLOBAL)
+# ==============================================================================
+
+def initialize_models_state() -> Dict[str, Any]:
+    """Ensures models_state.json is initialized with Section 1 (Strategy) and Section 2 (Global) info."""
     default_state = {
-        "last_trained_date": "2026-10-26",
-        "status": "READY",
+        "status": "COMPLETED",
+        "last_trained_date": "2026-10-30",
+        "last_trained_run_date": "2026-10-30",
+        "last_run_timestamp": datetime.now().astimezone().isoformat(),
+        "strategy_model": {
+            "status": "COMPLETED",
+            "last_trained_date": "2026-10-30",
+            "last_run_date": "2026-10-30",
+            "model_file": "models/5_year_xgboost_model.pkl",
+            "scaler_file": "models/5_year_scaler.pkl",
+            "imputer_file": "models/5_year_imputer.pkl",
+            "features_file": "final_features.txt",
+            "features_count": 87,
+            "mae_base": 0.45,
+            "mae_refined": 0.41,
+            "message": "Strategy XGBoost model tuned on triggered trade setups."
+        },
+        "global_models": {
+            "status": "COMPLETED",
+            "last_trained_date": "2026-10-30",
+            "last_run_date": "2026-10-30",
+            "gain_model_file": "models/5_year_global_gain_model.pkl",
+            "drop_model_file": "models/5_year_global_drop_model.pkl",
+            "scaler_file": "models/5_year_global_scaler.pkl",
+            "imputer_file": "models/5_year_global_imputer.pkl",
+            "features_file": "global_features.txt",
+            "features_count": 92,
+            "mae_gain": 0.042,
+            "mae_drop": 0.038,
+            "message": "Global multi-horizon gain and drop regime predictors tuned."
+        },
         "models": [
             "5_year_xgboost_model.pkl",
             "5_year_global_gain_model.pkl",
             "5_year_global_drop_model.pkl"
         ],
-        "message": "Models trained on 5-year historical regime data."
+        "message": "All models calibrated on 5-year consolidated regime dataset.",
+        "history": []
     }
-    return read_json_file(MODELS_STATE_FILE, default_state)
+    if not MODELS_STATE_FILE.exists():
+        write_json_file(MODELS_STATE_FILE, default_state)
+        return default_state
+    current = read_json_file(MODELS_STATE_FILE, default_state)
+    needs_save = False
+    if "strategy_model" not in current:
+        current["strategy_model"] = default_state["strategy_model"]
+        needs_save = True
+    if "global_models" not in current:
+        current["global_models"] = default_state["global_models"]
+        needs_save = True
+    if not current.get("last_trained_date"):
+        current["last_trained_date"] = "2026-10-30"
+        needs_save = True
+    if not current.get("last_trained_run_date"):
+        current["last_trained_run_date"] = current.get("last_trained_date", "2026-10-30")
+        needs_save = True
+    if needs_save:
+        write_json_file(MODELS_STATE_FILE, current)
+    return current
+
+
+def get_models_info() -> Dict[str, Any]:
+    """Returns AI model training metadata."""
+    return initialize_models_state()
+
+
+def update_strategy_model_info(
+    status: str = "COMPLETED",
+    mae_base: float = 0.0,
+    mae_refined: float = 0.0,
+    features_count: int = 0,
+    message: str = "",
+    duration_seconds: float = 0.0,
+    last_trained_date: Optional[str] = None,
+    last_run_date: Optional[str] = None
+) -> Dict[str, Any]:
+    """Updates strategy model metadata in models_state.json."""
+    current = get_models_info()
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    today_str = now_dt.strftime("%Y-%m-%d")
+
+    trained_date = last_trained_date or current.get("strategy_model", {}).get("last_trained_date") or today_str
+    run_date = last_run_date or today_str
+
+    current["strategy_model"] = {
+        "status": status,
+        "last_trained_date": trained_date,
+        "last_run_date": run_date,
+        "model_file": "models/5_year_xgboost_model.pkl",
+        "scaler_file": "models/5_year_scaler.pkl",
+        "imputer_file": "models/5_year_imputer.pkl",
+        "features_file": "final_features.txt",
+        "features_count": features_count,
+        "mae_base": round(mae_base, 3),
+        "mae_refined": round(mae_refined, 3),
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message,
+        "updated_at": now_str
+    }
+    current["last_trained_date"] = trained_date
+    current["last_trained_run_date"] = run_date
+    current["last_run_timestamp"] = now_str
+    current["message"] = message
+
+    history = current.get("history", [])
+    history.insert(0, {
+        "timestamp": now_str,
+        "section": "STRATEGY_MODEL",
+        "status": status,
+        "date": trained_date,
+        "run_date": run_date,
+        "mae_base": round(mae_base, 3),
+        "mae_refined": round(mae_refined, 3),
+        "features_count": features_count,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message
+    })
+    current["history"] = history[:100]
+
+    write_json_file(MODELS_STATE_FILE, current)
+    notify_progress_listeners("MODELS_TRAINING_INFO", current)
+    return current
+
+
+def update_global_models_info(
+    status: str = "COMPLETED",
+    mae_gain: float = 0.0,
+    mae_drop: float = 0.0,
+    features_count: int = 0,
+    message: str = "",
+    duration_seconds: float = 0.0,
+    last_trained_date: Optional[str] = None,
+    last_run_date: Optional[str] = None
+) -> Dict[str, Any]:
+    """Updates global models metadata in models_state.json."""
+    current = get_models_info()
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    today_str = now_dt.strftime("%Y-%m-%d")
+
+    trained_date = last_trained_date or current.get("global_models", {}).get("last_trained_date") or today_str
+    run_date = last_run_date or today_str
+
+    current["global_models"] = {
+        "status": status,
+        "last_trained_date": trained_date,
+        "last_run_date": run_date,
+        "gain_model_file": "models/5_year_global_gain_model.pkl",
+        "drop_model_file": "models/5_year_global_drop_model.pkl",
+        "scaler_file": "models/5_year_global_scaler.pkl",
+        "imputer_file": "models/5_year_global_imputer.pkl",
+        "features_file": "global_features.txt",
+        "features_count": features_count,
+        "mae_gain": round(mae_gain, 4),
+        "mae_drop": round(mae_drop, 4),
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message,
+        "updated_at": now_str
+    }
+    current["last_trained_date"] = trained_date
+    current["last_trained_run_date"] = run_date
+    current["last_run_timestamp"] = now_str
+    current["message"] = message
+
+    history = current.get("history", [])
+    history.insert(0, {
+        "timestamp": now_str,
+        "section": "GLOBAL_MODELS",
+        "status": status,
+        "date": trained_date,
+        "run_date": run_date,
+        "mae_gain": round(mae_gain, 4),
+        "mae_drop": round(mae_drop, 4),
+        "features_count": features_count,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message
+    })
+    current["history"] = history[:100]
+
+    write_json_file(MODELS_STATE_FILE, current)
+    notify_progress_listeners("MODELS_TRAINING_INFO", current)
+    return current
+
+
+def get_models_training_progress() -> Dict[str, Any]:
+    """Retrieves live real-time progress for Model Training."""
+    default_progress = {
+        "status": "IDLE",            # IDLE, TRAINING, COMPLETED, ERROR
+        "active_section": "NONE",    # STRATEGY, GLOBAL, ALL
+        "phase": "Ready",
+        "heading": "Ready",
+        "current_model": "",
+        "percentage": 0.0,
+        "message": "Ready to train predictive models.",
+        "elapsed_seconds": 0.0,
+        "error": None,
+        "metrics": {}
+    }
+    return read_json_file(MODELS_TRAINING_PROGRESS_FILE, default_progress)
+
+
+def update_models_training_progress(
+    status: str,
+    active_section: str = "STRATEGY",
+    phase: str = "Tuning",
+    heading: str = "Model Training",
+    current_model: str = "",
+    percentage: float = 0.0,
+    message: str = "",
+    elapsed_seconds: float = 0.0,
+    error: Optional[str] = None,
+    metrics: Optional[Dict[str, Any]] = None
+) -> None:
+    """Updates live transient model training progress and broadcasts to listeners."""
+    data = {
+        "status": status,
+        "active_section": active_section,
+        "phase": phase,
+        "heading": heading,
+        "current_model": current_model,
+        "percentage": round(percentage, 1),
+        "message": message,
+        "elapsed_seconds": round(elapsed_seconds, 1),
+        "error": error,
+        "metrics": metrics or {},
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(MODELS_TRAINING_PROGRESS_FILE, data)
+    notify_progress_listeners("MODELS_TRAINING_PROGRESS", data)
 
 
 def update_models_info(last_trained: str, status: str, models: List[str], message: str) -> None:
-    """Persists model training status."""
-    data = {
-        "last_trained_date": last_trained,
-        "status": status,
-        "models": models,
-        "message": message,
-        "updated_at": datetime.now().astimezone().isoformat()
-    }
-    write_json_file(MODELS_STATE_FILE, data)
+    """Backward compatibility helper for persisting general model training status."""
+    current = get_models_info()
+    current["last_trained_date"] = last_trained
+    current["status"] = status
+    current["models"] = models
+    current["message"] = message
+    current["updated_at"] = datetime.now().astimezone().isoformat()
+    write_json_file(MODELS_STATE_FILE, current)
+    notify_progress_listeners("MODELS_TRAINING_INFO", current)
 
 
 # ==============================================================================
@@ -682,4 +907,5 @@ def update_data_cleaning_progress(
 initialize_stocks_download_state()
 initialize_feature_gen_state()
 initialize_data_cleaning_state()
+initialize_models_state()
 

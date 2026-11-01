@@ -1,7 +1,7 @@
 {
   "last_clean_date": "2026-10-30",
   "last_clean_run_date": "2026-11-01",
-  "last_run_timestamp": "2026-11-01T20:22:12.240202+05:30",
+  "last_run_timestamp": "2026-11-01T20:36:52.075720+05:30",
   "status": "COMPLETED",
   "total_rows": 252382,
   "total_columns": 157,
@@ -9,6 +9,18 @@
   "output_file": "5_year_final_data.csv",
   "message": "Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
   "history": [
+    {
+      "timestamp": "2026-11-01T20:36:52.075720+05:30",
+      "clean_date": "2026-10-30",
+      "run_date": "2026-11-01",
+      "status": "COMPLETED",
+      "total_rows": 252382,
+      "total_columns": 157,
+      "total_stocks": 207,
+      "output_file": "5_year_final_data.csv",
+      "duration_seconds": 0.0,
+      "message": "Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped."
+    },
     {
       "timestamp": "2026-11-01T20:22:12.240202+05:30",
       "clean_date": "2026-10-30",

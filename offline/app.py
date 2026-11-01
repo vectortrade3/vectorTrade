@@ -26,6 +26,7 @@ from offline import json_manager
 from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
 from offline.data_cleaner import run_data_cleaning_pipeline
+from offline.model_trainer import train_strategy_model, train_global_models, train_all_models
 
 # Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
@@ -67,6 +68,8 @@ def websocket_route(ws):
             "feature_gen_info": json_manager.get_feature_gen_info(),
             "data_cleaning": json_manager.get_data_cleaning_progress(),
             "data_cleaning_info": json_manager.get_data_cleaning_info(),
+            "models_training": json_manager.get_models_training_progress(),
+            "models_info": json_manager.get_models_info(),
         }
         ws.send(json.dumps(initial_payload))
         while True:
@@ -93,6 +96,9 @@ _feat_lock = threading.Lock()
 
 _clean_thread: Optional[threading.Thread] = None
 _clean_lock = threading.Lock()
+
+_train_thread: Optional[threading.Thread] = None
+_train_lock = threading.Lock()
 
 
 # ==============================================================================
@@ -126,6 +132,7 @@ def get_system_status():
         "progress": json_manager.get_download_progress(),
         "feature_gen_progress": json_manager.get_feature_gen_progress(),
         "data_cleaning_progress": json_manager.get_data_cleaning_progress(),
+        "models_training_progress": json_manager.get_models_training_progress(),
         "models_info": json_manager.get_models_info(),
         "stocks_count": len(json_manager.get_stocks_list()),
         "current_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
@@ -294,6 +301,154 @@ def start_data_cleaning():
 def get_data_clean_progress():
     """Returns live progress of the data cleaning pipeline."""
     return jsonify(json_manager.get_data_cleaning_progress())
+
+
+# ==============================================================================
+# MACHINE LEARNING MODEL TRAINING ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/training/status", methods=["GET"])
+def get_training_status():
+    """Returns model training metadata and live progress."""
+    return jsonify({
+        "info": json_manager.get_models_info(),
+        "progress": json_manager.get_models_training_progress()
+    })
+
+
+@app.route("/api/training/progress", methods=["GET"])
+def get_training_progress():
+    """Returns live progress of the model training pipeline."""
+    return jsonify(json_manager.get_models_training_progress())
+
+
+@app.route("/api/training/start_strategy", methods=["POST"])
+def start_training_strategy():
+    """Triggers the Setup Strategy model training pipeline in a background thread."""
+    global _train_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _train_lock:
+        if _train_thread and _train_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "A model training task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                train_strategy_model(force=force)
+            except Exception as e:
+                logger.error(f"Strategy model training failed: {e}", exc_info=True)
+                json_manager.update_models_training_progress(
+                    status="ERROR",
+                    active_section="STRATEGY",
+                    heading="Training Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="STRATEGY_MODEL_TRAINING",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _train_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-TrainStrategyWorker")
+        _train_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "STRATEGY",
+            "message": "Strategy model training started."
+        })
+
+
+@app.route("/api/training/start_global", methods=["POST"])
+def start_training_global():
+    """Triggers the Global Regime models training pipeline in a background thread."""
+    global _train_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _train_lock:
+        if _train_thread and _train_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "A model training task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                train_global_models(force=force)
+            except Exception as e:
+                logger.error(f"Global models training failed: {e}", exc_info=True)
+                json_manager.update_models_training_progress(
+                    status="ERROR",
+                    active_section="GLOBAL",
+                    heading="Training Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="GLOBAL_MODELS_TRAINING",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _train_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-TrainGlobalWorker")
+        _train_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "GLOBAL",
+            "message": "Global models training started."
+        })
+
+
+@app.route("/api/training/start_all", methods=["POST"])
+def start_training_all():
+    """Triggers training of all models sequentially in a background thread."""
+    global _train_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _train_lock:
+        if _train_thread and _train_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "A model training task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                train_all_models(force=force)
+            except Exception as e:
+                logger.error(f"All models training failed: {e}", exc_info=True)
+                json_manager.update_models_training_progress(
+                    status="ERROR",
+                    active_section="ALL",
+                    heading="Training Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="ALL_MODELS_TRAINING",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _train_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-TrainAllWorker")
+        _train_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "ALL",
+            "message": "All models training started."
+        })
 
 
 @app.route("/api/tasks/logs", methods=["GET"])

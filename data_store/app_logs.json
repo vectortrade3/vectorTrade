@@ -1,6 +1,150 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T20:39:37.528499+05:30",
+      "readable_time": "2026-11-01 20:39:37 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:39:37.467334+05:30",
+      "readable_time": "2026-11-01 20:39:37 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:39:14.615138+05:30",
+      "readable_time": "2026-11-01 20:39:14 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:38:59.585593+05:30",
+      "readable_time": "2026-11-01 20:38:59 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:38:29.702823+05:30",
+      "readable_time": "2026-11-01 20:38:29 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.335137+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.285085+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.239789+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.189235+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.077948+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:52.058886+05:30",
+      "readable_time": "2026-11-01 20:36:52 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:51.998823+05:30",
+      "readable_time": "2026-11-01 20:36:51 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:40.987968+05:30",
+      "readable_time": "2026-11-01 20:36:40 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:40.936569+05:30",
+      "readable_time": "2026-11-01 20:36:40 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:40.888704+05:30",
+      "readable_time": "2026-11-01 20:36:40 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:36:40.835905+05:30",
+      "readable_time": "2026-11-01 20:36:40 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:29:08.023415+05:30",
+      "readable_time": "2026-11-01 20:29:08 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:28:40.239715+05:30",
+      "readable_time": "2026-11-01 20:28:40 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T20:22:12.244247+05:30",
       "readable_time": "2026-11-01 20:22:12 India Standard Time",
       "event": "DATA_CLEANING",
@@ -417,5 +561,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T20:22:12.244247+05:30"
+  "last_event_time": "2026-11-01T20:39:37.528499+05:30"
 }

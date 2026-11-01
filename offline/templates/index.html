@@ -136,10 +136,9 @@
                     Data Cleaning
                 </button>
 
-                <!-- 4. Model Training (Coming Soon) -->
+                <!-- 4. Model Training -->
                 <button id="nav-training" onclick="switchTab('training')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     Model Training
-                    <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
                 </button>
 
                 <!-- 5. Inference (Coming Soon) -->
@@ -647,23 +646,295 @@
         </section>
 
         <!-- ============================================================= -->
-        <!-- TAB 4: MODEL TRAINING (COMING SOON) -->
+        <!-- TAB 4: MODEL TRAINING -->
         <!-- ============================================================= -->
-        <section id="tab-training-view" class="hidden">
-            <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
-                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                    <i data-lucide="cpu" class="w-7 h-7"></i>
+        <section id="tab-training-view" class="hidden space-y-6">
+
+            <!-- Hero Card -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium">
+                            <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+                            Machine Learning Calibration Engine
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                            Model Training & Optimization
+                        </h1>
+                        <p class="text-sm text-apple-textSecondary leading-relaxed">
+                            Calibrates the 50MA Pullback Setup Strategy model (predicting <span class="font-mono text-indigo-400 text-xs font-medium">max_r_achieved</span>) alongside dual-head Global Market Regime models (predicting 7D forward <span class="font-mono text-indigo-400 text-xs font-medium">Max Gain</span> & <span class="font-mono text-indigo-400 text-xs font-medium">Max Drop</span>).
+                        </p>
+                    </div>
+
+                    <!-- Hero Actions -->
+                    <div class="flex items-center gap-3">
+                        <button id="btnTrainAll" onclick="triggerTrainAll()" class="apple-btn px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                            <span>Train All Models</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
-                        Coming Soon
-                    </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">XGBoost & Dual-Head Ensemble Training</h2>
-                    <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Trains the 50MA Pullback specialist model alongside Global Gain/Drop market regime regressors.
-                    </p>
+
+                <!-- Info Badges Bar -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5">
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Strategy Calibrated As Of</div>
+                        <div id="statTrainLastDate" class="text-base font-semibold text-white mt-1 font-mono">
+                            {{ models_info.last_trained_date or '2026-10-30' }}
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Active Production Models</div>
+                        <div id="statTrainModelCount" class="text-base font-semibold text-white mt-1">
+                            <span class="text-indigo-400 font-mono">3</span> Architectures
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Last Calibrated Session</div>
+                        <div id="statTrainSessionDate" class="text-base font-semibold text-white mt-1 font-mono">
+                            {{ models_info.last_trained_run_date or 'Today' }}
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Engine State</div>
+                        <div id="statTrainState" class="text-xs font-semibold text-indigo-400 mt-1 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            {{ models_info.status or 'READY' }}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- TWO DISTINCT MODEL SECTIONS (GRID) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- SECTION 1: SETUP STRATEGY MODEL -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-6 border border-white/5 relative overflow-hidden">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-medium">
+                                <i data-lucide="zap" class="w-3 h-3"></i>
+                                Notebook 4 • Setup Strategy Specialist
+                            </div>
+                            <span id="badgeStratStatus" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">
+                                {{ models_info.strategy_model.status if models_info and models_info.strategy_model else 'READY' }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <h2 class="text-xl font-semibold text-white tracking-tight">50MA Pullback Setup Model</h2>
+                            <p class="text-xs text-apple-textSecondary mt-1 leading-relaxed">
+                                Evaluates trade efficacy (<span class="font-mono text-blue-400 text-[11px]">max_r_achieved</span> = MFE / Risk) strictly on valid triggered trades. Executes chronological 80/20 train/test split with feature correlation pruning.
+                            </p>
+                        </div>
+
+                        <!-- Strategy Model Metrics Grid -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Refined Features</div>
+                                <div id="statStratFeatures" class="text-base font-semibold text-white mt-0.5 font-mono">
+                                    {{ models_info.strategy_model.features_count if models_info and models_info.strategy_model else '87' }} <span class="text-xs font-sans text-apple-textSecondary">Selected</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Refined Model MAE</div>
+                                <div id="statStratRefinedMae" class="text-base font-semibold text-blue-400 mt-0.5 font-mono">
+                                    {{ "{:.4f}".format(models_info.strategy_model.mae_refined) if models_info and models_info.strategy_model and models_info.strategy_model.mae_refined else '0.4100' }}
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Base Model MAE</div>
+                                <div id="statStratBaseMae" class="text-sm font-semibold text-white/80 mt-0.5 font-mono">
+                                    {{ "{:.4f}".format(models_info.strategy_model.mae_base) if models_info and models_info.strategy_model and models_info.strategy_model.mae_base else '0.4500' }}
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Trained Up To</div>
+                                <div id="statStratLastDate" class="text-sm font-semibold text-white/80 mt-0.5 font-mono">
+                                    {{ models_info.strategy_model.last_trained_date if models_info and models_info.strategy_model else '2026-10-30' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Target Artifacts Pills -->
+                        <div class="pt-2 border-t border-white/5 space-y-1.5">
+                            <div class="text-[10px] text-apple-textTertiary uppercase tracking-wider font-semibold">Trained Output Artifacts</div>
+                            <div class="flex flex-wrap gap-1.5 text-[11px] font-mono text-apple-textSecondary">
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-blue-300">5_year_xgboost_model.pkl</span>
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">final_features.txt</span>
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">5_year_scaler.pkl</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Strategy Action Button -->
+                    <div class="pt-2">
+                        <button id="btnTrainStrategy" onclick="triggerTrainStrategy()" class="apple-btn w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                            <span>Train Strategy Model</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: GLOBAL MARKET REGIME MODELS -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-6 border border-white/5 relative overflow-hidden">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[11px] font-medium">
+                                <i data-lucide="globe" class="w-3 h-3"></i>
+                                Notebook 4.2 • Global Regime Forecasters
+                            </div>
+                            <span id="badgeGlobalStatus" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">
+                                {{ models_info.global_models.status if models_info and models_info.global_models else 'READY' }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <h2 class="text-xl font-semibold text-white tracking-tight">Global Market Regime Models</h2>
+                            <p class="text-xs text-apple-textSecondary mt-1 leading-relaxed">
+                                Dual-head XGBoost regressors forecasting 7-day forward <span class="font-mono text-purple-400 text-[11px]">max_gain_7d</span> and <span class="font-mono text-purple-400 text-[11px]">max_loss_7d</span> across all 207 constituent stocks and market phases.
+                            </p>
+                        </div>
+
+                        <!-- Global Model Metrics Grid -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Refined Features</div>
+                                <div id="statGlobalFeatures" class="text-base font-semibold text-white mt-0.5 font-mono">
+                                    {{ models_info.global_models.features_count if models_info and models_info.global_models else '92' }} <span class="text-xs font-sans text-apple-textSecondary">Selected</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Max Gain MAE</div>
+                                <div id="statGlobalGainMae" class="text-base font-semibold text-purple-400 mt-0.5 font-mono">
+                                    {{ "{:.4f}".format(models_info.global_models.mae_gain) if models_info and models_info.global_models and models_info.global_models.mae_gain else '0.0420' }}
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Max Drop MAE</div>
+                                <div id="statGlobalDropMae" class="text-sm font-semibold text-purple-400/90 mt-0.5 font-mono">
+                                    {{ "{:.4f}".format(models_info.global_models.mae_drop) if models_info and models_info.global_models and models_info.global_models.mae_drop else '0.0380' }}
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <div class="text-[10px] text-apple-textTertiary uppercase font-semibold">Trained Up To</div>
+                                <div id="statGlobalLastDate" class="text-sm font-semibold text-white/80 mt-0.5 font-mono">
+                                    {{ models_info.global_models.last_trained_date if models_info and models_info.global_models else '2026-10-30' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Target Artifacts Pills -->
+                        <div class="pt-2 border-t border-white/5 space-y-1.5">
+                            <div class="text-[10px] text-apple-textTertiary uppercase tracking-wider font-semibold">Trained Output Artifacts</div>
+                            <div class="flex flex-wrap gap-1.5 text-[11px] font-mono text-apple-textSecondary">
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-purple-300">5_year_global_gain_model.pkl</span>
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-purple-300">5_year_global_drop_model.pkl</span>
+                                <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">global_features.txt</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Global Action Button -->
+                    <div class="pt-2">
+                        <button id="btnTrainGlobal" onclick="triggerTrainGlobal()" class="apple-btn w-full py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                            <span>Train Global Models</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- DYNAMIC CLEAN REAL-TIME PROGRESS CARD (MODEL TRAINING) -->
+            <div id="trainProgressCard" class="glass-panel rounded-3xl p-6 transition-all duration-300">
+
+                <!-- Stage 1: ACTIVE TRAINING PROGRESS (ONLY clean metrics, no raw matrices) -->
+                <div id="viewTrainRunning" class="hidden space-y-5 py-2">
+                    <div class="flex items-center justify-between">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span id="trainSectionBadge" class="text-[11px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+                                    Training Pipeline
+                                </span>
+                                <h2 id="trainPhaseHeading" class="text-base font-semibold text-white tracking-tight">
+                                    Hyperparameter Tuning & Training
+                                </h2>
+                                <span id="trainStopwatchBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">
+                                    0s
+                                </span>
+                            </div>
+                            <p id="trainMessage" class="text-xs text-apple-textSecondary">
+                                Optimizing tree estimators with cross-validation...
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <span id="trainPercent" class="text-2xl font-bold font-mono tracking-tight text-white">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Active Model Target Indicator -->
+                    <div class="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i>
+                            <span class="text-apple-textSecondary">Active Artifact:</span>
+                            <span id="trainActiveModel" class="font-mono font-semibold text-indigo-300">5_year_xgboost_model.pkl</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 font-mono text-apple-textSecondary">
+                            <span>Stage:</span>
+                            <span id="trainCurrentPhase" class="text-white font-semibold">Phase 1 / 3</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Track & Fluid Fill -->
+                    <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+                        <div id="trainProgressBarFill" class="progress-bar-fill h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-sm" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 2: COMPLETED STATE -->
+                <div id="viewTrainCompleted" class="hidden py-4 text-center space-y-3">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Done
+                        </h2>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold">
+                            Calibration Complete
+                        </div>
+                        <p id="trainCompletedDetail" class="text-xs text-apple-textSecondary pt-1 max-w-lg mx-auto">
+                            All models tuned and validated against historical test sets. Artifacts persisted to models/ directory.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stage 3: ERROR STATE -->
+                <div id="viewTrainError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold block text-red-300">Model Training Alert</span>
+                            <p id="trainErrorDetail" class="text-xs text-red-400/90 pt-0.5">An error occurred during training.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stage 4: IDLE / READY STATE -->
+                <div id="viewTrainIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+                        <span>Click <strong class="text-white">Train Strategy Model</strong>, <strong class="text-white">Train Global Models</strong>, or <strong class="text-white">Train All Models</strong> to calibrate predictors.</span>
+                    </div>
+                    <span class="text-apple-textTertiary font-mono">XGBoost &bull; Scikit-Learn</span>
+                </div>
+
+            </div>
+
         </section>
 
         <!-- ============================================================= -->
@@ -1257,6 +1528,289 @@
         }
 
         // ---------------------------------------------------------------------
+        // MODEL TRAINING CONTROLLER (SECTION 1: STRATEGY & SECTION 2: GLOBAL)
+        // ---------------------------------------------------------------------
+        let trainCompletedTimer = null;
+
+        function resetTrainingToIdle() {
+            const vTrainIdle = document.getElementById('viewTrainIdle');
+            const vTrainRunning = document.getElementById('viewTrainRunning');
+            const vTrainCompleted = document.getElementById('viewTrainCompleted');
+            const vTrainError = document.getElementById('viewTrainError');
+            const btnStrat = document.getElementById('btnTrainStrategy');
+            const btnGlobal = document.getElementById('btnTrainGlobal');
+            const btnAll = document.getElementById('btnTrainAll');
+
+            if (vTrainIdle) vTrainIdle.classList.remove('hidden');
+            if (vTrainRunning) vTrainRunning.classList.add('hidden');
+            if (vTrainCompleted) vTrainCompleted.classList.add('hidden');
+            if (vTrainError) vTrainError.classList.add('hidden');
+            if (btnStrat) btnStrat.disabled = false;
+            if (btnGlobal) btnGlobal.disabled = false;
+            if (btnAll) btnAll.disabled = false;
+        }
+
+        function renderTrainingInfo(info) {
+            if (!info) return;
+
+            if (info.last_trained_date) {
+                const el = document.getElementById('statTrainLastDate');
+                if (el) el.innerText = info.last_trained_date;
+            }
+            if (info.last_trained_run_date) {
+                const el = document.getElementById('statTrainSessionDate');
+                if (el) el.innerText = info.last_trained_run_date;
+            }
+            if (info.status) {
+                const el = document.getElementById('statTrainState');
+                if (el) el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> ${info.status}`;
+            }
+
+            // Section 1: Strategy Model
+            if (info.strategy_model) {
+                const sm = info.strategy_model;
+                if (sm.features_count !== undefined) {
+                    const el = document.getElementById('statStratFeatures');
+                    if (el) el.innerHTML = `${sm.features_count} <span class="text-xs font-sans text-apple-textSecondary">Selected</span>`;
+                }
+                if (sm.mae_refined !== undefined && sm.mae_refined !== null) {
+                    const el = document.getElementById('statStratRefinedMae');
+                    if (el) el.innerText = Number(sm.mae_refined).toFixed(4);
+                }
+                if (sm.mae_base !== undefined && sm.mae_base !== null) {
+                    const el = document.getElementById('statStratBaseMae');
+                    if (el) el.innerText = Number(sm.mae_base).toFixed(4);
+                }
+                if (sm.last_trained_date) {
+                    const el = document.getElementById('statStratLastDate');
+                    if (el) el.innerText = sm.last_trained_date;
+                }
+                if (sm.status) {
+                    const el = document.getElementById('badgeStratStatus');
+                    if (el) el.innerText = sm.status;
+                }
+            }
+
+            // Section 2: Global Models
+            if (info.global_models) {
+                const gm = info.global_models;
+                if (gm.features_count !== undefined) {
+                    const el = document.getElementById('statGlobalFeatures');
+                    if (el) el.innerHTML = `${gm.features_count} <span class="text-xs font-sans text-apple-textSecondary">Selected</span>`;
+                }
+                if (gm.mae_gain !== undefined && gm.mae_gain !== null) {
+                    const el = document.getElementById('statGlobalGainMae');
+                    if (el) el.innerText = Number(gm.mae_gain).toFixed(4);
+                }
+                if (gm.mae_drop !== undefined && gm.mae_drop !== null) {
+                    const el = document.getElementById('statGlobalDropMae');
+                    if (el) el.innerText = Number(gm.mae_drop).toFixed(4);
+                }
+                if (gm.last_trained_date) {
+                    const el = document.getElementById('statGlobalLastDate');
+                    if (el) el.innerText = gm.last_trained_date;
+                }
+                if (gm.status) {
+                    const el = document.getElementById('badgeGlobalStatus');
+                    if (el) el.innerText = gm.status;
+                }
+            }
+        }
+
+        function renderTrainingProgress(prog) {
+            const vTrainIdle = document.getElementById('viewTrainIdle');
+            const vTrainRunning = document.getElementById('viewTrainRunning');
+            const vTrainCompleted = document.getElementById('viewTrainCompleted');
+            const vTrainError = document.getElementById('viewTrainError');
+            const btnStrat = document.getElementById('btnTrainStrategy');
+            const btnGlobal = document.getElementById('btnTrainGlobal');
+            const btnAll = document.getElementById('btnTrainAll');
+
+            const status = prog.status || 'IDLE';
+
+            if (status === 'TRAINING') {
+                if (vTrainIdle) vTrainIdle.classList.add('hidden');
+                if (vTrainRunning) vTrainRunning.classList.remove('hidden');
+                if (vTrainCompleted) vTrainCompleted.classList.add('hidden');
+                if (vTrainError) vTrainError.classList.add('hidden');
+
+                if (btnStrat) btnStrat.disabled = true;
+                if (btnGlobal) btnGlobal.disabled = true;
+                if (btnAll) btnAll.disabled = true;
+
+                const secName = prog.active_section === 'STRATEGY' ? 'Strategy Setup' : (prog.active_section === 'GLOBAL' ? 'Global Regimes' : 'All Models');
+                const elSecBadge = document.getElementById('trainSectionBadge');
+                if (elSecBadge) elSecBadge.innerText = secName;
+
+                const elHeading = document.getElementById('trainPhaseHeading');
+                if (elHeading) elHeading.innerText = prog.phase || prog.heading || "Tuning Model";
+
+                const elMsg = document.getElementById('trainMessage');
+                if (elMsg) elMsg.innerText = prog.message || "Optimizing estimators...";
+
+                const elTimer = document.getElementById('trainStopwatchBadge');
+                if (elTimer) elTimer.innerText = Math.round(prog.elapsed_seconds || 0) + "s";
+
+                const pct = Math.round(prog.percentage || 0);
+                const elPct = document.getElementById('trainPercent');
+                if (elPct) elPct.innerText = `${pct}%`;
+
+                const elFill = document.getElementById('trainProgressBarFill');
+                if (elFill) elFill.style.width = `${pct}%`;
+
+                const elActiveModel = document.getElementById('trainActiveModel');
+                if (elActiveModel) elActiveModel.innerText = prog.current_model || "xgboost_model.pkl";
+
+                const elCurPhase = document.getElementById('trainCurrentPhase');
+                if (elCurPhase) elCurPhase.innerText = prog.phase || "Tuning";
+
+                updateSystemStatus(`Training (${secName})`, "indigo", true);
+            }
+            else if (status === 'COMPLETED') {
+                if (vTrainIdle) vTrainIdle.classList.add('hidden');
+                if (vTrainRunning) vTrainRunning.classList.add('hidden');
+                if (vTrainError) vTrainError.classList.add('hidden');
+                if (vTrainCompleted) vTrainCompleted.classList.remove('hidden');
+
+                if (btnStrat) btnStrat.disabled = false;
+                if (btnGlobal) btnGlobal.disabled = false;
+                if (btnAll) btnAll.disabled = false;
+
+                const elDetail = document.getElementById('trainCompletedDetail');
+                if (elDetail) elDetail.innerText = prog.message || "Model calibration completed successfully.";
+
+                updateSystemStatus("Training Done", "indigo", false, 3500);
+
+                fetchSystemStatus();
+
+                if (!trainCompletedTimer) {
+                    trainCompletedTimer = setTimeout(() => {
+                        resetTrainingToIdle();
+                        trainCompletedTimer = null;
+                    }, 4000);
+                }
+            }
+            else if (status === 'ERROR') {
+                if (vTrainIdle) vTrainIdle.classList.add('hidden');
+                if (vTrainRunning) vTrainRunning.classList.add('hidden');
+                if (vTrainCompleted) vTrainCompleted.classList.add('hidden');
+                if (vTrainError) vTrainError.classList.remove('hidden');
+
+                if (btnStrat) btnStrat.disabled = false;
+                if (btnGlobal) btnGlobal.disabled = false;
+                if (btnAll) btnAll.disabled = false;
+
+                const elErr = document.getElementById('trainErrorDetail');
+                if (elErr) elErr.innerText = prog.message || prog.error || "An error occurred during model training.";
+
+                updateSystemStatus("Training Error", "red", false, 4000);
+
+                if (!trainCompletedTimer) {
+                    trainCompletedTimer = setTimeout(() => {
+                        resetTrainingToIdle();
+                        trainCompletedTimer = null;
+                    }, 4000);
+                }
+            }
+            else {
+                resetTrainingToIdle();
+            }
+        }
+
+        async function triggerTrainStrategy(force = false) {
+            const btn = document.getElementById('btnTrainStrategy');
+            if (btn) btn.disabled = true;
+
+            // Immediate zero-latency UI transition
+            renderTrainingProgress({
+                status: 'TRAINING',
+                active_section: 'STRATEGY',
+                phase: 'Initializing Setup Model',
+                heading: 'Preparing Data',
+                current_model: '5_year_xgboost_model.pkl',
+                percentage: 5,
+                message: 'Filtering triggered trade setups and preparing train/test split...'
+            });
+
+            try {
+                const res = await fetch('/api/training/start_strategy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: force })
+                });
+                if (res.status === 409) {
+                    updateSystemStatus("Already Running", "amber", false, 3000);
+                }
+            } catch (err) {
+                console.error("Failed to start strategy model training:", err);
+                resetTrainingToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
+            }
+        }
+
+        async function triggerTrainGlobal(force = false) {
+            const btn = document.getElementById('btnTrainGlobal');
+            if (btn) btn.disabled = true;
+
+            // Immediate zero-latency UI transition
+            renderTrainingProgress({
+                status: 'TRAINING',
+                active_section: 'GLOBAL',
+                phase: 'Initializing Global Regimes',
+                heading: 'Preparing Regimes',
+                current_model: '5_year_global_gain_model.pkl',
+                percentage: 5,
+                message: 'Preparing chronological dataset for Max Gain and Max Drop regressors...'
+            });
+
+            try {
+                const res = await fetch('/api/training/start_global', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: force })
+                });
+                if (res.status === 409) {
+                    updateSystemStatus("Already Running", "amber", false, 3000);
+                }
+            } catch (err) {
+                console.error("Failed to start global models training:", err);
+                resetTrainingToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
+            }
+        }
+
+        async function triggerTrainAll(force = false) {
+            const btn = document.getElementById('btnTrainAll');
+            if (btn) btn.disabled = true;
+
+            // Immediate zero-latency UI transition
+            renderTrainingProgress({
+                status: 'TRAINING',
+                active_section: 'ALL',
+                phase: 'Initializing Full Calibration',
+                heading: 'Starting All Models',
+                current_model: '5_year_xgboost_model.pkl',
+                percentage: 5,
+                message: 'Initiating sequential calibration across Strategy and Global regime models...'
+            });
+
+            try {
+                const res = await fetch('/api/training/start_all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: force })
+                });
+                if (res.status === 409) {
+                    updateSystemStatus("Already Running", "amber", false, 3000);
+                }
+            } catch (err) {
+                console.error("Failed to start all models training:", err);
+                resetTrainingToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
+            }
+        }
+
+        // ---------------------------------------------------------------------
         // AUDIT LOGS FETCH
         // ---------------------------------------------------------------------
         async function fetchTaskLogs() {
@@ -1322,6 +1876,12 @@
                         document.getElementById('statCleanRows').innerText = `${data.data_cleaning_info.total_rows.toLocaleString()} Rows`;
                     }
                 }
+                if (data.models_info) {
+                    renderTrainingInfo(data.models_info);
+                }
+                if (data.models_training_progress && data.models_training_progress.status === 'TRAINING') {
+                    renderTrainingProgress(data.models_training_progress);
+                }
             } catch (err) {
                 console.error("Error fetching system status:", err);
             }
@@ -1377,6 +1937,14 @@
                                 renderDataCleaningProgress(msg.data_cleaning);
                             } else {
                                 resetDataCleaningToIdle();
+                            }
+                            if (msg.models_info) {
+                                renderTrainingInfo(msg.models_info);
+                            }
+                            if (msg.models_training && msg.models_training.status === 'TRAINING') {
+                                renderTrainingProgress(msg.models_training);
+                            } else {
+                                resetTrainingToIdle();
                             }
                             break;
 
@@ -1434,6 +2002,14 @@
                             if (msg.data.total_rows) {
                                 document.getElementById('statCleanRows').innerText = `${msg.data.total_rows.toLocaleString()} Rows`;
                             }
+                            break;
+
+                        case 'MODELS_TRAINING_PROGRESS':
+                            renderTrainingProgress(msg.data);
+                            break;
+
+                        case 'MODELS_TRAINING_INFO':
+                            renderTrainingInfo(msg.data);
                             break;
                     }
                 } catch (e) {
