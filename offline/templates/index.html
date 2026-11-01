@@ -1723,7 +1723,7 @@
             <div class="flex items-center space-x-4">
                 <span>Native WebSocket Protocol</span>
                 <span>&bull;</span>
-                <span class="font-mono">Localhost :5000</span>
+                <span id="engineFooterHost" class="font-mono text-slate-300">vectortrade:8684</span>
             </div>
         </div>
     </footer>
@@ -3702,6 +3702,10 @@
         }
 
         // Initialize WebSocket stream & load trade ledger on page boot
+        const footerHostEl = document.getElementById('engineFooterHost');
+        if (footerHostEl && window.location.host) {
+            footerHostEl.innerText = window.location.host;
+        }
         connectWebSocket();
         loadTradeLedgerData();
     </script>

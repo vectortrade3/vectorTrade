@@ -830,15 +830,28 @@ def get_logs():
     })
 
 
-def run_app(host: str = "127.0.0.1", port: int = 5000):
+def run_app(host: str = "0.0.0.0", port: int = 8684):
     """Starts the application and logs boot event."""
+    env_port = os.environ.get("PORT")
+    if env_port:
+        try:
+            port = int(env_port)
+        except ValueError:
+            pass
+
     try:
         json_manager.log_app_event(
             event="APP_STARTED",
             status="Everything fine",
-            message=f"VectorTrade Offline Flask server listening on http://{host}:{port}"
+            message=f"VectorTrade Offline Flask server listening on http://vectortrade:{port} (or http://localhost:{port})"
         )
-        logger.info(f"VectorTrade Offline App starting on http://{host}:{port}...")
+        logger.info(f"VectorTrade Offline App starting on http://vectortrade:{port} (http://{host}:{port})...")
+        print("\n" + "=" * 65)
+        print("  VectorTrade Engine Online!")
+        print(f"  Primary Custom URL : http://vectortrade:{port}")
+        print(f"  Standard Localhost : http://localhost:{port}")
+        print(f"  Loopback IP        : http://127.0.0.1:{port}")
+        print("=" * 65 + "\n")
         app.run(host=host, port=port, debug=False, threaded=True, use_reloader=False)
     except Exception as e:
         logger.critical(f"Server startup failed: {e}")
@@ -852,4 +865,9 @@ def run_app(host: str = "127.0.0.1", port: int = 5000):
 
 
 if __name__ == "__main__":
-    run_app()
+    import argparse
+    parser = argparse.ArgumentParser(description="VectorTrade Offline Web Engine")
+    parser.add_argument("--host", default="0.0.0.0", help="Host interface (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8684, help="Port (default: 8684 [ASCII VT])")
+    args, _ = parser.parse_known_args()
+    run_app(host=args.host, port=args.port)
