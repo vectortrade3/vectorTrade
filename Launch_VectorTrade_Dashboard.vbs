@@ -3,19 +3,18 @@ Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 baseDir = "D:\Master_Folder\vectorTrade"
-exePath = "D:\Master_Folder\vectorTrade\dist\VectorTradeOffline\VectorTradeOffline.exe"
-onefilePath = "D:\Master_Folder\vectorTrade\dist\VectorTradeOffline.exe"
+appScript = "D:\Master_Folder\vectorTrade\offline\app.py"
 pythonwPath = "C:\Users\bared\AppData\Local\Programs\Python\Python311\pythonw.exe"
-trayScript = "D:\Master_Folder\vectorTrade\offline\tray_app.py"
 
 WshShell.CurrentDirectory = baseDir
 
-If fso.FileExists(exePath) Then
-    WshShell.Run Chr(34) & exePath & Chr(34) & " --open-browser", 0, False
-ElseIf fso.FileExists(onefilePath) Then
-    WshShell.Run Chr(34) & onefilePath & Chr(34) & " --open-browser", 0, False
-ElseIf fso.FileExists(pythonwPath) And fso.FileExists(trayScript) Then
-    WshShell.Run Chr(34) & pythonwPath & Chr(34) & " " & Chr(34) & trayScript & Chr(34) & " --open-browser", 0, False
+' Launch Flask Offline App silently in background (0 console, low RAM/CPU)
+If fso.FileExists(pythonwPath) And fso.FileExists(appScript) Then
+    WshShell.Run Chr(34) & pythonwPath & Chr(34) & " " & Chr(34) & appScript & Chr(34), 0, False
 Else
-    WshShell.Run "pythonw " & Chr(34) & trayScript & Chr(34) & " --open-browser", 0, False
+    WshShell.Run "pythonw " & Chr(34) & appScript & Chr(34), 0, False
 End If
+
+' Allow server to bind port and launch default web browser
+WScript.Sleep 1500
+WshShell.Run "http://127.0.0.1:5000", 1, False

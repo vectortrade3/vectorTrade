@@ -1,0 +1,296 @@
+"""
+VectorTrade - JSON Data & State Manager
+Provides centralized, thread-safe, atomic operations for managing all project JSON files:
+- Stocks download state & history (stocks_download.json)
+- System application lifecycle & error logs (app_logs.json)
+- AI Model metadata & training records (models_state.json)
+- Live real-time download progress tracking (download_progress.json)
+- Stocks universe & constituent cache (stocks_universe.json)
+"""
+
+from __future__ import annotations
+import os
+import json
+import time
+import threading
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+# Base directories resolution
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_STORE_DIR = BASE_DIR / "data_store"
+DATA_STORE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Central JSON file locations
+STOCKS_DOWNLOAD_FILE = DATA_STORE_DIR / "stocks_download.json"
+APP_LOGS_FILE = DATA_STORE_DIR / "app_logs.json"
+MODELS_STATE_FILE = DATA_STORE_DIR / "models_state.json"
+DOWNLOAD_PROGRESS_FILE = DATA_STORE_DIR / "download_progress.json"
+STOCKS_LIST_FILE = DATA_STORE_DIR / "stocks_list.txt"
+
+# Thread safety lock
+_FILE_LOCK = threading.Lock()
+
+
+# ==============================================================================
+# GENERIC ATOMIC FILE HELPERS
+# ==============================================================================
+
+def read_json_file(file_path: Path, default_val: Any = None) -> Any:
+    """Reads a JSON file safely with a fallback default."""
+    with _FILE_LOCK:
+        if not file_path.exists():
+            return default_val if default_val is not None else {}
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return default_val if default_val is not None else {}
+
+
+def write_json_file(file_path: Path, data: Any) -> bool:
+    """Writes data to a JSON file atomically using a temporary file to avoid corruption."""
+    with _FILE_LOCK:
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            temp_path = file_path.with_suffix(f".tmp_{os.getpid()}_{int(time.time()*1000)}")
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+            
+            # Atomic replacement with retries on Windows
+            for _ in range(5):
+                try:
+                    temp_path.replace(file_path)
+                    return True
+                except Exception:
+                    time.sleep(0.05)
+            if temp_path.exists():
+                os.remove(temp_path)
+            return False
+        except Exception:
+            return False
+
+
+# ==============================================================================
+# 1. STOCKS DOWNLOAD STATE MANAGER
+# ==============================================================================
+
+def initialize_stocks_download_state() -> Dict[str, Any]:
+    """Ensures stocks_download.json is initialized, seeded with 2026-10-06 from raw CSVs."""
+    default_state = {
+        "last_downloaded_date": "2026-10-06",
+        "status": "COMPLETED",
+        "total_stocks": 207,
+        "last_updated": "2026-10-06T18:40:00+05:30",
+        "message": "Baseline 5-year dataset synced up to 2026-10-06.",
+        "download_history": []
+    }
+    
+    if not STOCKS_DOWNLOAD_FILE.exists():
+        write_json_file(STOCKS_DOWNLOAD_FILE, default_state)
+        return default_state
+    
+    current = read_json_file(STOCKS_DOWNLOAD_FILE, default_state)
+    # Ensure last_downloaded_date is present
+    if not current.get("last_downloaded_date"):
+        current["last_downloaded_date"] = "2026-10-06"
+        write_json_file(STOCKS_DOWNLOAD_FILE, current)
+    return current
+
+
+def get_stocks_download_info() -> Dict[str, Any]:
+    """Retrieves current stocks download metadata."""
+    return initialize_stocks_download_state()
+
+
+def get_last_downloaded_date() -> str:
+    """Returns the last date we downloaded (e.g. '2026-10-06')."""
+    info = get_stocks_download_info()
+    return info.get("last_downloaded_date", "2026-10-06")
+
+
+def update_stocks_download_info(
+    last_date: str,
+    status: str = "COMPLETED",
+    stocks_updated: int = 207,
+    message: str = "",
+    duration_seconds: float = 0.0
+) -> Dict[str, Any]:
+    """Updates the stocks download state and appends to the history log."""
+    current = get_stocks_download_info()
+    now_str = datetime.now().astimezone().isoformat()
+    
+    history_entry = {
+        "timestamp": now_str,
+        "date_synced": last_date,
+        "status": status,
+        "stocks_updated": stocks_updated,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message
+    }
+    
+    current["last_downloaded_date"] = last_date
+    current["status"] = status
+    current["total_stocks"] = stocks_updated
+    current["last_updated"] = now_str
+    current["message"] = message
+    
+    history = current.get("download_history", [])
+    history.insert(0, history_entry)
+    current["download_history"] = history[:100]  # keep last 100 runs
+    
+    write_json_file(STOCKS_DOWNLOAD_FILE, current)
+    return current
+
+
+# ==============================================================================
+# 2. APPLICATION LIFECYCLE & SYSTEM LOGS
+# ==============================================================================
+
+def log_app_event(
+    event: str,
+    status: str = "Everything fine",
+    message: str = "",
+    error: Optional[str] = None,
+    extra: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Appends an application lifecycle event to app_logs.json.
+    e.g. event='APP_STARTED', status='Everything fine', time='...'
+    """
+    now = datetime.now().astimezone()
+    log_entry = {
+        "timestamp": now.isoformat(),
+        "readable_time": now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "event": event,
+        "status": status,
+        "message": message,
+        "error": error
+    }
+    if extra:
+        log_entry["extra"] = extra
+        
+    logs_data = read_json_file(APP_LOGS_FILE, {"logs": []})
+    logs_list = logs_data.get("logs", [])
+    logs_list.insert(0, log_entry)
+    logs_data["logs"] = logs_list[:500]  # keep last 500 logs
+    logs_data["last_event_time"] = log_entry["timestamp"]
+    
+    write_json_file(APP_LOGS_FILE, logs_data)
+    return log_entry
+
+
+def get_app_logs(limit: int = 50) -> List[Dict[str, Any]]:
+    """Returns the most recent app log events."""
+    logs_data = read_json_file(APP_LOGS_FILE, {"logs": []})
+    return logs_data.get("logs", [])[:limit]
+
+
+# ==============================================================================
+# 3. LIVE DOWNLOAD PROGRESS TRACKER (FOR REAL-TIME UI POLLING)
+# ==============================================================================
+
+def get_download_progress() -> Dict[str, Any]:
+    """Returns the current real-time state of the stock download process."""
+    default_progress = {
+        "status": "IDLE",            # IDLE, CHECKING, DOWNLOADING, APPENDING, COMPLETED, ERROR
+        "heading": "Ready",
+        "current_stock": "",
+        "current_index": 0,
+        "total_stocks": 207,
+        "percentage": 0.0,
+        "from_date": None,
+        "to_date": None,
+        "message": "Ready to download market data.",
+        "elapsed_seconds": 0.0,
+        "error": None
+    }
+    return read_json_file(DOWNLOAD_PROGRESS_FILE, default_progress)
+
+
+def update_download_progress(
+    status: str,
+    heading: str,
+    current_stock: str = "",
+    current_index: int = 0,
+    total_stocks: int = 207,
+    percentage: float = 0.0,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    message: str = "",
+    elapsed_seconds: float = 0.0,
+    error: Optional[str] = None
+) -> None:
+    """Updates the live progress JSON file for UI polling."""
+    progress_data = {
+        "status": status,
+        "heading": heading,
+        "current_stock": current_stock,
+        "current_index": current_index,
+        "total_stocks": total_stocks,
+        "percentage": round(percentage, 1),
+        "from_date": from_date,
+        "to_date": to_date,
+        "message": message,
+        "elapsed_seconds": round(elapsed_seconds, 1),
+        "error": error,
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(DOWNLOAD_PROGRESS_FILE, progress_data)
+
+
+# ==============================================================================
+# 4. MODELS STATE MANAGER
+# ==============================================================================
+
+def get_models_info() -> Dict[str, Any]:
+    """Returns AI model training metadata."""
+    default_state = {
+        "last_trained_date": "2026-10-26",
+        "status": "READY",
+        "models": [
+            "5_year_xgboost_model.pkl",
+            "5_year_global_gain_model.pkl",
+            "5_year_global_drop_model.pkl"
+        ],
+        "message": "Models trained on 5-year historical regime data."
+    }
+    return read_json_file(MODELS_STATE_FILE, default_state)
+
+
+def update_models_info(last_trained: str, status: str, models: List[str], message: str) -> None:
+    """Persists model training status."""
+    data = {
+        "last_trained_date": last_trained,
+        "status": status,
+        "models": models,
+        "message": message,
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(MODELS_STATE_FILE, data)
+
+
+# ==============================================================================
+# 5. STOCKS LIST UTILITY
+# ==============================================================================
+
+def get_stocks_list() -> List[str]:
+    """Reads the hardcoded/configured 207 stocks list from stocks_list.txt."""
+    if STOCKS_LIST_FILE.exists():
+        with open(STOCKS_LIST_FILE, "r", encoding="utf-8") as f:
+            symbols = [line.strip().upper() for line in f if line.strip()]
+            if symbols:
+                return symbols
+                
+    # Fallback to stock_names.json if txt missing
+    stock_names_file = BASE_DIR / "stock_names.json"
+    if stock_names_file.exists():
+        data = read_json_file(stock_names_file, {})
+        return sorted(list(data.keys()))
+        
+    return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"]
+
+
+# Auto-initialize state on import
+initialize_stocks_download_state()

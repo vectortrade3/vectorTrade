@@ -1,0 +1,17 @@
+{
+  "last_downloaded_date": "2026-10-30",
+  "status": "COMPLETED",
+  "total_stocks": 207,
+  "last_updated": "2026-11-01T17:35:47.846560+05:30",
+  "message": "Appended records up to 2026-10-30 across 207 constituents in 84.3s.",
+  "download_history": [
+    {
+      "timestamp": "2026-11-01T17:35:47.846560+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 84.31,
+      "message": "Appended records up to 2026-10-30 across 207 constituents in 84.3s."
+    }
+  ]
+}
