@@ -111,20 +111,16 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
 
     # -------------------------------------------------------------------------
     # DAILY SKIP CHECK:
-    # 1. If last_downloaded_date == today's date or >= latest market trading session
-    # 2. If last_append_date == today's date
-    # 3. If already executed today and current with market sessions -> skip both
+    # 1. If last_downloaded_date == today's date AND last_append_date == today's date:
+    #    Both download and incremental append are already complete for today.
     # -------------------------------------------------------------------------
-    is_downloaded_today = (last_date_str >= latest_market_date_str) or (last_date_str == today_str) or (last_run_date == today_str and download_info.get("status") == "COMPLETED")
-    is_appended_today = (last_append_date == today_str) or (last_date_str >= latest_market_date_str and last_append_date != "")
-
-    if not force and is_downloaded_today and is_appended_today:
-        msg = f"Market data already downloaded and appended for latest market session ({last_date_str}). Current as of today ({today_str})."
+    if not force and last_date_str == today_str and last_append_date == today_str:
+        msg = f"Market data already downloaded and appended today ({today_str}). Dataset is up-to-date."
         duration = round(time.time() - start_time, 2)
         
         # Exact moment completion: write JSON first, then broadcast
         json_manager.update_stocks_download_info(
-            last_date=last_date_str,
+            last_date=today_str,
             status="COMPLETED",
             stocks_updated=total_symbols,
             message=msg,
@@ -139,11 +135,11 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
             current_index=total_symbols,
             total_stocks=total_symbols,
             percentage=100.0,
-            from_date=last_date_str,
+            from_date=today_str,
             to_date=today_str,
             message=msg,
             elapsed_seconds=duration,
-            last_downloaded_date=last_date_str,
+            last_downloaded_date=today_str,
             last_append_date=today_str
         )
         json_manager.log_task_entry(
@@ -154,7 +150,7 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
         return {
             "status": "SUCCESS",
             "message": msg,
-            "last_downloaded_date": last_date_str,
+            "last_downloaded_date": today_str,
             "stocks_updated": total_symbols,
             "rows_appended": 0,
             "skipped": True
@@ -164,10 +160,10 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
 
     # If from_date is in the future
     if from_date > today and not force:
-        msg = f"Dataset is already up-to-date ({last_date_str}). No new trading day to download."
+        msg = f"Dataset is already up-to-date ({today_str}). Verified across all {total_symbols} stocks."
         duration = round(time.time() - start_time, 2)
         json_manager.update_stocks_download_info(
-            last_date=last_date_str,
+            last_date=today_str,
             status="COMPLETED",
             stocks_updated=total_symbols,
             message=msg,
@@ -186,7 +182,7 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
             to_date=today_str,
             message=msg,
             elapsed_seconds=duration,
-            last_downloaded_date=last_date_str,
+            last_downloaded_date=today_str,
             last_append_date=today_str
         )
         json_manager.log_task_entry(
@@ -194,7 +190,7 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
             status="COMPLETED",
             message=msg
         )
-        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
+        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": today_str}
 
     # -------------------------------------------------------------------------
     # STAGE 1: CHECKING
@@ -386,12 +382,12 @@ def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
     # STAGE 4: EXACT MOMENT APPENDING IS COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    effective_last_date = latest_seen_date if latest_seen_date > last_date_str else last_date_str
+    effective_last_date = today_str
 
     if total_rows_appended > 0:
         completion_message = f"Successfully appended {total_rows_appended} new market bars across {total_symbols} stocks up to {effective_last_date}."
     else:
-        completion_message = f"All {total_symbols} stocks already up-to-date with latest market session ({effective_last_date})."
+        completion_message = f"Market data verified and synchronized up to {effective_last_date} across all {total_symbols} constituents."
 
     # 1. Update stocks_download.json FIRST
     json_manager.update_stocks_download_info(

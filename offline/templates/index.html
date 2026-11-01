@@ -1079,21 +1079,30 @@
         // DOWNLOAD PIPELINE CONTROLLER
         // ---------------------------------------------------------------------
         let downloadTimer = null;
+        let downloadPollInterval = null;
 
         function resetDownloadToIdle() {
+            if (downloadPollInterval) {
+                clearInterval(downloadPollInterval);
+                downloadPollInterval = null;
+            }
             const vIdle = document.getElementById('viewIdle');
             const vChecking = document.getElementById('viewChecking');
             const vProgressing = document.getElementById('viewProgressing');
             const vCompleted = document.getElementById('viewCompleted');
             const vError = document.getElementById('viewError');
             const btn = document.getElementById('btnDownload');
+            const elPipelineState = document.getElementById('statPipelineState');
 
-            vIdle.classList.remove('hidden');
-            vChecking.classList.add('hidden');
-            vProgressing.classList.add('hidden');
-            vCompleted.classList.add('hidden');
-            vError.classList.add('hidden');
-            btn.disabled = false;
+            if (vIdle) vIdle.classList.remove('hidden');
+            if (vChecking) vChecking.classList.add('hidden');
+            if (vProgressing) vProgressing.classList.add('hidden');
+            if (vCompleted) vCompleted.classList.add('hidden');
+            if (vError) vError.classList.add('hidden');
+            if (btn) btn.disabled = false;
+            if (elPipelineState) {
+                elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+            }
         }
 
         function renderDownloadProgress(prog) {
@@ -1103,8 +1112,26 @@
             const vCompleted = document.getElementById('viewCompleted');
             const vError = document.getElementById('viewError');
             const btn = document.getElementById('btnDownload');
+            const elPipelineState = document.getElementById('statPipelineState');
 
             const status = prog.status || 'IDLE';
+
+            // Dynamically synchronize the Pipeline State badge in the hero bar
+            if (elPipelineState) {
+                if (status === 'CHECKING') {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> CHECKING';
+                } else if (status === 'DOWNLOADING') {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span> DOWNLOADING';
+                } else if (status === 'APPENDING') {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span> APPENDING';
+                } else if (status === 'COMPLETED') {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+                } else if (status === 'ERROR') {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> ERROR';
+                } else {
+                    elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> READY';
+                }
+            }
 
             if (status === 'CHECKING') {
                 vIdle.classList.add('hidden');
@@ -1114,7 +1141,7 @@
                 vError.classList.add('hidden');
                 btn.disabled = true;
 
-                document.getElementById('checkingHeading').innerText = prog.heading || "Checking";
+                document.getElementById('checkingHeading').innerText = prog.heading || "Checking Data";
                 document.getElementById('checkingMessage').innerText = prog.message || "Verifying trading dates...";
                 updateSystemStatus("Checking...", "amber", true);
             }
@@ -1142,6 +1169,11 @@
                 updateSystemStatus(`${status === 'DOWNLOADING' ? 'Downloading' : 'Appending'} (${curIdx}/${totStocks})`, "blue", true);
             }
             else if (status === 'COMPLETED') {
+                if (downloadPollInterval) {
+                    clearInterval(downloadPollInterval);
+                    downloadPollInterval = null;
+                }
+
                 vIdle.classList.add('hidden');
                 vChecking.classList.add('hidden');
                 vProgressing.classList.add('hidden');
@@ -1166,14 +1198,21 @@
                 // Fetch latest status to ensure complete system state synchronization
                 fetchSystemStatus();
 
-                if (!downloadTimer) {
-                    downloadTimer = setTimeout(() => {
-                        resetDownloadToIdle();
-                        downloadTimer = null;
-                    }, 3500);
+                if (downloadTimer) {
+                    clearTimeout(downloadTimer);
+                    downloadTimer = null;
                 }
+                downloadTimer = setTimeout(() => {
+                    resetDownloadToIdle();
+                    downloadTimer = null;
+                }, 3500);
             }
             else if (status === 'ERROR') {
+                if (downloadPollInterval) {
+                    clearInterval(downloadPollInterval);
+                    downloadPollInterval = null;
+                }
+
                 vIdle.classList.add('hidden');
                 vChecking.classList.add('hidden');
                 vProgressing.classList.add('hidden');
@@ -1184,12 +1223,14 @@
                 document.getElementById('errorDetail').innerText = prog.message || prog.error || "An error occurred during download.";
                 updateSystemStatus("Download Error", "red", false, 3500);
 
-                if (!downloadTimer) {
-                    downloadTimer = setTimeout(() => {
-                        resetDownloadToIdle();
-                        downloadTimer = null;
-                    }, 3500);
+                if (downloadTimer) {
+                    clearTimeout(downloadTimer);
+                    downloadTimer = null;
                 }
+                downloadTimer = setTimeout(() => {
+                    resetDownloadToIdle();
+                    downloadTimer = null;
+                }, 3500);
             }
             else {
                 resetDownloadToIdle();
@@ -1198,7 +1239,7 @@
 
         async function triggerDownload() {
             const btn = document.getElementById('btnDownload');
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
 
             // Immediately show Checking UI so user receives instant zero-latency feedback on click
             renderDownloadProgress({
@@ -1207,12 +1248,40 @@
                 message: 'Verifying market dates and connecting to feed...'
             });
 
+            // Start short-lived polling fallback to capture fast completion or reconnecting WebSocket
+            if (downloadPollInterval) clearInterval(downloadPollInterval);
+            downloadPollInterval = setInterval(async () => {
+                try {
+                    const pRes = await fetch('/api/download/progress');
+                    const pData = await pRes.json();
+                    if (!pData) return;
+                    renderDownloadProgress(pData);
+                    if (pData.status === 'COMPLETED' || pData.status === 'ERROR' || pData.status === 'IDLE') {
+                        clearInterval(downloadPollInterval);
+                        downloadPollInterval = null;
+                    }
+                } catch (e) {
+                    clearInterval(downloadPollInterval);
+                    downloadPollInterval = null;
+                }
+            }, 800);
+
             try {
                 const res = await fetch('/api/download/start', { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 409) {
                     updateSystemStatus("Already Running", "amber", false, 3000);
                 }
+                // Check progress right after start response in case backend finished immediately
+                setTimeout(async () => {
+                    try {
+                        const pRes = await fetch('/api/download/progress');
+                        const pData = await pRes.json();
+                        if (pData && (pData.status === 'COMPLETED' || pData.status === 'DOWNLOADING' || pData.status === 'APPENDING')) {
+                            renderDownloadProgress(pData);
+                        }
+                    } catch (e) {}
+                }, 300);
             } catch (err) {
                 console.error("Failed to start download:", err);
                 resetDownloadToIdle();
@@ -1248,8 +1317,23 @@
             const vFeatCompleted = document.getElementById('viewFeatCompleted');
             const vFeatError = document.getElementById('viewFeatError');
             const btn = document.getElementById('btnFeatureGen');
+            const elFeatState = document.getElementById('statFeatState');
 
             const status = prog.status || 'IDLE';
+
+            if (elFeatState) {
+                if (status === 'GENERATING') {
+                    elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span> GENERATING';
+                } else if (status === 'SAVING') {
+                    elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span> SAVING';
+                } else if (status === 'COMPLETED') {
+                    elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+                } else if (status === 'ERROR') {
+                    elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> ERROR';
+                } else {
+                    elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> READY';
+                }
+            }
 
             if (status === 'GENERATING') {
                 vFeatIdle.classList.add('hidden');
@@ -1393,8 +1477,25 @@
             const vCleanCompleted = document.getElementById('viewCleanCompleted');
             const vCleanError = document.getElementById('viewCleanError');
             const btn = document.getElementById('btnDataClean');
+            const elCleanState = document.getElementById('statCleanState');
 
             const status = prog.status || 'IDLE';
+
+            if (elCleanState) {
+                if (status === 'COMBINING') {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> COMBINING';
+                } else if (status === 'CLEANING') {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span> CLEANING';
+                } else if (status === 'SAVING') {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span> SAVING';
+                } else if (status === 'COMPLETED') {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+                } else if (status === 'ERROR') {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> ERROR';
+                } else {
+                    elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> READY';
+                }
+            }
 
             if (status === 'COMBINING') {
                 if (vCleanIdle) vCleanIdle.classList.add('hidden');

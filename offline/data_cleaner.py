@@ -279,7 +279,7 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
     # If clean data already prepared today for the current market session
     # -------------------------------------------------------------------------
     if not force and clean_info.get("status") == "COMPLETED":
-        if (last_clean_run_date == today_str and last_clean_date >= last_downloaded_date) or (last_clean_date and last_clean_date >= last_downloaded_date):
+        if last_clean_run_date == today_str or (last_clean_date and last_clean_date >= last_downloaded_date):
             msg = f"Data already combined and cleaned up to {last_clean_date} for all {total_files} constituents today ({today_str}). Consolidation skipped."
             duration = round(time.time() - start_time, 2)
             

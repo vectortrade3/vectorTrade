@@ -1,10 +1,46 @@
 {
-  "last_downloaded_date": "2026-10-30",
+  "last_downloaded_date": "2026-11-01",
   "status": "COMPLETED",
   "total_stocks": 207,
-  "last_updated": "2026-11-01T20:09:36.107430+05:30",
-  "message": "Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01).",
+  "last_updated": "2026-11-01T21:50:00.092067+05:30",
+  "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01).",
   "download_history": [
+    {
+      "timestamp": "2026-11-01T21:50:00.092067+05:30",
+      "date_synced": "2026-11-01",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.01,
+      "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01)."
+    },
+    {
+      "timestamp": "2026-11-01T21:44:08.893959+05:30",
+      "date_synced": "2026-11-01",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.0,
+      "message": "Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date."
+    },
+    {
+      "timestamp": "2026-11-01T21:43:49.295286+05:30",
+      "date_synced": "2026-11-01",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 98.52,
+      "message": "Market data verified and synchronized up to 2026-11-01 across all 207 constituents."
+    },
+    {
+      "timestamp": "2026-11-01T21:28:51.993062+05:30",
+      "date_synced": "2026-10-30",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.02,
+      "message": "Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01)."
+    },
     {
       "timestamp": "2026-11-01T20:09:36.107430+05:30",
       "date_synced": "2026-10-30",

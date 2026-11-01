@@ -1,6 +1,134 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T21:50:00.112537+05:30",
+      "readable_time": "2026-11-01 21:50:00 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:50:00.079006+05:30",
+      "readable_time": "2026-11-01 21:50:00 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.434657+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.389008+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.342013+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.297132+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-10-30 today (2026-11-01). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.198536+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.176805+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:49:22.123641+05:30",
+      "readable_time": "2026-11-01 21:49:22 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:44:08.910689+05:30",
+      "readable_time": "2026-11-01 21:44:08 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:43:49.335571+05:30",
+      "readable_time": "2026-11-01 21:43:49 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data verified and synchronized up to 2026-11-01 across all 207 constituents.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:43:49.299303+05:30",
+      "readable_time": "2026-11-01 21:43:49 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Market data verified and synchronized up to 2026-11-01 across all 207 constituents.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:42:10.778977+05:30",
+      "readable_time": "2026-11-01 21:42:10 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:28:52.015366+05:30",
+      "readable_time": "2026-11-01 21:28:52 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:28:51.967536+05:30",
+      "readable_time": "2026-11-01 21:28:51 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T21:28:45.280754+05:30",
+      "readable_time": "2026-11-01 21:28:45 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T20:39:37.528499+05:30",
       "readable_time": "2026-11-01 20:39:37 India Standard Time",
       "event": "GLOBAL_MODELS_TRAINING",
@@ -561,5 +689,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T20:39:37.528499+05:30"
+  "last_event_time": "2026-11-01T21:50:00.112537+05:30"
 }
