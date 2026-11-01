@@ -27,6 +27,9 @@ STOCKS_DOWNLOAD_FILE = DATA_STORE_DIR / "stocks_download.json"
 APP_LOGS_FILE = DATA_STORE_DIR / "app_logs.json"
 MODELS_STATE_FILE = DATA_STORE_DIR / "models_state.json"
 DOWNLOAD_PROGRESS_FILE = DATA_STORE_DIR / "download_progress.json"
+FEATURE_GEN_FILE = DATA_STORE_DIR / "feature_gen.json"
+FEATURE_GEN_PROGRESS_FILE = DATA_STORE_DIR / "feature_gen_progress.json"
+TASK_LOGS_FILE = DATA_STORE_DIR / "task_logs.json"
 STOCKS_LIST_FILE = DATA_STORE_DIR / "stocks_list.txt"
 
 # Thread safety lock
@@ -292,5 +295,163 @@ def get_stocks_list() -> List[str]:
     return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"]
 
 
+# ==============================================================================
+# 6. FEATURE GENERATION STATE & PROGRESS MANAGER
+# ==============================================================================
+
+def initialize_feature_gen_state() -> Dict[str, Any]:
+    """Ensures feature_gen.json is initialized with previous baseline info."""
+    default_state = {
+        "last_feature_gen_date": "2026-10-06",
+        "last_run_timestamp": "2026-10-06T18:55:00+05:30",
+        "status": "COMPLETED",
+        "total_stocks": 207,
+        "message": "Baseline 5-year feature engineering computed for 207 stocks.",
+        "history": []
+    }
+    if not FEATURE_GEN_FILE.exists():
+        write_json_file(FEATURE_GEN_FILE, default_state)
+        return default_state
+    return read_json_file(FEATURE_GEN_FILE, default_state)
+
+
+def get_feature_gen_info() -> Dict[str, Any]:
+    """Retrieves feature generation metadata including last run date."""
+    return initialize_feature_gen_state()
+
+
+def update_feature_gen_info(
+    status: str = "COMPLETED",
+    total_stocks: int = 207,
+    message: str = "",
+    duration_seconds: float = 0.0
+) -> Dict[str, Any]:
+    """Updates feature_gen.json and appends run entry to history."""
+    current = get_feature_gen_info()
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    today_str = now_dt.strftime("%Y-%m-%d")
+
+    entry = {
+        "timestamp": now_str,
+        "date": today_str,
+        "status": status,
+        "total_stocks": total_stocks,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message
+    }
+
+    current["last_feature_gen_date"] = today_str
+    current["last_run_timestamp"] = now_str
+    current["status"] = status
+    current["total_stocks"] = total_stocks
+    current["message"] = message
+
+    history = current.get("history", [])
+    history.insert(0, entry)
+    current["history"] = history[:100]
+
+    write_json_file(FEATURE_GEN_FILE, current)
+    return current
+
+
+def get_feature_gen_progress() -> Dict[str, Any]:
+    """Retrieves live real-time progress for Feature Generation."""
+    default_progress = {
+        "status": "IDLE",            # IDLE, GENERATING, SAVING, COMPLETED, ERROR
+        "heading": "Ready",
+        "current_stock": "",
+        "current_index": 0,
+        "total_stocks": 207,
+        "percentage": 0.0,
+        "message": "Ready to generate features.",
+        "elapsed_seconds": 0.0,
+        "error": None
+    }
+    return read_json_file(FEATURE_GEN_PROGRESS_FILE, default_progress)
+
+
+def update_feature_gen_progress(
+    status: str,
+    heading: str,
+    current_stock: str = "",
+    current_index: int = 0,
+    total_stocks: int = 207,
+    percentage: float = 0.0,
+    message: str = "",
+    elapsed_seconds: float = 0.0,
+    error: Optional[str] = None
+) -> None:
+    """Updates live transient feature generation progress."""
+    data = {
+        "status": status,
+        "heading": heading,
+        "current_stock": current_stock,
+        "current_index": current_index,
+        "total_stocks": total_stocks,
+        "percentage": round(percentage, 1),
+        "message": message,
+        "elapsed_seconds": round(elapsed_seconds, 1),
+        "error": error,
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(FEATURE_GEN_PROGRESS_FILE, data)
+
+
+# ==============================================================================
+# 7. UNIFIED TASK LOGS (FOR COMING SOON LOGS PAGE)
+# ==============================================================================
+
+def log_task_entry(
+    task_name: str,
+    status: str,
+    message: str = "",
+    error: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Logs task execution with:
+    task_name (e.g. STOCKS_DOWNLOAD, FEATURE_GENERATION)
+    status ('RUNNING', 'COMPLETED', 'ERROR')
+    timestamp, error if any
+    """
+    now = datetime.now().astimezone()
+    entry = {
+        "task_name": task_name,
+        "status": status,
+        "timestamp": now.isoformat(),
+        "readable_time": now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "message": message,
+        "error": error
+    }
+
+    logs_data = read_json_file(TASK_LOGS_FILE, {"task_logs": []})
+    logs_list = logs_data.get("task_logs", [])
+    logs_list.insert(0, entry)
+    logs_data["task_logs"] = logs_list[:500]
+    logs_data["last_task"] = task_name
+    logs_data["last_status"] = status
+    logs_data["last_updated"] = entry["timestamp"]
+
+    write_json_file(TASK_LOGS_FILE, logs_data)
+    
+    # Also mirror into app_logs.json for unified visibility
+    log_app_event(
+        event=task_name,
+        status="Everything fine" if status in ["RUNNING", "COMPLETED"] else "Error",
+        message=f"[{status}] {message}",
+        error=error
+    )
+
+    return entry
+
+
+def get_task_logs(limit: int = 50) -> List[Dict[str, Any]]:
+    """Returns task logs for the log page."""
+    logs_data = read_json_file(TASK_LOGS_FILE, {"task_logs": []})
+    return logs_data.get("task_logs", [])[:limit]
+
+
 # Auto-initialize state on import
 initialize_stocks_download_state()
+initialize_feature_gen_state()
+

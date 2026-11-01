@@ -77,15 +77,6 @@
             transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Indeterminate Apple Pulse Loader */
-        @keyframes applePulse {
-            0%, 100% { opacity: 0.35; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1.02); }
-        }
-        .apple-pulse {
-            animation: applePulse 1.8s infinite cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
         /* Apple Spring Button Click */
         .apple-btn {
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -95,6 +86,17 @@
             box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35);
         }
         .apple-btn:active {
+            transform: scale(0.975);
+        }
+
+        .apple-purple-btn {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .apple-purple-btn:hover {
+            transform: scale(1.015);
+            box-shadow: 0 8px 24px rgba(191, 90, 242, 0.35);
+        }
+        .apple-purple-btn:active {
             transform: scale(0.975);
         }
 
@@ -130,10 +132,9 @@
                     Download
                 </button>
 
-                <!-- 2. Feature Gen (Coming Soon) -->
+                <!-- 2. Feature Gen (Working) -->
                 <button id="nav-features" onclick="switchTab('features')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     Feature Gen
-                    <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
                 </button>
 
                 <!-- 3. Data Cleaning (Coming Soon) -->
@@ -151,6 +152,12 @@
                 <!-- 5. Inference (Coming Soon) -->
                 <button id="nav-inference" onclick="switchTab('inference')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     Inference
+                    <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
+                </button>
+
+                <!-- 6. Logs (Coming Soon) -->
+                <button id="nav-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
+                    Logs
                     <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
                 </button>
             </nav>
@@ -231,7 +238,7 @@
                 </div>
             </div>
 
-            <!-- DYNAMIC MULTI-STAGE PROGRESS CARD -->
+            <!-- DYNAMIC MULTI-STAGE PROGRESS CARD (DOWNLOAD) -->
             <div id="progressCard" class="glass-panel rounded-3xl p-6 transition-all duration-500">
                 
                 <!-- Stage 1: CHECKING (No Progress Line, Indeterminate Loading State) -->
@@ -252,7 +259,6 @@
 
                 <!-- Stage 2 & 3: DOWNLOADING & APPENDING (With Stock Count, Name, %, and Fluid Progress Line) -->
                 <div id="viewProgressing" class="hidden space-y-4">
-                    <!-- Header -->
                     <div class="flex items-center justify-between">
                         <div class="space-y-0.5">
                             <h2 id="progressHeading" class="text-base font-semibold text-white tracking-tight">
@@ -336,25 +342,161 @@
         </section>
 
         <!-- ============================================================= -->
-        <!-- PLACEHOLDER TABS (COMING SOON) -->
+        <!-- TAB 2: FEATURE GENERATION (ACTIVE & FULLY FUNCTIONAL) -->
         <!-- ============================================================= -->
-        <section id="tab-features-view" class="hidden">
-            <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
-                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                    <i data-lucide="sparkles" class="w-7 h-7"></i>
+        <section id="tab-features-view" class="hidden space-y-6">
+
+            <!-- Hero Card -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                            Alpha & Momentum Signals
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                            Quantitative Feature Engineering
+                        </h1>
+                        <p class="text-sm text-apple-textSecondary leading-relaxed">
+                            Generates multi-timeframe moving averages, Bollinger bands, RSI momentum indicators, price action candle structures, and forward simulation trade setups from <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-slate-300 font-mono">5_year_data/raw</code> into <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-slate-300 font-mono">5_year_data/generated</code>.
+                        </p>
+                    </div>
+
+                    <!-- Primary Feature Gen Action Button -->
+                    <div class="flex flex-col sm:flex-row items-center gap-3">
+                        <button id="btnFeatureGen" onclick="triggerFeatureGen()" class="apple-purple-btn w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-apple-purple text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 disabled:opacity-40 disabled:pointer-events-none">
+                            <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                            <span>Generate Features</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
-                        Coming Soon
-                    </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">Feature Generation Pipeline</h2>
-                    <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Generates technical indicators, moving average pullbacks, momentum oscillators, and regime features from the downloaded 5-year data.
-                    </p>
+
+                <!-- Info Badges Bar -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5">
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Last Generated Date</div>
+                        <div id="statFeatureLastDate" class="text-base font-semibold text-white mt-1 font-mono">
+                            {{ feature_gen_info.last_feature_gen_date or '2026-10-06' }}
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Constituents</div>
+                        <div class="text-base font-semibold text-white mt-1">
+                            <span class="text-purple-400 font-mono">207</span> Stocks
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Destination Folder</div>
+                        <div class="text-xs font-medium text-slate-300 mt-1 font-mono truncate">
+                            5_year_data/generated/
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Feature Engine State</div>
+                        <div id="statFeatureState" class="text-xs font-semibold text-purple-400 mt-1 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                            {{ feature_gen_info.status or 'READY' }}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- DYNAMIC PROGRESS CARD (FEATURE GENERATION) -->
+            <div id="featProgressCard" class="glass-panel rounded-3xl p-6 transition-all duration-500">
+                
+                <!-- Stage 1: GENERATING (With Stock Count, Name, %, and Fluid Progress Line) -->
+                <div id="viewFeatGenerating" class="hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="space-y-0.5">
+                            <h2 class="text-base font-semibold text-white tracking-tight">
+                                Features Generating
+                            </h2>
+                            <p id="featGenMessage" class="text-xs text-apple-textSecondary">
+                                Computing technical indicators and forward simulations...
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="featStopwatchBadge" class="text-xs font-mono text-apple-textSecondary bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+                                0.0s
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Information Row (Left: Count + Stock, Right: Percentage) -->
+                    <div class="flex items-center justify-between text-xs pt-2">
+                        <div class="flex items-center gap-2">
+                            <span id="featStockCounter" class="font-mono font-medium text-slate-300 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                                0/207
+                            </span>
+                            <span id="featStockName" class="font-mono font-bold text-purple-400 text-sm">
+                                RELIANCE
+                            </span>
+                        </div>
+                        <div id="featStockPercent" class="font-mono font-bold text-white text-sm">
+                            0.0%
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Track & Fluid Fill -->
+                    <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+                        <div id="featProgressBarFill" class="progress-bar-fill h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 shadow-sm" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 2: SAVING DATA (No progress line, just showing heading: Saving Data) -->
+                <div id="viewFeatSaving" class="hidden py-4 text-center space-y-4">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-1">
+                        <i data-lucide="hard-drive-download" class="w-6 h-6 animate-pulse"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white">Saving Data</h2>
+                        <p id="featSavingMessage" class="text-xs text-apple-textSecondary">
+                            Flushing engineered features into 5_year_data/generated/...
+                        </p>
+                    </div>
+                    <div class="text-[11px] font-mono text-apple-textTertiary">
+                        Writing 207 constituent feature datasets to disk
+                    </div>
+                </div>
+
+                <!-- Stage 3: COMPLETED (Shows Done for 2-3s then progress bar disappears) -->
+                <div id="viewFeatCompleted" class="hidden py-4 text-center space-y-3">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Done
+                        </h2>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold">
+                            Completed
+                        </div>
+                        <p id="featCompletedDetail" class="text-xs text-apple-textSecondary pt-1">
+                            Successfully generated and stored all constituent feature records.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- IDLE / READY STATE -->
+                <div id="viewFeatIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-purple-400"></i>
+                        <span>Click <strong class="text-white">Generate Features</strong> to compute indicators across all raw constituent CSVs.</span>
+                    </div>
+                    <span class="text-apple-textTertiary font-mono">207 Stocks Ready</span>
+                </div>
+            </div>
+
         </section>
 
+        <!-- ============================================================= -->
+        <!-- TAB 3: DATA CLEANING (COMING SOON) -->
+        <!-- ============================================================= -->
         <section id="tab-cleaning-view" class="hidden">
             <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
@@ -372,6 +514,9 @@
             </div>
         </section>
 
+        <!-- ============================================================= -->
+        <!-- TAB 4: MODEL TRAINING (COMING SOON) -->
+        <!-- ============================================================= -->
         <section id="tab-training-view" class="hidden">
             <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
@@ -389,6 +534,9 @@
             </div>
         </section>
 
+        <!-- ============================================================= -->
+        <!-- TAB 5: INFERENCE (COMING SOON) -->
+        <!-- ============================================================= -->
         <section id="tab-inference-view" class="hidden">
             <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
@@ -401,6 +549,26 @@
                     <h2 class="text-xl font-semibold text-white pt-2">Quantitative Inference & Signals</h2>
                     <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
                         Generates buy triggers, stop-losses, 1% capital risk position sizing, and dispatches to MongoDB Atlas.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 6: LOGS (COMING SOON) -->
+        <!-- ============================================================= -->
+        <section id="tab-logs-view" class="hidden">
+            <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
+                    <i data-lucide="file-text" class="w-7 h-7"></i>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
+                        Coming Soon
+                    </span>
+                    <h2 class="text-xl font-semibold text-white pt-2">Unified Task Logs</h2>
+                    <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
+                        All pipeline executions (<code class="font-mono text-slate-300">STOCKS_DOWNLOAD</code>, <code class="font-mono text-slate-300">FEATURE_GENERATION</code>) with status (<strong class="text-emerald-400">RUNNING</strong>, <strong class="text-emerald-400">COMPLETED</strong>, <strong class="text-red-400">ERROR</strong>) are actively tracked in <code class="font-mono text-slate-300">data_store/task_logs.json</code>. An interactive visual log explorer will be activated here in the next milestone.
                     </p>
                 </div>
             </div>
@@ -421,7 +589,7 @@
         // TAB SWITCHING
         // ---------------------------------------------------------------------
         function switchTab(tab) {
-            const tabs = ['download', 'features', 'cleaning', 'training', 'inference'];
+            const tabs = ['download', 'features', 'cleaning', 'training', 'inference', 'logs'];
             tabs.forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
                 const view = document.getElementById(`tab-${t}-view`);
@@ -444,7 +612,7 @@
         }
 
         // ---------------------------------------------------------------------
-        // DOWNLOAD PIPELINE TRIGGER
+        // DOWNLOAD PIPELINE TRIGGER & POLLING
         // ---------------------------------------------------------------------
         async function triggerDownload() {
             const btn = document.getElementById('btnDownload');
@@ -462,11 +630,6 @@
                 btn.disabled = false;
             }
         }
-
-        // ---------------------------------------------------------------------
-        // PROGRESS POLLING & MULTI-STATE DISPLAY
-        // ---------------------------------------------------------------------
-        let pollTimer = null;
 
         async function pollProgress() {
             try {
@@ -505,18 +668,15 @@
                     vCompleted.classList.add('hidden');
                     btn.disabled = true;
 
-                    // Update Heading
                     document.getElementById('progressHeading').innerText = prog.heading || (status === 'DOWNLOADING' ? "Downloading" : "Appending Data");
                     document.getElementById('progressMessage').innerText = prog.message || "";
                     document.getElementById('stopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
 
-                    // Left Side: Stock count + name
                     const curIdx = prog.current_index || 0;
                     const totStocks = prog.total_stocks || 207;
                     document.getElementById('stockCounter').innerText = `${curIdx}/${totStocks}`;
                     document.getElementById('stockName').innerText = prog.current_stock || "NIFTY50";
 
-                    // Right Side: Percentage + Progress Line
                     const pct = prog.percentage || 0;
                     document.getElementById('stockPercent').innerText = `${pct}%`;
                     document.getElementById('progressBarFill').style.width = `${pct}%`;
@@ -525,7 +685,6 @@
                     statusText.innerText = status === 'DOWNLOADING' ? "Downloading..." : "Appending...";
                 }
                 else if (status === 'COMPLETED') {
-                    // State 4: Completed -> Heading: DOWNLOADING STOCKS, Completed
                     vIdle.classList.add('hidden');
                     vChecking.classList.add('hidden');
                     vProgressing.classList.add('hidden');
@@ -536,7 +695,6 @@
                     pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
                     statusText.innerText = "Completed";
 
-                    // Refresh metadata stats
                     fetchSystemStatus();
                 }
                 else if (status === 'ERROR') {
@@ -550,7 +708,6 @@
                     statusText.innerText = "Error";
                 }
                 else {
-                    // IDLE
                     vIdle.classList.remove('hidden');
                     vChecking.classList.add('hidden');
                     vProgressing.classList.add('hidden');
@@ -567,6 +724,126 @@
         }
 
         // ---------------------------------------------------------------------
+        // FEATURE GENERATION TRIGGER & POLLING
+        // ---------------------------------------------------------------------
+        let featCompletedTimer = null;
+
+        async function triggerFeatureGen() {
+            const btn = document.getElementById('btnFeatureGen');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/feature_gen/start', { method: 'POST' });
+                const data = await res.json();
+                if (res.status === 409) {
+                    alert(data.message);
+                }
+                pollFeatureGenProgress();
+            } catch (err) {
+                console.error("Failed to start feature generation:", err);
+                btn.disabled = false;
+            }
+        }
+
+        async function pollFeatureGenProgress() {
+            try {
+                const res = await fetch('/api/feature_gen/progress');
+                const prog = await res.json();
+
+                const vFeatIdle = document.getElementById('viewFeatIdle');
+                const vFeatGenerating = document.getElementById('viewFeatGenerating');
+                const vFeatSaving = document.getElementById('viewFeatSaving');
+                const vFeatCompleted = document.getElementById('viewFeatCompleted');
+                const btn = document.getElementById('btnFeatureGen');
+                const pulseDot = document.getElementById('systemPulseDot');
+                const statusText = document.getElementById('systemStatusText');
+
+                const status = prog.status || 'IDLE';
+
+                if (status === 'GENERATING') {
+                    // Stage 1: GENERATING -> Shows 1/207, Stock Name, %, and Progress Line
+                    vFeatIdle.classList.add('hidden');
+                    vFeatGenerating.classList.remove('hidden');
+                    vFeatSaving.classList.add('hidden');
+                    vFeatCompleted.classList.add('hidden');
+                    btn.disabled = true;
+
+                    const curIdx = prog.current_index || 0;
+                    const totStocks = prog.total_stocks || 207;
+                    document.getElementById('featStockCounter').innerText = `${curIdx}/${totStocks}`;
+                    document.getElementById('featStockName').innerText = prog.current_stock || "Constituent";
+                    document.getElementById('featGenMessage').innerText = prog.message || "Computing technical indicators...";
+                    document.getElementById('featStopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
+
+                    const pct = prog.percentage || 0;
+                    document.getElementById('featStockPercent').innerText = `${pct}%`;
+                    document.getElementById('featProgressBarFill').style.width = `${pct}%`;
+
+                    pulseDot.className = "w-2 h-2 rounded-full bg-purple-400 animate-pulse";
+                    statusText.innerText = "Features Generating...";
+                }
+                else if (status === 'SAVING') {
+                    // Stage 2: SAVING -> Heading = Saving Data, NO progress line
+                    vFeatIdle.classList.add('hidden');
+                    vFeatGenerating.classList.add('hidden');
+                    vFeatSaving.classList.remove('hidden');
+                    vFeatCompleted.classList.add('hidden');
+                    btn.disabled = true;
+
+                    document.getElementById('featSavingMessage').innerText = prog.message || "Flushing engineered features into 5_year_data/generated/...";
+                    pulseDot.className = "w-2 h-2 rounded-full bg-purple-400 animate-pulse";
+                    statusText.innerText = "Saving Data...";
+                }
+                else if (status === 'COMPLETED') {
+                    // Stage 3: COMPLETED -> Heading = Done for 2-3s, then disappears!
+                    vFeatIdle.classList.add('hidden');
+                    vFeatGenerating.classList.add('hidden');
+                    vFeatSaving.classList.add('hidden');
+                    vFeatCompleted.classList.remove('hidden');
+                    btn.disabled = false;
+
+                    document.getElementById('featCompletedDetail').innerText = prog.message || "Completed successfully.";
+                    pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                    statusText.innerText = "Features Done";
+
+                    fetchSystemStatus();
+
+                    // Disappear after 2.5 seconds back to clean idle
+                    if (!featCompletedTimer) {
+                        featCompletedTimer = setTimeout(() => {
+                            vFeatCompleted.classList.add('hidden');
+                            vFeatIdle.classList.remove('hidden');
+                            featCompletedTimer = null;
+                        }, 2500);
+                    }
+                }
+                else if (status === 'ERROR') {
+                    vFeatIdle.classList.remove('hidden');
+                    vFeatGenerating.classList.add('hidden');
+                    vFeatSaving.classList.add('hidden');
+                    vFeatCompleted.classList.add('hidden');
+                    btn.disabled = false;
+
+                    pulseDot.className = "w-2 h-2 rounded-full bg-red-400";
+                    statusText.innerText = "Feature Error";
+                }
+                else {
+                    // IDLE
+                    if (!featCompletedTimer) {
+                        vFeatIdle.classList.remove('hidden');
+                        vFeatGenerating.classList.add('hidden');
+                        vFeatSaving.classList.add('hidden');
+                        vFeatCompleted.classList.add('hidden');
+                        btn.disabled = false;
+                    }
+                }
+
+            } catch (err) {
+                console.error("Feature progress polling error:", err);
+            }
+        }
+
+        // ---------------------------------------------------------------------
         // FETCH SYSTEM STATUS & AUDIT LOGS
         // ---------------------------------------------------------------------
         async function fetchSystemStatus() {
@@ -577,6 +854,12 @@
                     const lastDateEl = document.getElementById('statLastDate');
                     if (lastDateEl && data.download_info.last_downloaded_date) {
                         lastDateEl.innerText = data.download_info.last_downloaded_date;
+                    }
+                }
+                if (data.feature_gen_info) {
+                    const featLastDateEl = document.getElementById('statFeatureLastDate');
+                    if (featLastDateEl && data.feature_gen_info.last_feature_gen_date) {
+                        featLastDateEl.innerText = data.feature_gen_info.last_feature_gen_date;
                     }
                 }
             } catch (err) {
@@ -620,10 +903,12 @@
 
         // Initialize polling intervals
         setInterval(pollProgress, 1200);
+        setInterval(pollFeatureGenProgress, 1200);
         setInterval(fetchLogs, 4000);
 
         // Initial loads
         pollProgress();
+        pollFeatureGenProgress();
         fetchSystemStatus();
         fetchLogs();
     </script>

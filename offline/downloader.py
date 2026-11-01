@@ -70,6 +70,12 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
 
     from_date = last_date + timedelta(days=1)
     
+    json_manager.log_task_entry(
+        task_name="STOCKS_DOWNLOAD",
+        status="RUNNING",
+        message=f"Starting market data sync for {total_symbols} stocks from {from_date} to {today}..."
+    )
+
     json_manager.update_download_progress(
         status="CHECKING",
         heading="Checking",
@@ -92,7 +98,13 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             to_date=str(today),
             message=msg
         )
-        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
+        json_manager.log_task_entry(
+        task_name="STOCKS_DOWNLOAD",
+        status="COMPLETED",
+        message=completion_message
+    )
+
+    return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
 
     # Load universe metadata for sectors
     universe_metadata = {}
@@ -295,6 +307,12 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         event="STOCKS_DOWNLOAD_COMPLETED",
         status="Everything fine",
         message=f"Downloaded and appended market data for {total_symbols} stocks up to {latest_seen_date} in {duration:.1f}s."
+    )
+
+    json_manager.log_task_entry(
+        task_name="STOCKS_DOWNLOAD",
+        status="COMPLETED",
+        message=completion_message
     )
 
     return {
