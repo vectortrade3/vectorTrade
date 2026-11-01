@@ -279,7 +279,92 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     )
 
     # -------------------------------------------------------------------------
-    # STAGE 4: OPTIONAL INDIVIDUAL STRATEGY MODELS (90% -> 98%)
+    # STAGE 4: TRADE LEDGER & PERFORMANCE SIMULATION (75% -> 90%)
+    # -------------------------------------------------------------------------
+    json_manager.update_inference_progress(
+        status="EVALUATING",
+        active_section="STRATEGY",
+        phase="Phase 3: Trade Ledger Simulation",
+        heading="Generating Trade Ledger",
+        current_model="5_year_xgboost_model.pkl",
+        percentage=75.0,
+        message=f"Simulating trade executions across {len(test_df):,} out-of-sample setups...",
+        elapsed_seconds=time.time() - start_time
+    )
+
+    trades_list: List[Dict[str, Any]] = []
+    running_pnl = 0.0
+    for idx, (_, row) in enumerate(test_df.iterrows()):
+        pred_r = float(row['predicted_r_ref'])
+        entry = float(row['entry_price'])
+        sl = float(row['stop_loss'])
+        tgt = float(row['target_1_2'])
+        risk = float(row['risk'])
+        outcome = str(row['outcome'])
+        decision = "TAKE" if pred_r >= 1.0 else "SKIP"
+        
+        if outcome == "Target":
+            pnl_pct = ((tgt - entry) / entry) * 100.0
+            is_win = True
+        else:
+            pnl_pct = ((sl - entry) / entry) * 100.0
+            is_win = False
+            
+        if decision == "TAKE":
+            running_pnl += pnl_pct
+
+        d_val = row['date']
+        d_str = d_val.strftime('%Y-%m-%d') if hasattr(d_val, 'strftime') else str(d_val)[:10]
+        trades_list.append({
+            "id": idx + 1,
+            "symbol": str(row['symbol']),
+            "date": d_str,
+            "entry_price": round(entry, 2),
+            "stop_loss": round(sl, 2),
+            "target": round(tgt, 2),
+            "risk": round(risk, 2),
+            "predicted_r": round(pred_r, 2),
+            "real_r": round(float(row['max_r_achieved']), 2),
+            "outcome": outcome,
+            "decision": decision,
+            "is_win": is_win,
+            "trade_pnl_pct": round(pnl_pct, 2),
+            "cumulative_pnl_pct": round(running_pnl, 2)
+        })
+
+    total_test_trades = len(trades_list)
+    taken_trades_list = [t for t in trades_list if t['decision'] == 'TAKE']
+    taken_count = len(taken_trades_list)
+    wins_taken = sum(1 for t in taken_trades_list if t['is_win'])
+    losses_taken = taken_count - wins_taken
+    win_rate_taken_val = (wins_taken / taken_count * 100.0) if taken_count > 0 else 0.0
+    overall_pnl_taken = sum(t['trade_pnl_pct'] for t in taken_trades_list)
+    net_r_taken = float((wins_taken * 2.0) - (losses_taken * 1.0))
+
+    all_wins = sum(1 for t in trades_list if t['is_win'])
+    win_rate_all_val = (all_wins / total_test_trades * 100.0) if total_test_trades > 0 else 0.0
+    overall_pnl_all = sum(t['trade_pnl_pct'] for t in trades_list)
+
+    summary_50ma = {
+        "total_trades": total_test_trades,
+        "taken_trades": taken_count,
+        "skipped_trades": total_test_trades - taken_count,
+        "wins_taken": wins_taken,
+        "losses_taken": losses_taken,
+        "win_rate_taken": f"{win_rate_taken_val:.1f}%",
+        "win_rate_all": f"{win_rate_all_val:.1f}%",
+        "overall_pnl_pct": round(overall_pnl_taken, 2),
+        "overall_pnl_pct_all": round(overall_pnl_all, 2),
+        "net_r_taken": round(net_r_taken, 2),
+        "accuracy_refined": f"{acc_ref:.1f}%",
+        "win_rate_recall": f"{recall:.1f}%",
+        "mae_refined": round(mae_ref, 3),
+        "generated_at": datetime.now().astimezone().isoformat()
+    }
+    json_manager.save_inference_50ma_trades(trades_list, summary_50ma)
+
+    # -------------------------------------------------------------------------
+    # STAGE 5: OPTIONAL INDIVIDUAL STRATEGY MODELS (90% -> 98%)
     # -------------------------------------------------------------------------
     individual_dir = MODELS_DIR / "individual_model" / "strategy"
     if individual_dir.exists():
@@ -315,12 +400,12 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
                 json.dump(indiv_logs, f, indent=4)
 
     # -------------------------------------------------------------------------
-    # STAGE 5: COMPLETED & PERSIST STATE
+    # STAGE 6: COMPLETED & PERSIST STATE
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
     completion_msg = (
-        f"Strategy model evaluated: Accuracy {acc_ref:.1f}%, Win Rate Recall {recall:.1f}%, "
-        f"MAE {mae_ref:.3f} R ({len(refined_features)} features, {removed_count} pruned) in {duration:.1f}s."
+        f"50 MA Strategy evaluated: Win Rate {win_rate_taken_val:.1f}%, Overall P&L {overall_pnl_taken:+.1f}%, "
+        f"Net R {net_r_taken:+.1f}R ({taken_count}/{total_test_trades} taken, {recall:.1f}% recall) in {duration:.1f}s."
     )
 
     json_manager.update_strategy_inference_info(
@@ -335,7 +420,15 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         message=completion_msg,
         duration_seconds=duration,
         last_inference_date=today_str,
-        last_run_date=today_str
+        last_run_date=today_str,
+        win_rate_taken=f"{win_rate_taken_val:.1f}%",
+        win_rate_all=f"{win_rate_all_val:.1f}%",
+        overall_pnl_pct=overall_pnl_taken,
+        net_r_taken=net_r_taken,
+        total_trades=total_test_trades,
+        taken_trades=taken_count,
+        wins_count=wins_taken,
+        losses_count=losses_taken
     )
 
     json_manager.update_inference_progress(
@@ -348,11 +441,13 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         message=completion_msg,
         elapsed_seconds=duration,
         metrics={
+            "win_rate_taken": f"{win_rate_taken_val:.1f}%",
+            "overall_pnl_pct": f"{overall_pnl_taken:+.1f}%",
+            "net_r_taken": f"{net_r_taken:+.1f}R",
+            "taken_trades": f"{taken_count}/{total_test_trades}",
             "accuracy_refined": f"{acc_ref:.1f}%",
             "win_rate_recall": f"{recall:.1f}%",
-            "mae_refined": round(mae_ref, 3),
-            "accuracy_base": f"{acc_base:.1f}%",
-            "mae_base": round(mae_base, 3)
+            "mae_refined": round(mae_ref, 3)
         }
     )
 
@@ -376,6 +471,14 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         "accuracy_refined": f"{acc_ref:.1f}%",
         "win_rate_recall": f"{recall:.1f}%",
         "mae_refined": round(mae_ref, 3),
+        "win_rate_taken": f"{win_rate_taken_val:.1f}%",
+        "win_rate_all": f"{win_rate_all_val:.1f}%",
+        "overall_pnl_pct": round(overall_pnl_taken, 2),
+        "net_r_taken": round(net_r_taken, 2),
+        "total_trades": total_test_trades,
+        "taken_trades": taken_count,
+        "wins_taken": wins_taken,
+        "losses_taken": losses_taken,
         "duration_seconds": round(duration, 2),
         "message": completion_msg
     }
@@ -588,7 +691,82 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
     )
 
     # -------------------------------------------------------------------------
-    # STAGE 4: OPTIONAL INDIVIDUAL GLOBAL MODELS (90% -> 98%)
+    # STAGE 4: REGIME TRADES LEDGER & PERFORMANCE SIMULATION (75% -> 90%)
+    # -------------------------------------------------------------------------
+    json_manager.update_inference_progress(
+        status="EVALUATING",
+        active_section="GLOBAL",
+        phase="Phase 3: Regime Ledger Simulation",
+        heading="Generating Regime Ledger",
+        current_model="5_year_global_gain_model.pkl",
+        percentage=75.0,
+        message=f"Simulating regime allocations across {len(test_df):,} out-of-sample forward horizons...",
+        elapsed_seconds=time.time() - start_time
+    )
+
+    regimes_list: List[Dict[str, Any]] = []
+    running_regime_pnl = 0.0
+    for idx, (_, row) in enumerate(test_df.iterrows()):
+        pg = float(preds_gain_ref[idx])
+        pd_val = float(preds_drop_ref[idx])
+        real_ret = float(row.get('return_7d', 0.0))
+        close_p = float(row.get('close', 0.0))
+        mg = float(row.get('max_gain_7d', 0.0))
+        ml = float(row.get('max_loss_7d', 0.0))
+        decision = "LONG" if pg > abs(pd_val) else "CASH"
+        trade_pnl = real_ret if decision == "LONG" else 0.0
+        is_win = bool(decision == "LONG" and real_ret > 0)
+        
+        running_regime_pnl += trade_pnl
+        d_val = row['date']
+        d_str = d_val.strftime('%Y-%m-%d') if hasattr(d_val, 'strftime') else str(d_val)[:10]
+        
+        regimes_list.append({
+            "id": idx + 1,
+            "symbol": str(row['symbol']),
+            "date": d_str,
+            "close": round(close_p, 2),
+            "predicted_gain_7d": round(pg, 2),
+            "predicted_drop_7d": round(pd_val, 2),
+            "real_gain_7d": round(mg, 2),
+            "real_drop_7d": round(ml, 2),
+            "real_return_7d": round(real_ret, 2),
+            "decision": decision,
+            "trade_pnl_pct": round(trade_pnl, 2),
+            "cumulative_pnl_pct": round(running_regime_pnl, 2),
+            "is_win": is_win
+        })
+
+    total_regimes = len(regimes_list)
+    long_regimes_list = [r for r in regimes_list if r['decision'] == 'LONG']
+    long_count = len(long_regimes_list)
+    cash_count = total_regimes - long_count
+    wins_long = sum(1 for r in long_regimes_list if r['is_win'])
+    losses_long = long_count - wins_long
+    win_rate_long_val = (wins_long / long_count * 100.0) if long_count > 0 else 0.0
+    overall_pnl_global = sum(r['trade_pnl_pct'] for r in regimes_list)
+    best_trade_val = max((r['trade_pnl_pct'] for r in long_regimes_list), default=0.0)
+    worst_trade_val = min((r['trade_pnl_pct'] for r in long_regimes_list), default=0.0)
+
+    summary_global = {
+        "total_regimes": total_regimes,
+        "long_regimes": long_count,
+        "cash_regimes": cash_count,
+        "directional_accuracy": f"{dir_acc:.1f}%",
+        "win_rate_pct": f"{win_rate_long_val:.1f}%",
+        "wins_long": wins_long,
+        "losses_long": losses_long,
+        "overall_pnl_pct": round(overall_pnl_global, 2),
+        "best_trade_pct": round(best_trade_val, 2),
+        "worst_trade_pct": round(worst_trade_val, 2),
+        "mae_gain_refined": round(mae_gain_ref, 3),
+        "mae_drop_refined": round(mae_drop_ref, 3),
+        "generated_at": datetime.now().astimezone().isoformat()
+    }
+    json_manager.save_inference_global_trades(regimes_list, summary_global)
+
+    # -------------------------------------------------------------------------
+    # STAGE 5: OPTIONAL INDIVIDUAL GLOBAL MODELS (90% -> 98%)
     # -------------------------------------------------------------------------
     individual_dir = MODELS_DIR / "individual_model" / "global"
     if individual_dir.exists():
@@ -632,12 +810,12 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
                 json.dump(indiv_logs, f, indent=4)
 
     # -------------------------------------------------------------------------
-    # STAGE 5: COMPLETED & PERSIST STATE
+    # STAGE 6: COMPLETED & PERSIST STATE
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
     completion_msg = (
-        f"Global models evaluated: Directional Accuracy {dir_acc:.1f}%, Gain MAE {mae_gain_ref:.3f}%, "
-        f"Drop MAE {mae_drop_ref:.3f}% ({len(refined_features)} features, {removed_count} pruned) in {duration:.1f}s."
+        f"Global Regime evaluated: Directional Accuracy {dir_acc:.1f}%, Win Rate {win_rate_long_val:.1f}%, "
+        f"Overall P&L {overall_pnl_global:+.1f}% ({long_count}/{total_regimes} Long, {cash_count} Cash) in {duration:.1f}s."
     )
 
     json_manager.update_global_inference_info(
@@ -652,7 +830,13 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
         message=completion_msg,
         duration_seconds=duration,
         last_inference_date=today_str,
-        last_run_date=today_str
+        last_run_date=today_str,
+        win_rate_pct=f"{win_rate_long_val:.1f}%",
+        overall_pnl_pct=overall_pnl_global,
+        total_regimes=total_regimes,
+        long_regimes=long_count,
+        best_trade_pct=best_trade_val,
+        worst_trade_pct=worst_trade_val
     )
 
     json_manager.update_inference_progress(
@@ -666,10 +850,11 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
         elapsed_seconds=duration,
         metrics={
             "directional_accuracy": f"{dir_acc:.1f}%",
+            "win_rate_pct": f"{win_rate_long_val:.1f}%",
+            "overall_pnl_pct": f"{overall_pnl_global:+.1f}%",
+            "long_regimes": f"{long_count}/{total_regimes}",
             "mae_gain_refined": round(mae_gain_ref, 3),
-            "mae_drop_refined": round(mae_drop_ref, 3),
-            "mae_gain_base": round(mae_gain_base, 3),
-            "mae_drop_base": round(mae_drop_base, 3)
+            "mae_drop_refined": round(mae_drop_ref, 3)
         }
     )
 
@@ -693,6 +878,13 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
         "mae_gain_refined": round(mae_gain_ref, 3),
         "mae_drop_refined": round(mae_drop_ref, 3),
         "directional_accuracy": f"{dir_acc:.1f}%",
+        "win_rate_pct": f"{win_rate_long_val:.1f}%",
+        "overall_pnl_pct": round(overall_pnl_global, 2),
+        "total_regimes": total_regimes,
+        "long_regimes": long_count,
+        "cash_regimes": cash_count,
+        "best_trade_pct": round(best_trade_val, 2),
+        "worst_trade_pct": round(worst_trade_val, 2),
         "duration_seconds": round(duration, 2),
         "message": completion_msg
     }

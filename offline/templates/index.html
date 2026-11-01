@@ -959,17 +959,17 @@
 
                     <!-- Action Controls -->
                     <div class="flex flex-wrap items-center gap-3">
-                        <button id="btnInferStrategy" onclick="triggerInferenceStrategy()" class="apple-btn px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold flex items-center gap-2 border border-white/10 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                        <button id="btnInferStrategy" onclick="triggerInferenceStrategy(true)" class="apple-btn px-4 py-3 rounded-2xl bg-blue-500/15 hover:bg-blue-500/25 text-white text-xs font-semibold flex items-center gap-2 border border-blue-500/30 shadow-lg shadow-blue-500/10 disabled:opacity-40 disabled:pointer-events-none transition-all">
                             <i data-lucide="crosshair" class="w-3.5 h-3.5 text-blue-400"></i>
-                            <span>Evaluate Strategy</span>
+                            <span>Evaluate 50 MA Strategy</span>
                         </button>
-                        <button id="btnInferGlobal" onclick="triggerInferenceGlobal()" class="apple-btn px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold flex items-center gap-2 border border-white/10 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                        <button id="btnInferGlobal" onclick="triggerInferenceGlobal(true)" class="apple-btn px-4 py-3 rounded-2xl bg-purple-500/15 hover:bg-purple-500/25 text-white text-xs font-semibold flex items-center gap-2 border border-purple-500/30 shadow-lg shadow-purple-500/10 disabled:opacity-40 disabled:pointer-events-none transition-all">
                             <i data-lucide="globe" class="w-3.5 h-3.5 text-purple-400"></i>
-                            <span>Evaluate Global</span>
+                            <span>Evaluate Global Regime</span>
                         </button>
-                        <button id="btnInferAll" onclick="triggerInferenceAll()" class="apple-btn px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
-                            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
-                            <span>Run Full Inference</span>
+                        <button id="btnInferAll" onclick="triggerInferenceAll(true)" class="apple-btn px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                            <i data-lucide="play" class="w-3.5 h-3.5 fill-white"></i>
+                            <span>Evaluate Both</span>
                         </button>
                     </div>
                 </div>
@@ -977,16 +977,16 @@
                 <!-- Info Badges Bar -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5">
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Strategy Accuracy</div>
-                        <div id="statInferStratAcc" class="text-base font-semibold text-white mt-1 font-mono">
-                            {{ (inference_info.strategy_inference and inference_info.strategy_inference.accuracy_refined) or '45.3%' }}
+                        <div class="text-[11px] font-medium text-apple-textSecondary">50 MA Win Rate (Taken)</div>
+                        <div id="statInferStratWinRate" class="text-base font-semibold text-emerald-400 mt-1 font-mono">
+                            {{ (inference_info.strategy_inference and inference_info.strategy_inference.win_rate_taken) or '25.8%' }}
                         </div>
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Win Rate Recall</div>
-                        <div id="statInferWinRecall" class="text-base font-semibold text-emerald-400 mt-1 font-mono">
-                            {{ (inference_info.strategy_inference and inference_info.strategy_inference.win_rate_recall) or '77.3%' }}
+                        <div class="text-[11px] font-medium text-apple-textSecondary">50 MA Overall P&L</div>
+                        <div id="statInferStratPnl" class="text-base font-semibold text-rose-400 mt-1 font-mono">
+                            {{ (inference_info.strategy_inference and inference_info.strategy_inference.overall_pnl_pct) or -535.92 }}%
                         </div>
                     </div>
 
@@ -998,10 +998,9 @@
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                        <div class="text-[11px] font-medium text-apple-textSecondary">Inference Engine State</div>
-                        <div id="statInferState" class="text-xs font-semibold text-emerald-400 mt-1 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            {{ inference_info.status or 'COMPLETED' }}
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Global Cumulative P&L</div>
+                        <div id="statInferGlobalPnl" class="text-base font-semibold text-emerald-400 mt-1 font-mono">
+                            +{{ (inference_info.global_inference and inference_info.global_inference.overall_pnl_pct) or 36.4 }}%
                         </div>
                     </div>
                 </div>
@@ -1089,13 +1088,41 @@
                                 <i data-lucide="crosshair" class="w-4 h-4"></i>
                             </div>
                             <div>
-                                <h3 class="text-sm font-semibold text-white">Section 1: Setup Strategy Inference</h3>
+                                <h3 class="text-sm font-semibold text-white">Section 1: 50 MA Setup Strategy Inference</h3>
                                 <div class="text-[11px] text-apple-textSecondary">Trained on triggered trades (Notebook 5)</div>
                             </div>
                         </div>
                         <span id="badgeInferStratStatus" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 uppercase tracking-wider">
                             {{ (inference_info.strategy_inference and inference_info.strategy_inference.status) or 'COMPLETED' }}
                         </span>
+                    </div>
+
+                    <!-- Trade Simulation Strip -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 text-xs font-mono">
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Win Rate (Taken)</div>
+                            <div id="valInferStratWinRateTaken" class="text-sm font-semibold text-emerald-400 mt-0.5">
+                                {{ (inference_info.strategy_inference and inference_info.strategy_inference.win_rate_taken) or '25.8%' }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Overall P&L %</div>
+                            <div id="valInferStratOverallPnl" class="text-sm font-semibold text-rose-400 mt-0.5">
+                                {{ (inference_info.strategy_inference and inference_info.strategy_inference.overall_pnl_pct) or -535.92 }}%
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Net R Multiples</div>
+                            <div id="valInferStratNetR" class="text-sm font-semibold text-amber-400 mt-0.5">
+                                {{ (inference_info.strategy_inference and inference_info.strategy_inference.net_r_taken) or -178.0 }} R
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Taken / Total</div>
+                            <div id="valInferStratTakenCount" class="text-sm font-semibold text-white mt-0.5">
+                                {{ (inference_info.strategy_inference and inference_info.strategy_inference.taken_trades) or 790 }} / {{ (inference_info.strategy_inference and inference_info.strategy_inference.total_trades) or 1049 }}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Side-by-Side Model Comparison -->
@@ -1165,6 +1192,34 @@
                         </span>
                     </div>
 
+                    <!-- Regime Simulation Strip -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 text-xs font-mono">
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Directional Acc</div>
+                            <div id="valInferGlobDirAccSummary" class="text-sm font-semibold text-indigo-400 mt-0.5">
+                                {{ (inference_info.global_inference and inference_info.global_inference.directional_accuracy) or '48.7%' }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Win Rate (7d Gain)</div>
+                            <div id="valInferGlobWinRateSummary" class="text-sm font-semibold text-emerald-400 mt-0.5">
+                                {{ (inference_info.global_inference and inference_info.global_inference.win_rate_pct) or '48.3%' }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Overall P&L %</div>
+                            <div id="valInferGlobOverallPnlSummary" class="text-sm font-semibold text-emerald-400 mt-0.5">
+                                +{{ (inference_info.global_inference and inference_info.global_inference.overall_pnl_pct) or 36.4 }}%
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-apple-textSecondary uppercase">Long / Total</div>
+                            <div id="valInferGlobLongCountSummary" class="text-sm font-semibold text-white mt-0.5">
+                                {{ (inference_info.global_inference and inference_info.global_inference.long_regimes) or 1189 }} / {{ (inference_info.global_inference and inference_info.global_inference.total_regimes) or 1744 }}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Side-by-Side Global Model Comparison -->
                     <div class="grid grid-cols-2 gap-3">
                         <!-- Base Models -->
@@ -1216,6 +1271,83 @@
                         </span>
                     </div>
                 </div>
+            </div>
+
+            <!-- DEDICATED TRADE-BY-TRADE HISTORICAL LEDGER -->
+            <div class="glass-panel rounded-3xl p-6 space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                                <i data-lucide="list-ordered" class="w-4 h-4"></i>
+                            </div>
+                            <h3 class="text-base font-semibold text-white">Out-of-Sample Trade Ledger</h3>
+                        </div>
+                        <p class="text-xs text-apple-textSecondary mt-0.5">
+                            Detailed record of every simulated trade in the testing split with entry, SL, target, model prediction, and cumulative P&L.
+                        </p>
+                    </div>
+
+                    <!-- Strategy Tabs Selector -->
+                    <div class="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                        <button id="tabLedger50maBtn" onclick="switchTradeLedger('50ma')" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-white/15 text-white shadow-sm transition-all flex items-center gap-1.5">
+                            <i data-lucide="crosshair" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span>50 MA Strategy</span>
+                            <span id="badge50maCount" class="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">1,049</span>
+                        </button>
+                        <button id="tabLedgerGlobalBtn" onclick="switchTradeLedger('global')" class="px-4 py-1.5 rounded-xl text-xs font-semibold text-apple-textSecondary hover:text-white transition-all flex items-center gap-1.5">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>Global Regime</span>
+                            <span id="badgeGlobalCount" class="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">1,744</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Strategy Dynamic KPI Banner -->
+                <div id="ledgerKpiBanner" class="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <!-- populated dynamically via JS -->
+                </div>
+
+                <!-- Filter Toolbar -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <!-- Search -->
+                    <div class="relative max-w-xs w-full">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-apple-textSecondary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        <input type="text" id="tradeSearchInput" oninput="handleTradeSearch(this.value)" placeholder="Search ticker symbol..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-apple-textTertiary focus:outline-none focus:border-white/20 font-mono transition-all">
+                    </div>
+
+                    <!-- Filter Pills -->
+                    <div id="tradeFilterPills" class="flex flex-wrap items-center gap-1.5 text-xs">
+                        <!-- Filter pills populated dynamically based on active strategy -->
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto rounded-2xl border border-white/5 bg-black/20">
+                    <table class="w-full text-left text-xs" id="tradeLedgerTable">
+                        <thead id="tradeLedgerTableHead">
+                            <!-- Table headers -->
+                        </thead>
+                        <tbody id="tradeLedgerTableBody" class="divide-y divide-white/[0.04]">
+                            <!-- Rows populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination & Stats Footer -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-apple-textSecondary font-mono pt-2 border-t border-white/5">
+                    <div id="tradeLedgerRangeText">Showing 1 - 50 of 1,049 trades</div>
+                    <div class="flex items-center gap-2">
+                        <button id="tradePrevPageBtn" onclick="changeTradePage(-1)" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1">
+                            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Previous
+                        </button>
+                        <span id="tradePageIndicator" class="px-2 text-white font-medium">Page 1 / 21</span>
+                        <button id="tradeNextPageBtn" onclick="changeTradePage(1)" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1">
+                            Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
             </div>
 
             <!-- HISTORICAL BENCHMARK LOG TABLE -->
@@ -1336,6 +1468,7 @@
                 fetchTaskLogs();
             } else if (tab === 'inference') {
                 fetchInferenceStatus();
+                loadTradeLedgerData();
             }
         }
 
@@ -2144,7 +2277,7 @@
             }
         }
 
-        async function triggerTrainStrategy(force = false) {
+        async function triggerTrainStrategy(force = true) {
             const btn = document.getElementById('btnTrainStrategy');
             if (btn) btn.disabled = true;
 
@@ -2175,7 +2308,7 @@
             }
         }
 
-        async function triggerTrainGlobal(force = false) {
+        async function triggerTrainGlobal(force = true) {
             const btn = document.getElementById('btnTrainGlobal');
             if (btn) btn.disabled = true;
 
@@ -2206,7 +2339,7 @@
             }
         }
 
-        async function triggerTrainAll(force = false) {
+        async function triggerTrainAll(force = true) {
             const btn = document.getElementById('btnTrainAll');
             if (btn) btn.disabled = true;
 
@@ -2284,6 +2417,33 @@
             // Section 1: Strategy Inference
             if (info.strategy_inference) {
                 const si = info.strategy_inference;
+                if (si.win_rate_taken) {
+                    const el = document.getElementById('statInferStratWinRate');
+                    if (el) el.innerText = si.win_rate_taken;
+                    const el2 = document.getElementById('valInferStratWinRateTaken');
+                    if (el2) el2.innerText = si.win_rate_taken;
+                }
+                if (si.overall_pnl_pct !== undefined) {
+                    const pnlStr = (si.overall_pnl_pct > 0 ? '+' : '') + si.overall_pnl_pct + '%';
+                    const el = document.getElementById('statInferStratPnl');
+                    if (el) {
+                        el.innerText = pnlStr;
+                        el.className = `text-base font-semibold mt-1 font-mono ${si.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+                    }
+                    const el2 = document.getElementById('valInferStratOverallPnl');
+                    if (el2) {
+                        el2.innerText = pnlStr;
+                        el2.className = `text-sm font-semibold mt-0.5 ${si.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+                    }
+                }
+                if (si.net_r_taken !== undefined) {
+                    const el = document.getElementById('valInferStratNetR');
+                    if (el) el.innerText = `${si.net_r_taken > 0 ? '+' : ''}${si.net_r_taken} R`;
+                }
+                if (si.taken_trades && si.total_trades) {
+                    const el = document.getElementById('valInferStratTakenCount');
+                    if (el) el.innerText = `${si.taken_trades} / ${si.total_trades}`;
+                }
                 if (si.accuracy_refined) {
                     const el = document.getElementById('statInferStratAcc');
                     if (el) el.innerText = si.accuracy_refined;
@@ -2330,6 +2490,29 @@
                     if (el) el.innerText = gi.directional_accuracy;
                     const el2 = document.getElementById('valInferGlobDirAcc');
                     if (el2) el2.innerText = gi.directional_accuracy;
+                    const el3 = document.getElementById('valInferGlobDirAccSummary');
+                    if (el3) el3.innerText = gi.directional_accuracy;
+                }
+                if (gi.win_rate_pct) {
+                    const el = document.getElementById('valInferGlobWinRateSummary');
+                    if (el) el.innerText = gi.win_rate_pct;
+                }
+                if (gi.overall_pnl_pct !== undefined) {
+                    const pnlStr = (gi.overall_pnl_pct > 0 ? '+' : '') + gi.overall_pnl_pct + '%';
+                    const el = document.getElementById('statInferGlobalPnl');
+                    if (el) {
+                        el.innerText = pnlStr;
+                        el.className = `text-base font-semibold mt-1 font-mono ${gi.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+                    }
+                    const el2 = document.getElementById('valInferGlobOverallPnlSummary');
+                    if (el2) {
+                        el2.innerText = pnlStr;
+                        el2.className = `text-sm font-semibold mt-0.5 ${gi.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+                    }
+                }
+                if (gi.long_regimes && gi.total_regimes) {
+                    const el = document.getElementById('valInferGlobLongCountSummary');
+                    if (el) el.innerText = `${gi.long_regimes} / ${gi.total_regimes}`;
                 }
                 if (gi.mae_gain_base !== undefined && gi.mae_gain_base !== null) {
                     const el = document.getElementById('valInferGlobBaseGain');
@@ -2450,6 +2633,7 @@
                 updateSystemStatus("Inference Complete", "emerald", false, 3500);
 
                 fetchInferenceStatus();
+                loadTradeLedgerData();
 
                 if (!inferCompletedTimer) {
                     inferCompletedTimer = setTimeout(() => {
@@ -2503,7 +2687,7 @@
             }
         }
 
-        async function triggerInferenceStrategy(force = false) {
+        async function triggerInferenceStrategy(force = true) {
             const btn = document.getElementById('btnInferStrategy');
             if (btn) btn.disabled = true;
 
@@ -2533,7 +2717,7 @@
             }
         }
 
-        async function triggerInferenceGlobal(force = false) {
+        async function triggerInferenceGlobal(force = true) {
             const btn = document.getElementById('btnInferGlobal');
             if (btn) btn.disabled = true;
 
@@ -2563,7 +2747,7 @@
             }
         }
 
-        async function triggerInferenceAll(force = false) {
+        async function triggerInferenceAll(force = true) {
             const btn = document.getElementById('btnInferAll');
             if (btn) btn.disabled = true;
 
@@ -2590,6 +2774,353 @@
                 console.error("Failed to start all inference:", err);
                 resetInferenceToIdle();
                 updateSystemStatus("Connection Error", "red", false, 3000);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // OUT-OF-SAMPLE TRADE LEDGER CONTROLLER
+        // ---------------------------------------------------------------------
+        let currentLedgerStrategy = '50ma';
+        let currentLedgerPage = 1;
+        let currentLedgerLimit = 50;
+        let currentLedgerFilter = 'all';
+        let currentLedgerSearch = '';
+        let tradeSearchDebounceTimer = null;
+        let cachedLedgerData = null;
+
+        async function loadTradeLedgerData() {
+            try {
+                let url = `/api/inference/trades/${currentLedgerStrategy}?page=${currentLedgerPage}&limit=${currentLedgerLimit}`;
+                if (currentLedgerSearch) {
+                    url += `&search=${encodeURIComponent(currentLedgerSearch)}`;
+                }
+                if (currentLedgerStrategy === '50ma') {
+                    if (currentLedgerFilter === 'taken') url += `&decision=TAKE`;
+                    else if (currentLedgerFilter === 'skip') url += `&decision=SKIP`;
+                    else if (currentLedgerFilter === 'target') url += `&outcome=TARGET`;
+                    else if (currentLedgerFilter === 'sl') url += `&outcome=SL`;
+                } else {
+                    if (currentLedgerFilter === 'long') url += `&decision=LONG`;
+                    else if (currentLedgerFilter === 'cash') url += `&decision=CASH`;
+                    else if (currentLedgerFilter === 'win') url += `&win=true`;
+                    else if (currentLedgerFilter === 'loss') url += `&win=false`;
+                }
+
+                const res = await fetch(url);
+                const data = await res.json();
+                cachedLedgerData = data;
+                renderTradeLedger(data);
+            } catch (err) {
+                console.error("Failed to load trade ledger data:", err);
+            }
+        }
+
+        function switchTradeLedger(strat) {
+            currentLedgerStrategy = strat;
+            currentLedgerPage = 1;
+            currentLedgerFilter = 'all';
+            currentLedgerSearch = '';
+
+            const sInput = document.getElementById('tradeSearchInput');
+            if (sInput) sInput.value = '';
+
+            const btn50 = document.getElementById('tabLedger50maBtn');
+            const btnGlob = document.getElementById('tabLedgerGlobalBtn');
+
+            if (strat === '50ma') {
+                if (btn50) {
+                    btn50.className = "px-4 py-1.5 rounded-xl text-xs font-semibold bg-white/15 text-white shadow-sm transition-all flex items-center gap-1.5";
+                }
+                if (btnGlob) {
+                    btnGlob.className = "px-4 py-1.5 rounded-xl text-xs font-semibold text-apple-textSecondary hover:text-white transition-all flex items-center gap-1.5";
+                }
+            } else {
+                if (btn50) {
+                    btn50.className = "px-4 py-1.5 rounded-xl text-xs font-semibold text-apple-textSecondary hover:text-white transition-all flex items-center gap-1.5";
+                }
+                if (btnGlob) {
+                    btnGlob.className = "px-4 py-1.5 rounded-xl text-xs font-semibold bg-white/15 text-white shadow-sm transition-all flex items-center gap-1.5";
+                }
+            }
+
+            loadTradeLedgerData();
+        }
+
+        function handleTradeFilter(filterVal) {
+            currentLedgerFilter = filterVal;
+            currentLedgerPage = 1;
+            loadTradeLedgerData();
+        }
+
+        function handleTradeSearch(val) {
+            if (tradeSearchDebounceTimer) clearTimeout(tradeSearchDebounceTimer);
+            tradeSearchDebounceTimer = setTimeout(() => {
+                currentLedgerSearch = val.trim();
+                currentLedgerPage = 1;
+                loadTradeLedgerData();
+            }, 250);
+        }
+
+        function changeTradePage(delta) {
+            if (!cachedLedgerData) return;
+            const newPage = currentLedgerPage + delta;
+            if (newPage >= 1 && newPage <= (cachedLedgerData.total_pages || 1)) {
+                currentLedgerPage = newPage;
+                loadTradeLedgerData();
+            }
+        }
+
+        function renderTradeLedger(data) {
+            const kpiBanner = document.getElementById('ledgerKpiBanner');
+            const pillsContainer = document.getElementById('tradeFilterPills');
+            const tableHead = document.getElementById('tradeLedgerTableHead');
+            const tableBody = document.getElementById('tradeLedgerTableBody');
+            const rangeText = document.getElementById('tradeLedgerRangeText');
+            const pageIndicator = document.getElementById('tradePageIndicator');
+            const prevBtn = document.getElementById('tradePrevPageBtn');
+            const nextBtn = document.getElementById('tradeNextPageBtn');
+
+            if (!data) return;
+
+            const summary = data.summary || {};
+
+            // 1. Render KPI Banner
+            if (kpiBanner) {
+                if (data.strategy === '50_MA_SETUP') {
+                    const pnlVal = summary.overall_pnl_pct !== undefined ? summary.overall_pnl_pct : -535.92;
+                    const pnlColor = pnlVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    const sign = pnlVal > 0 ? '+' : '';
+
+                    kpiBanner.innerHTML = `
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Win Rate (Taken)</span>
+                            <div class="text-base font-semibold text-emerald-400 font-mono">${summary.win_rate_taken || '25.8%'}</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">${summary.wins_taken || 204}W / ${summary.losses_taken || 586}L</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Overall P&L %</span>
+                            <div class="text-base font-semibold ${pnlColor} font-mono">${sign}${pnlVal}%</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">All Setups: ${summary.overall_pnl_pct_all || -609.76}%</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Net R Multiples</span>
+                            <div class="text-base font-semibold text-amber-400 font-mono">${summary.net_r_taken !== undefined ? summary.net_r_taken : -178.0} R</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">+2R Target vs -1R SL</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Trades Taken</span>
+                            <div class="text-base font-semibold text-white font-mono">${summary.taken_trades || 790} <span class="text-xs text-apple-textSecondary font-normal">/ ${summary.total_trades || 1049}</span></div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">Skipped by Model: ${summary.skipped_trades || 259}</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Model Accuracy</span>
+                            <div class="text-base font-semibold text-blue-400 font-mono">${summary.accuracy_refined || '45.3%'}</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">Win Recall: ${summary.win_rate_recall || '77.3%'}</div>
+                        </div>
+                    `;
+                } else {
+                    const pnlVal = summary.overall_pnl_pct !== undefined ? summary.overall_pnl_pct : 36.4;
+                    const pnlColor = pnlVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    const sign = pnlVal > 0 ? '+' : '';
+
+                    kpiBanner.innerHTML = `
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Directional Acc</span>
+                            <div class="text-base font-semibold text-indigo-400 font-mono">${summary.directional_accuracy || '48.7%'}</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">Chronological Regimes</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Win Rate (7d Gain)</span>
+                            <div class="text-base font-semibold text-emerald-400 font-mono">${summary.win_rate_pct || '48.3%'}</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">${summary.wins_long || 574}W / ${summary.losses_long || 615}L</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Overall P&L %</span>
+                            <div class="text-base font-semibold ${pnlColor} font-mono">${sign}${pnlVal}%</div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">7-day hold return</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Long / Cash Regimes</span>
+                            <div class="text-base font-semibold text-white font-mono">${summary.long_regimes || 1189} <span class="text-xs text-apple-textSecondary font-normal">/ ${summary.cash_regimes || 555}</span></div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">Total: ${summary.total_regimes || 1744}</div>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-apple-textSecondary uppercase tracking-wider font-mono">Best / Worst Trade</span>
+                            <div class="text-base font-semibold text-white font-mono"><span class="text-emerald-400">+${summary.best_trade_pct || 20.05}%</span> / <span class="text-rose-400">${summary.worst_trade_pct || -14.29}%</span></div>
+                            <div class="text-[10px] text-apple-textTertiary font-mono">Single regime bounds</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 2. Render Filter Pills
+            if (pillsContainer) {
+                const makePill = (id, label, active) => `
+                    <button onclick="handleTradeFilter('${id}')" class="px-2.5 py-1 rounded-lg font-medium transition-all ${
+                        active ? 'bg-white/15 text-white border border-white/15 shadow-sm' : 'bg-white/5 text-apple-textSecondary hover:text-white border border-transparent'
+                    }">${label}</button>
+                `;
+
+                if (data.strategy === '50_MA_SETUP') {
+                    pillsContainer.innerHTML = `
+                        ${makePill('all', 'All Setups (1,049)', currentLedgerFilter === 'all')}
+                        ${makePill('taken', 'Model Taken (790)', currentLedgerFilter === 'taken')}
+                        ${makePill('skip', 'Model Skipped (259)', currentLedgerFilter === 'skip')}
+                        ${makePill('target', 'Target Hit (278)', currentLedgerFilter === 'target')}
+                        ${makePill('sl', 'Stop Loss Hit (771)', currentLedgerFilter === 'sl')}
+                    `;
+                } else {
+                    pillsContainer.innerHTML = `
+                        ${makePill('all', 'All Regimes (1,744)', currentLedgerFilter === 'all')}
+                        ${makePill('long', 'Long Allocations (1,189)', currentLedgerFilter === 'long')}
+                        ${makePill('cash', 'Cash Capital Preserved (555)', currentLedgerFilter === 'cash')}
+                        ${makePill('win', 'Positive Returns (842)', currentLedgerFilter === 'win')}
+                        ${makePill('loss', 'Negative Returns', currentLedgerFilter === 'loss')}
+                    `;
+                }
+            }
+
+            // 3. Render Table Headers
+            if (tableHead) {
+                if (data.strategy === '50_MA_SETUP') {
+                    tableHead.innerHTML = `
+                        <tr class="border-b border-white/5 text-[11px] text-apple-textSecondary font-mono uppercase tracking-wider bg-white/[0.02]">
+                            <th class="py-2.5 px-3 font-medium">#</th>
+                            <th class="py-2.5 px-3 font-medium">Date</th>
+                            <th class="py-2.5 px-3 font-medium">Symbol</th>
+                            <th class="py-2.5 px-3 font-medium">Entry</th>
+                            <th class="py-2.5 px-3 font-medium">Stop Loss</th>
+                            <th class="py-2.5 px-3 font-medium">Target 1:2</th>
+                            <th class="py-2.5 px-3 font-medium">Risk</th>
+                            <th class="py-2.5 px-3 font-medium">Pred R</th>
+                            <th class="py-2.5 px-3 font-medium">Decision</th>
+                            <th class="py-2.5 px-3 font-medium">Outcome</th>
+                            <th class="py-2.5 px-3 font-medium">Real R</th>
+                            <th class="py-2.5 px-3 font-medium">Trade P&L</th>
+                            <th class="py-2.5 px-3 font-medium">Cumul P&L</th>
+                        </tr>
+                    `;
+                } else {
+                    tableHead.innerHTML = `
+                        <tr class="border-b border-white/5 text-[11px] text-apple-textSecondary font-mono uppercase tracking-wider bg-white/[0.02]">
+                            <th class="py-2.5 px-3 font-medium">#</th>
+                            <th class="py-2.5 px-3 font-medium">Date</th>
+                            <th class="py-2.5 px-3 font-medium">Symbol</th>
+                            <th class="py-2.5 px-3 font-medium">Close</th>
+                            <th class="py-2.5 px-3 font-medium">Pred Gain 7d</th>
+                            <th class="py-2.5 px-3 font-medium">Pred Drop 7d</th>
+                            <th class="py-2.5 px-3 font-medium">Decision</th>
+                            <th class="py-2.5 px-3 font-medium">Real Gain 7d</th>
+                            <th class="py-2.5 px-3 font-medium">Real Drop 7d</th>
+                            <th class="py-2.5 px-3 font-medium">7d Return</th>
+                            <th class="py-2.5 px-3 font-medium">Trade P&L</th>
+                            <th class="py-2.5 px-3 font-medium">Cumul P&L</th>
+                        </tr>
+                    `;
+                }
+            }
+
+            // 4. Render Table Rows
+            if (tableBody) {
+                const rows = data.strategy === '50_MA_SETUP' ? (data.trades || []) : (data.regimes || []);
+                if (rows.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="13" class="py-8 text-center text-apple-textSecondary font-mono">
+                                No matching trades found.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    let html = '';
+                    if (data.strategy === '50_MA_SETUP') {
+                        rows.forEach(t => {
+                            const isWin = t.outcome === 'Target';
+                            const outcomeBadge = isWin
+                                ? '<span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-semibold text-[10px]">TARGET</span>'
+                                : '<span class="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 font-semibold text-[10px]">SL</span>';
+                            
+                            const decisionBadge = t.decision === 'TAKE'
+                                ? '<span class="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-semibold text-[10px]">TAKE</span>'
+                                : '<span class="px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary font-semibold text-[10px]">SKIP</span>';
+
+                            const pnlColor = t.trade_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                            const pnlSign = t.trade_pnl_pct > 0 ? '+' : '';
+                            const cumColor = t.cumulative_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                            const cumSign = t.cumulative_pnl_pct > 0 ? '+' : '';
+
+                            html += `
+                                <tr class="hover:bg-white/[0.02] font-mono transition-colors">
+                                    <td class="py-2 px-3 text-apple-textTertiary text-[11px]">${t.id}</td>
+                                    <td class="py-2 px-3 text-apple-textSecondary text-[11px] whitespace-nowrap">${t.date}</td>
+                                    <td class="py-2 px-3 font-semibold text-white whitespace-nowrap">${t.symbol}</td>
+                                    <td class="py-2 px-3 text-slate-300">₹${t.entry_price.toFixed(2)}</td>
+                                    <td class="py-2 px-3 text-slate-400">₹${t.stop_loss.toFixed(2)}</td>
+                                    <td class="py-2 px-3 text-slate-400">₹${t.target.toFixed(2)}</td>
+                                    <td class="py-2 px-3 text-apple-textSecondary">₹${t.risk.toFixed(2)}</td>
+                                    <td class="py-2 px-3 text-blue-300 font-medium">${t.predicted_r.toFixed(2)} R</td>
+                                    <td class="py-2 px-3 whitespace-nowrap">${decisionBadge}</td>
+                                    <td class="py-2 px-3 whitespace-nowrap">${outcomeBadge}</td>
+                                    <td class="py-2 px-3 text-slate-300">${t.real_r.toFixed(2)} R</td>
+                                    <td class="py-2 px-3 ${pnlColor} font-semibold">${pnlSign}${t.trade_pnl_pct.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 ${cumColor} font-semibold">${cumSign}${t.cumulative_pnl_pct.toFixed(2)}%</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        rows.forEach(r => {
+                            const isLong = r.decision === 'LONG';
+                            const decisionBadge = isLong
+                                ? '<span class="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 font-semibold text-[10px]">LONG</span>'
+                                : '<span class="px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary font-semibold text-[10px]">CASH</span>';
+
+                            const pnlColor = r.trade_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                            const pnlSign = r.trade_pnl_pct > 0 ? '+' : '';
+                            const cumColor = r.cumulative_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                            const cumSign = r.cumulative_pnl_pct > 0 ? '+' : '';
+
+                            html += `
+                                <tr class="hover:bg-white/[0.02] font-mono transition-colors">
+                                    <td class="py-2 px-3 text-apple-textTertiary text-[11px]">${r.id}</td>
+                                    <td class="py-2 px-3 text-apple-textSecondary text-[11px] whitespace-nowrap">${r.date}</td>
+                                    <td class="py-2 px-3 font-semibold text-white whitespace-nowrap">${r.symbol}</td>
+                                    <td class="py-2 px-3 text-slate-300">₹${r.close.toFixed(2)}</td>
+                                    <td class="py-2 px-3 text-emerald-400 font-medium">${r.predicted_gain_7d.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 text-rose-400 font-medium">${r.predicted_drop_7d.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 whitespace-nowrap">${decisionBadge}</td>
+                                    <td class="py-2 px-3 text-slate-300">${r.real_gain_7d.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 text-slate-300">${r.real_drop_7d.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 text-slate-200">${r.real_return_7d > 0 ? '+' : ''}${r.real_return_7d.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 ${pnlColor} font-semibold">${pnlSign}${r.trade_pnl_pct.toFixed(2)}%</td>
+                                    <td class="py-2 px-3 ${cumColor} font-semibold">${cumSign}${r.cumulative_pnl_pct.toFixed(2)}%</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    tableBody.innerHTML = html;
+                }
+            }
+
+            // 5. Pagination range text & controls
+            const page = data.page || 1;
+            const limit = data.limit || 50;
+            const total = (data.strategy === '50_MA_SETUP' ? data.total_trades : data.total_regimes) || 0;
+            const totalPages = data.total_pages || 1;
+            const startIdx = total === 0 ? 0 : (page - 1) * limit + 1;
+            const endIdx = Math.min(page * limit, total);
+
+            if (rangeText) {
+                const label = data.strategy === '50_MA_SETUP' ? 'trades' : 'regimes';
+                rangeText.innerText = `Showing ${startIdx} - ${endIdx} of ${total.toLocaleString()} ${label}`;
+            }
+            if (pageIndicator) {
+                pageIndicator.innerText = `Page ${page} / ${totalPages}`;
+            }
+            if (prevBtn) {
+                prevBtn.disabled = page <= 1;
+            }
+            if (nextBtn) {
+                nextBtn.disabled = page >= totalPages;
             }
         }
 
@@ -2809,6 +3340,7 @@
 
                         case 'INFERENCE_INFO':
                             renderInferenceInfo(msg.data);
+                            loadTradeLedgerData();
                             break;
                     }
                 } catch (e) {
@@ -2828,8 +3360,9 @@
             };
         }
 
-        // Initialize WebSocket stream on page boot
+        // Initialize WebSocket stream & load trade ledger on page boot
         connectWebSocket();
+        loadTradeLedgerData();
     </script>
 </body>
 </html>

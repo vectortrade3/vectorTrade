@@ -1,6 +1,14 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T22:22:39.032071+05:30",
+      "readable_time": "2026-11-01 22:22:39 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T22:04:21.771801+05:30",
       "readable_time": "2026-11-01 22:04:21 India Standard Time",
       "event": "STOCKS_DOWNLOAD",
@@ -713,5 +721,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T22:04:21.771801+05:30"
+  "last_event_time": "2026-11-01T22:22:39.032071+05:30"
 }

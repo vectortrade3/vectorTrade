@@ -438,7 +438,7 @@ def get_training_progress():
 def start_training_strategy():
     """Triggers the Setup Strategy model training pipeline in a background thread."""
     global _train_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _train_lock:
@@ -481,7 +481,7 @@ def start_training_strategy():
 def start_training_global():
     """Triggers the Global Regime models training pipeline in a background thread."""
     global _train_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _train_lock:
@@ -524,7 +524,7 @@ def start_training_global():
 def start_training_all():
     """Triggers training of all models sequentially in a background thread."""
     global _train_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _train_lock:
@@ -589,7 +589,7 @@ def get_inference_progress():
 def start_inference_strategy():
     """Triggers the Setup Strategy model evaluation pipeline in a background thread."""
     global _infer_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _infer_lock:
@@ -632,7 +632,7 @@ def start_inference_strategy():
 def start_inference_global():
     """Triggers the Global Regime models evaluation pipeline in a background thread."""
     global _infer_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _infer_lock:
@@ -675,7 +675,7 @@ def start_inference_global():
 def start_inference_all():
     """Triggers evaluation of all models sequentially in a background thread."""
     global _infer_thread
-    force = request.args.get("force", "false").lower() in ("true", "1")
+    force = request.args.get("force", "true").lower() in ("true", "1")
     if request.is_json and request.json:
         force = request.json.get("force", force)
     with _infer_lock:
@@ -712,6 +712,104 @@ def start_inference_all():
             "section": "ALL",
             "message": "All models evaluation started."
         })
+
+
+@app.route("/api/inference/trades/50ma", methods=["GET"])
+def get_inference_50ma_trades_api():
+    """Returns recorded 50 MA test trades with optional filtering and pagination."""
+    data = json_manager.get_inference_50ma_trades()
+    trades = data.get("trades", [])
+    summary = data.get("summary", {})
+
+    # Filter by search symbol
+    search = request.args.get("search", "").strip().upper()
+    if search:
+        trades = [t for t in trades if search in str(t.get("symbol", "")).upper()]
+
+    # Filter by decision (TAKE / SKIP)
+    decision_filter = request.args.get("decision", "").strip().upper()
+    if decision_filter in ("TAKE", "SKIP"):
+        trades = [t for t in trades if str(t.get("decision", "")).upper() == decision_filter]
+
+    # Filter by outcome (TARGET / SL)
+    outcome_filter = request.args.get("outcome", "").strip().upper()
+    if outcome_filter in ("TARGET", "SL"):
+        trades = [t for t in trades if str(t.get("outcome", "")).upper() == outcome_filter]
+
+    total_filtered = len(trades)
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=50, type=int)
+
+    if limit > 0:
+        start_idx = max(0, (page - 1) * limit)
+        end_idx = start_idx + limit
+        paginated_trades = trades[start_idx:end_idx]
+        total_pages = max(1, (total_filtered + limit - 1) // limit)
+    else:
+        paginated_trades = trades
+        total_pages = 1
+
+    return jsonify({
+        "status": "SUCCESS",
+        "strategy": "50_MA_SETUP",
+        "summary": summary,
+        "total_trades": total_filtered,
+        "total_unfiltered": len(data.get("trades", [])),
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "trades": paginated_trades
+    })
+
+
+@app.route("/api/inference/trades/global", methods=["GET"])
+def get_inference_global_trades_api():
+    """Returns recorded Global regime test trades with optional filtering and pagination."""
+    data = json_manager.get_inference_global_trades()
+    regimes = data.get("regimes", [])
+    summary = data.get("summary", {})
+
+    # Filter by search symbol
+    search = request.args.get("search", "").strip().upper()
+    if search:
+        regimes = [r for r in regimes if search in str(r.get("symbol", "")).upper()]
+
+    # Filter by decision (LONG / CASH)
+    decision_filter = request.args.get("decision", "").strip().upper()
+    if decision_filter in ("LONG", "CASH"):
+        regimes = [r for r in regimes if str(r.get("decision", "")).upper() == decision_filter]
+
+    # Filter by win
+    win_filter = request.args.get("win", "").strip().lower()
+    if win_filter == "true":
+        regimes = [r for r in regimes if r.get("is_win") is True]
+    elif win_filter == "false":
+        regimes = [r for r in regimes if r.get("is_win") is False and str(r.get("decision", "")).upper() == "LONG"]
+
+    total_filtered = len(regimes)
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=50, type=int)
+
+    if limit > 0:
+        start_idx = max(0, (page - 1) * limit)
+        end_idx = start_idx + limit
+        paginated_regimes = regimes[start_idx:end_idx]
+        total_pages = max(1, (total_filtered + limit - 1) // limit)
+    else:
+        paginated_regimes = regimes
+        total_pages = 1
+
+    return jsonify({
+        "status": "SUCCESS",
+        "strategy": "GLOBAL_REGIME",
+        "summary": summary,
+        "total_regimes": total_filtered,
+        "total_unfiltered": len(data.get("regimes", [])),
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "regimes": paginated_regimes
+    })
 
 
 @app.route("/api/tasks/logs", methods=["GET"])

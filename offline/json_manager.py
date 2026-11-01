@@ -36,6 +36,8 @@ TASK_LOGS_FILE = DATA_STORE_DIR / "task_logs.json"
 STOCKS_LIST_FILE = DATA_STORE_DIR / "stocks_list.txt"
 INFERENCE_STATE_FILE = DATA_STORE_DIR / "inference_state.json"
 INFERENCE_PROGRESS_FILE = DATA_STORE_DIR / "inference_progress.json"
+INFERENCE_50MA_TRADES_FILE = DATA_STORE_DIR / "inference_50ma_trades.json"
+INFERENCE_GLOBAL_TRADES_FILE = DATA_STORE_DIR / "inference_global_trades.json"
 MODEL_PERFORMANCE_LOG_FILE = BASE_DIR / "models" / "model_performance_log.json"
 
 # Thread safety lock
@@ -988,9 +990,17 @@ def update_strategy_inference_info(
     message: str = "",
     duration_seconds: float = 0.0,
     last_inference_date: Optional[str] = None,
-    last_run_date: Optional[str] = None
+    last_run_date: Optional[str] = None,
+    win_rate_taken: str = "0.0%",
+    win_rate_all: str = "0.0%",
+    overall_pnl_pct: float = 0.0,
+    net_r_taken: float = 0.0,
+    total_trades: int = 0,
+    taken_trades: int = 0,
+    wins_count: int = 0,
+    losses_count: int = 0
 ) -> Dict[str, Any]:
-    """Updates Section 1 (Strategy) inference results."""
+    """Updates Section 1 (Strategy) inference results including trade win rate and P&L metrics."""
     current = get_inference_info()
     now_dt = datetime.now().astimezone()
     now_str = now_dt.isoformat()
@@ -1008,6 +1018,14 @@ def update_strategy_inference_info(
         "accuracy_refined": accuracy_refined,
         "win_rate_recall": win_rate_recall,
         "mae_refined": round(mae_refined, 3),
+        "win_rate_taken": win_rate_taken,
+        "win_rate_all": win_rate_all,
+        "overall_pnl_pct": round(overall_pnl_pct, 2),
+        "net_r_taken": round(net_r_taken, 2),
+        "total_trades": total_trades,
+        "taken_trades": taken_trades,
+        "wins_count": wins_count,
+        "losses_count": losses_count,
         "base_features_count": base_features_count,
         "refined_features_count": refined_features_count,
         "pruned_features_count": pruned,
@@ -1030,6 +1048,8 @@ def update_strategy_inference_info(
         "date": eff_inf_date,
         "run_date": eff_run_date,
         "accuracy_refined": accuracy_refined,
+        "win_rate_taken": win_rate_taken,
+        "overall_pnl_pct": round(overall_pnl_pct, 2),
         "win_rate_recall": win_rate_recall,
         "mae_refined": round(mae_refined, 3),
         "duration_seconds": round(duration_seconds, 2),
@@ -1054,9 +1074,15 @@ def update_global_inference_info(
     message: str = "",
     duration_seconds: float = 0.0,
     last_inference_date: Optional[str] = None,
-    last_run_date: Optional[str] = None
+    last_run_date: Optional[str] = None,
+    win_rate_pct: str = "0.0%",
+    overall_pnl_pct: float = 0.0,
+    total_regimes: int = 0,
+    long_regimes: int = 0,
+    best_trade_pct: float = 0.0,
+    worst_trade_pct: float = 0.0
 ) -> Dict[str, Any]:
-    """Updates Section 2 (Global) inference results."""
+    """Updates Section 2 (Global) inference results including directional accuracy and regime P&L."""
     current = get_inference_info()
     now_dt = datetime.now().astimezone()
     now_str = now_dt.isoformat()
@@ -1074,6 +1100,12 @@ def update_global_inference_info(
         "mae_gain_refined": round(mae_gain_refined, 3),
         "mae_drop_refined": round(mae_drop_refined, 3),
         "directional_accuracy": directional_accuracy,
+        "win_rate_pct": win_rate_pct,
+        "overall_pnl_pct": round(overall_pnl_pct, 2),
+        "total_regimes": total_regimes,
+        "long_regimes": long_regimes,
+        "best_trade_pct": round(best_trade_pct, 2),
+        "worst_trade_pct": round(worst_trade_pct, 2),
         "base_features_count": base_features_count,
         "refined_features_count": refined_features_count,
         "pruned_features_count": pruned,
@@ -1098,6 +1130,8 @@ def update_global_inference_info(
         "mae_gain_refined": round(mae_gain_refined, 3),
         "mae_drop_refined": round(mae_drop_refined, 3),
         "directional_accuracy": directional_accuracy,
+        "win_rate_pct": win_rate_pct,
+        "overall_pnl_pct": round(overall_pnl_pct, 2),
         "duration_seconds": round(duration_seconds, 2),
         "message": message
     })
@@ -1106,6 +1140,56 @@ def update_global_inference_info(
     write_json_file(INFERENCE_STATE_FILE, current)
     notify_progress_listeners("INFERENCE_INFO", current)
     return current
+
+
+# ==============================================================================
+# TRADE LEDGERS: 50 MA STRATEGY & GLOBAL REGIME TRADES
+# ==============================================================================
+
+def save_inference_50ma_trades(trades: List[Dict[str, Any]], summary: Dict[str, Any]) -> bool:
+    """Persists 50 MA test trades ledger with summary statistics atomically."""
+    payload = {
+        "strategy": "50_MA_SETUP",
+        "updated_at": datetime.now().astimezone().isoformat(),
+        "summary": summary,
+        "total_trades": len(trades),
+        "trades": trades
+    }
+    return write_json_file(INFERENCE_50MA_TRADES_FILE, payload)
+
+
+def get_inference_50ma_trades() -> Dict[str, Any]:
+    """Returns the recorded 50 MA test trades ledger and summary."""
+    default_data = {
+        "strategy": "50_MA_SETUP",
+        "summary": {},
+        "total_trades": 0,
+        "trades": []
+    }
+    return read_json_file(INFERENCE_50MA_TRADES_FILE, default_data)
+
+
+def save_inference_global_trades(regimes: List[Dict[str, Any]], summary: Dict[str, Any]) -> bool:
+    """Persists Global regime test trades ledger with summary statistics atomically."""
+    payload = {
+        "strategy": "GLOBAL_REGIME",
+        "updated_at": datetime.now().astimezone().isoformat(),
+        "summary": summary,
+        "total_regimes": len(regimes),
+        "regimes": regimes
+    }
+    return write_json_file(INFERENCE_GLOBAL_TRADES_FILE, payload)
+
+
+def get_inference_global_trades() -> Dict[str, Any]:
+    """Returns the recorded Global regime test trades ledger and summary."""
+    default_data = {
+        "strategy": "GLOBAL_REGIME",
+        "summary": {},
+        "total_regimes": 0,
+        "regimes": []
+    }
+    return read_json_file(INFERENCE_GLOBAL_TRADES_FILE, default_data)
 
 
 def get_inference_progress() -> Dict[str, Any]:

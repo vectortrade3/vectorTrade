@@ -672,12 +672,6 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
     joblib.dump(scaler_ref, MODELS_DIR / '5_year_global_scaler.pkl')
     joblib.dump(imputer_ref, MODELS_DIR / '5_year_global_imputer.pkl')
 
-    # Also update legacy aliases so all filenames in models/ stay synchronized
-    joblib.dump(best_gain_ref, MODELS_DIR / 'global_xgb_gain.pkl')
-    joblib.dump(best_drop_ref, MODELS_DIR / 'global_xgb_drop.pkl')
-    joblib.dump(scaler_ref, MODELS_DIR / 'global_scaler.pkl')
-    joblib.dump(imputer_ref, MODELS_DIR / 'global_imputer.pkl')
-
     with open(BASE_DIR / 'global_features.txt', 'w', encoding='utf-8') as f:
         for feat in refined_features:
             f.write(f"{feat}\n")

@@ -139,6 +139,74 @@ class TestInferencePipeline(unittest.TestCase):
         self.assertIn("inference_progress", data)
         self.assertEqual(data["status"], "ONLINE")
 
+    def test_09_trade_ledgers_persistence(self):
+        """Verifies 50 MA and Global trade ledgers are persisted in data_store/."""
+        trades_50ma = json_manager.get_inference_50ma_trades()
+        self.assertIn("trades", trades_50ma)
+        self.assertIn("summary", trades_50ma)
+        self.assertTrue(len(trades_50ma["trades"]) > 0, "50 MA trades ledger is empty")
+        
+        sum_50 = trades_50ma["summary"]
+        self.assertIn("win_rate_taken", sum_50)
+        self.assertIn("overall_pnl_pct", sum_50)
+        self.assertIn("taken_trades", sum_50)
+        self.assertIn("total_trades", sum_50)
+
+        regimes_glob = json_manager.get_inference_global_trades()
+        self.assertIn("regimes", regimes_glob)
+        self.assertIn("summary", regimes_glob)
+        self.assertTrue(len(regimes_glob["regimes"]) > 0, "Global regimes ledger is empty")
+
+        sum_g = regimes_glob["summary"]
+        self.assertIn("directional_accuracy", sum_g)
+        self.assertIn("win_rate_pct", sum_g)
+        self.assertIn("overall_pnl_pct", sum_g)
+
+    def test_10_api_trade_ledgers_endpoints(self):
+        """Verifies GET /api/inference/trades/50ma and /api/inference/trades/global."""
+        # 50 MA endpoint
+        res = self.app_client.get('/api/inference/trades/50ma?page=1&limit=25')
+        self.assertEqual(res.status_code, 200)
+        d_50 = res.get_json()
+        self.assertEqual(d_50["status"], "SUCCESS")
+        self.assertEqual(len(d_50["trades"]), 25)
+        self.assertGreaterEqual(d_50["total_pages"], 40)
+        self.assertIn("win_rate_taken", d_50["summary"])
+
+        # Filter check
+        res_filter = self.app_client.get('/api/inference/trades/50ma?decision=TAKE&limit=10')
+        self.assertEqual(res_filter.status_code, 200)
+        d_filter = res_filter.get_json()
+        self.assertTrue(all(t["decision"] == "TAKE" for t in d_filter["trades"]))
+
+        # Global endpoint
+        res_g = self.app_client.get('/api/inference/trades/global?page=1&limit=25')
+        self.assertEqual(res_g.status_code, 200)
+        d_glob = res_g.get_json()
+        self.assertEqual(d_glob["status"], "SUCCESS")
+        self.assertEqual(len(d_glob["regimes"]), 25)
+        self.assertIn("directional_accuracy", d_glob["summary"])
+
+    def test_11_trade_record_schema_fidelity(self):
+        """Verifies individual trade and regime records contain exact required fields."""
+        trades_50ma = json_manager.get_inference_50ma_trades()["trades"]
+        first_t = trades_50ma[0]
+        required_t_keys = [
+            "id", "symbol", "date", "entry_price", "stop_loss", "target", "risk",
+            "predicted_r", "real_r", "outcome", "decision", "trade_pnl_pct", "cumulative_pnl_pct"
+        ]
+        for k in required_t_keys:
+            self.assertIn(k, first_t, f"Missing {k} in 50 MA trade record")
+
+        regimes = json_manager.get_inference_global_trades()["regimes"]
+        first_r = regimes[0]
+        required_r_keys = [
+            "id", "symbol", "date", "close", "predicted_gain_7d", "predicted_drop_7d",
+            "real_gain_7d", "real_drop_7d", "real_return_7d", "decision", "trade_pnl_pct", "cumulative_pnl_pct"
+        ]
+        for k in required_r_keys:
+            self.assertIn(k, first_r, f"Missing {k} in Global regime record")
+
 
 if __name__ == '__main__':
     unittest.main()
