@@ -3,6 +3,30 @@
     {
       "task_name": "STOCKS_DOWNLOAD",
       "status": "COMPLETED",
+      "timestamp": "2026-11-01T19:04:51.401186+05:30",
+      "readable_time": "2026-11-01 19:04:51 India Standard Time",
+      "message": "Completed. Synced 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T19:03:04.822098+05:30",
+      "readable_time": "2026-11-01 19:03:04 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T18:54:31.041873+05:30",
+      "readable_time": "2026-11-01 18:54:31 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
       "timestamp": "2026-11-01T18:36:09.278645+05:30",
       "readable_time": "2026-11-01 18:36:09 India Standard Time",
       "message": "Completed. Synced 207 stocks up to 2026-10-30.",
@@ -51,5 +75,5 @@
   ],
   "last_task": "STOCKS_DOWNLOAD",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-01T18:36:09.278645+05:30"
+  "last_updated": "2026-11-01T19:04:51.401186+05:30"
 }

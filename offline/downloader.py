@@ -119,8 +119,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         if not nifty.empty:
             if isinstance(nifty.columns, pd.MultiIndex):
                 nifty.columns = nifty.columns.droplevel(1)
-            # Filter strictly completed days before today
-            nifty = nifty[nifty.index.date < today]
+            # Filter up to today
+            nifty = nifty[nifty.index.date <= today]
             nifty_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
             for c in nifty_cols:
                 if c not in nifty.columns:
@@ -168,8 +168,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = df.columns.droplevel(1)
-                # Filter strictly completed days before today
-                df = df[df.index.date < today]
+                # Filter up to today
+                df = df[df.index.date <= today]
                 if not df.empty:
                     downloaded_dfs[clean_sym] = df
         except Exception as e:

@@ -1,6 +1,86 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T19:04:51.416760+05:30",
+      "readable_time": "2026-11-01 19:04:51 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Completed. Synced 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:04:51.384982+05:30",
+      "readable_time": "2026-11-01 19:04:51 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Downloaded and appended market data for 207 stocks up to 2026-10-30 in 106.6s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:03:04.826606+05:30",
+      "readable_time": "2026-11-01 19:03:04 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:03:04.795367+05:30",
+      "readable_time": "2026-11-01 19:03:04 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:02:56.080044+05:30",
+      "readable_time": "2026-11-01 19:02:56 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:00:02.635032+05:30",
+      "readable_time": "2026-11-01 19:00:02 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T18:54:31.085250+05:30",
+      "readable_time": "2026-11-01 18:54:31 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_ERROR",
+      "status": "Error",
+      "message": "Pipeline crashed: cannot access local variable 'msg' where it is not associated with a value",
+      "error": "cannot access local variable 'msg' where it is not associated with a value"
+    },
+    {
+      "timestamp": "2026-11-01T18:54:31.069504+05:30",
+      "readable_time": "2026-11-01 18:54:31 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T18:54:31.041873+05:30",
+      "readable_time": "2026-11-01 18:54:31 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T18:54:16.249356+05:30",
+      "readable_time": "2026-11-01 18:54:16 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T18:36:09.293921+05:30",
       "readable_time": "2026-11-01 18:36:09 India Standard Time",
       "event": "STOCKS_DOWNLOAD",
@@ -65,5 +145,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T18:36:09.293921+05:30"
+  "last_event_time": "2026-11-01T19:04:51.416760+05:30"
 }
