@@ -29,6 +29,8 @@ MODELS_STATE_FILE = DATA_STORE_DIR / "models_state.json"
 DOWNLOAD_PROGRESS_FILE = DATA_STORE_DIR / "download_progress.json"
 FEATURE_GEN_FILE = DATA_STORE_DIR / "feature_gen.json"
 FEATURE_GEN_PROGRESS_FILE = DATA_STORE_DIR / "feature_gen_progress.json"
+DATA_CLEANING_FILE = DATA_STORE_DIR / "data_cleaning.json"
+DATA_CLEANING_PROGRESS_FILE = DATA_STORE_DIR / "data_cleaning_progress.json"
 TASK_LOGS_FILE = DATA_STORE_DIR / "task_logs.json"
 STOCKS_LIST_FILE = DATA_STORE_DIR / "stocks_list.txt"
 
@@ -532,7 +534,152 @@ def get_task_logs(limit: int = 50) -> List[Dict[str, Any]]:
     return logs_data.get("task_logs", [])[:limit]
 
 
+# ==============================================================================
+# 8. DATA CLEANING STATE & PROGRESS MANAGER
+# ==============================================================================
+
+def initialize_data_cleaning_state() -> Dict[str, Any]:
+    """Ensures data_cleaning.json is initialized with previous baseline info."""
+    default_state = {
+        "last_clean_date": "2026-10-30",
+        "last_clean_run_date": "2026-10-30",
+        "last_run_timestamp": datetime.now().astimezone().isoformat(),
+        "status": "COMPLETED",
+        "total_rows": 248863,
+        "total_columns": 157,
+        "total_stocks": 207,
+        "output_file": "5_year_final_data.csv",
+        "message": "Baseline 5-year combined and cleaned dataset ready.",
+        "history": []
+    }
+    if not DATA_CLEANING_FILE.exists():
+        write_json_file(DATA_CLEANING_FILE, default_state)
+        return default_state
+    current = read_json_file(DATA_CLEANING_FILE, default_state)
+    needs_save = False
+    if not current.get("last_clean_date"):
+        current["last_clean_date"] = "2026-10-30"
+        needs_save = True
+    if not current.get("last_clean_run_date"):
+        current["last_clean_run_date"] = current.get("last_clean_date", "2026-10-30")
+        needs_save = True
+    if current.get("total_columns") != 157:
+        current["total_columns"] = 157
+        needs_save = True
+    if needs_save:
+        write_json_file(DATA_CLEANING_FILE, current)
+    return current
+
+
+def get_data_cleaning_info() -> Dict[str, Any]:
+    """Retrieves data cleaning metadata."""
+    return initialize_data_cleaning_state()
+
+
+def update_data_cleaning_info(
+    status: str = "COMPLETED",
+    total_rows: int = 0,
+    total_columns: int = 157,
+    total_stocks: int = 207,
+    message: str = "",
+    duration_seconds: float = 0.0,
+    last_clean_date: Optional[str] = None,
+    last_clean_run_date: Optional[str] = None,
+    output_file: str = "5_year_final_data.csv"
+) -> Dict[str, Any]:
+    """Updates data_cleaning.json and appends run entry to history."""
+    current = get_data_cleaning_info()
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    today_str = now_dt.strftime("%Y-%m-%d")
+
+    clean_date = last_clean_date or current.get("last_clean_date") or today_str
+    run_date = last_clean_run_date or current.get("last_clean_run_date") or today_str
+
+    entry = {
+        "timestamp": now_str,
+        "clean_date": clean_date,
+        "run_date": run_date,
+        "status": status,
+        "total_rows": total_rows,
+        "total_columns": total_columns,
+        "total_stocks": total_stocks,
+        "output_file": output_file,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message
+    }
+
+    current["last_clean_date"] = clean_date
+    current["last_clean_run_date"] = run_date
+    current["last_run_timestamp"] = now_str
+    current["status"] = status
+    current["total_rows"] = total_rows
+    current["total_columns"] = total_columns
+    current["total_stocks"] = total_stocks
+    current["output_file"] = output_file
+    current["message"] = message
+
+    history = current.get("history", [])
+    history.insert(0, entry)
+    current["history"] = history[:100]
+
+    write_json_file(DATA_CLEANING_FILE, current)
+    notify_progress_listeners("DATA_CLEAN_INFO", current)
+    return current
+
+
+def get_data_cleaning_progress() -> Dict[str, Any]:
+    """Retrieves live real-time progress for Data Cleaning."""
+    default_progress = {
+        "status": "IDLE",            # IDLE, COMBINING, CLEANING, SAVING, COMPLETED, ERROR
+        "heading": "Ready",
+        "current_stock": "",
+        "current_index": 0,
+        "total_stocks": 207,
+        "percentage": 0.0,
+        "message": "Ready to clean and combine feature data.",
+        "elapsed_seconds": 0.0,
+        "error": None,
+        "last_clean_date": None,
+        "total_rows": 0
+    }
+    return read_json_file(DATA_CLEANING_PROGRESS_FILE, default_progress)
+
+
+def update_data_cleaning_progress(
+    status: str,
+    heading: str,
+    current_stock: str = "",
+    current_index: int = 0,
+    total_stocks: int = 207,
+    percentage: float = 0.0,
+    message: str = "",
+    elapsed_seconds: float = 0.0,
+    error: Optional[str] = None,
+    last_clean_date: Optional[str] = None,
+    total_rows: int = 0
+) -> None:
+    """Updates live transient data cleaning progress and broadcasts to listeners."""
+    data = {
+        "status": status,
+        "heading": heading,
+        "current_stock": current_stock,
+        "current_index": current_index,
+        "total_stocks": total_stocks,
+        "percentage": round(percentage, 1),
+        "message": message,
+        "elapsed_seconds": round(elapsed_seconds, 1),
+        "error": error,
+        "last_clean_date": last_clean_date,
+        "total_rows": total_rows,
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(DATA_CLEANING_PROGRESS_FILE, data)
+    notify_progress_listeners("DATA_CLEAN_PROGRESS", data)
+
+
 # Auto-initialize state on import
 initialize_stocks_download_state()
 initialize_feature_gen_state()
+initialize_data_cleaning_state()
 

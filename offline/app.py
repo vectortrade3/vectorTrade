@@ -25,6 +25,7 @@ sys.path.insert(0, str(OFFLINE_DIR))
 from offline import json_manager
 from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
+from offline.data_cleaner import run_data_cleaning_pipeline
 
 # Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
@@ -64,6 +65,8 @@ def websocket_route(ws):
             "download_info": json_manager.get_stocks_download_info(),
             "feature_gen": json_manager.get_feature_gen_progress(),
             "feature_gen_info": json_manager.get_feature_gen_info(),
+            "data_cleaning": json_manager.get_data_cleaning_progress(),
+            "data_cleaning_info": json_manager.get_data_cleaning_info(),
         }
         ws.send(json.dumps(initial_payload))
         while True:
@@ -88,6 +91,9 @@ _download_lock = threading.Lock()
 _feat_thread: Optional[threading.Thread] = None
 _feat_lock = threading.Lock()
 
+_clean_thread: Optional[threading.Thread] = None
+_clean_lock = threading.Lock()
+
 
 # ==============================================================================
 # FLASK ROUTES
@@ -98,11 +104,13 @@ def index():
     """Renders the main control panel."""
     download_info = json_manager.get_stocks_download_info()
     feature_gen_info = json_manager.get_feature_gen_info()
+    data_cleaning_info = json_manager.get_data_cleaning_info()
     models_info = json_manager.get_models_info()
     return render_template(
         "index.html",
         download_info=download_info,
         feature_gen_info=feature_gen_info,
+        data_cleaning_info=data_cleaning_info,
         models_info=models_info
     )
 
@@ -114,8 +122,10 @@ def get_system_status():
         "status": "ONLINE",
         "download_info": json_manager.get_stocks_download_info(),
         "feature_gen_info": json_manager.get_feature_gen_info(),
+        "data_cleaning_info": json_manager.get_data_cleaning_info(),
         "progress": json_manager.get_download_progress(),
         "feature_gen_progress": json_manager.get_feature_gen_progress(),
+        "data_cleaning_progress": json_manager.get_data_cleaning_progress(),
         "models_info": json_manager.get_models_info(),
         "stocks_count": len(json_manager.get_stocks_list()),
         "current_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
@@ -227,6 +237,63 @@ def start_feature_generation():
 def get_feature_gen_progress():
     """Returns live progress of the feature generation pipeline."""
     return jsonify(json_manager.get_feature_gen_progress())
+
+
+# ==============================================================================
+# DATA CLEANING & CONSOLIDATION ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/data_clean/status", methods=["GET"])
+def get_data_clean_status():
+    """Returns data cleaning info and live progress."""
+    return jsonify({
+        "info": json_manager.get_data_cleaning_info(),
+        "progress": json_manager.get_data_cleaning_progress()
+    })
+
+
+@app.route("/api/data_clean/start", methods=["POST"])
+def start_data_cleaning():
+    """Triggers the Data Cleaning & Consolidation pipeline in a background thread."""
+    global _clean_thread
+    with _clean_lock:
+        if _clean_thread and _clean_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "A data cleaning and consolidation task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                run_data_cleaning_pipeline()
+            except Exception as e:
+                logger.error(f"Data cleaning failed: {e}", exc_info=True)
+                json_manager.update_data_cleaning_progress(
+                    status="ERROR",
+                    heading="Data Cleaning",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="DATA_CLEANING",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _clean_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-CleanerWorker")
+        _clean_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "message": "Data cleaning and consolidation pipeline started."
+        })
+
+
+@app.route("/api/data_clean/progress", methods=["GET"])
+def get_data_clean_progress():
+    """Returns live progress of the data cleaning pipeline."""
+    return jsonify(json_manager.get_data_cleaning_progress())
 
 
 @app.route("/api/tasks/logs", methods=["GET"])

@@ -131,10 +131,9 @@
                     Feature Gen
                 </button>
 
-                <!-- 3. Data Cleaning (Coming Soon) -->
+                <!-- 3. Data Cleaning -->
                 <button id="nav-cleaning" onclick="switchTab('cleaning')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     Data Cleaning
-                    <span class="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-apple-orange/15 text-apple-orange">Soon</span>
                 </button>
 
                 <!-- 4. Model Training (Coming Soon) -->
@@ -477,23 +476,174 @@
         </section>
 
         <!-- ============================================================= -->
-        <!-- TAB 3: DATA CLEANING (COMING SOON) -->
+        <!-- TAB 3: DATA CLEANING & CONSOLIDATION -->
         <!-- ============================================================= -->
-        <section id="tab-cleaning-view" class="hidden">
-            <div class="glass-panel rounded-3xl p-16 text-center space-y-4">
-                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                    <i data-lucide="shield-check" class="w-7 h-7"></i>
+        <section id="tab-cleaning-view" class="hidden space-y-6">
+
+            <!-- Hero Card -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                            Dataset Consolidation & Cleaning
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                            Data Cleaning & Master Merger
+                        </h1>
+                        <p class="text-sm text-apple-textSecondary leading-relaxed">
+                            Combines 207 constituent feature CSVs into the master unified <span class="font-mono text-emerald-400 text-xs font-medium">5_year_final_data.csv</span>, standardizes 157 target features, computes sector trends and days since MA crossovers, and clips infinite values.
+                        </p>
+                    </div>
+
+                    <!-- Action Button -->
+                    <div class="flex items-center gap-3">
+                        <button id="btnDataClean" onclick="triggerDataClean()" class="apple-btn px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
+                            <i data-lucide="filter" class="w-4 h-4"></i>
+                            <span>Clean & Combine Data</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-apple-orange/15 text-apple-orange">
-                        Coming Soon
-                    </span>
-                    <h2 class="text-xl font-semibold text-white pt-2">Data Cleaning & Imputation</h2>
-                    <p class="text-xs text-apple-textSecondary max-w-md mx-auto">
-                        Performs NaN resolution, infinite value clipping, cross-sectional sector alignment, and outlier normalization.
-                    </p>
+
+                <!-- Info Badges Bar -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5">
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Cleaned As Of</div>
+                        <div id="statCleanLastDate" class="text-base font-semibold text-white mt-1 font-mono">
+                            {{ data_cleaning_info.last_clean_date or '2026-10-30' }}
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Master Dataset Size</div>
+                        <div id="statCleanRows" class="text-base font-semibold text-white mt-1 font-mono">
+                            {{ "{:,}".format(data_cleaning_info.total_rows) if data_cleaning_info and data_cleaning_info.total_rows else '252,382' }} <span class="text-xs font-sans text-apple-textSecondary">Rows</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Target Schema</div>
+                        <div class="text-base font-semibold text-white mt-1">
+                            <span class="text-emerald-400 font-mono">157</span> Features
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary">Pipeline State</div>
+                        <div id="statCleanState" class="text-xs font-semibold text-emerald-400 mt-1 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            {{ data_cleaning_info.status or 'READY' }}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- DYNAMIC MULTI-STAGE PROGRESS CARD (DATA CLEANING) -->
+            <div id="cleanProgressCard" class="glass-panel rounded-3xl p-6 transition-all duration-300">
+                
+                <!-- Stage 1: COMBINING (1/207, Stock Name, %, Progress Line) -->
+                <div id="viewCleanCombining" class="hidden space-y-5 py-2">
+                    <div class="flex items-center justify-between">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-semibold text-white tracking-tight">Combining Constituent Data</h2>
+                                <span id="cleanStopwatchBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-apple-textSecondary border border-white/5">0s</span>
+                            </div>
+                            <p id="cleanCombiningMessage" class="text-xs text-apple-textSecondary">Ingesting engineered feature files from 5_year_data/generated/...</p>
+                        </div>
+                        <div class="text-right">
+                            <span id="cleanPercent" class="text-2xl font-bold font-mono tracking-tight text-white">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Stock Counter & Active Stock Indicator -->
+                    <div class="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-apple-textSecondary">Current File:</span>
+                            <span id="cleanStockName" class="font-mono font-semibold text-white">RELIANCE</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 font-mono text-apple-textSecondary">
+                            <span>Ingested:</span>
+                            <span id="cleanStockCounter" class="text-white font-semibold">1/207</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Track & Fluid Fill -->
+                    <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+                        <div id="cleanProgressBarFill" class="progress-bar-fill h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 2: FORMATTING / CLEANING (Center Spinner, no progress bar) -->
+                <div id="viewCleanFormatting" class="hidden py-6 text-center space-y-3">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
+                        <i data-lucide="refresh-cw" class="w-6 h-6 animate-spin"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Formatting & Schema Mapping
+                        </h2>
+                        <p id="cleanFormattingMessage" class="text-xs text-apple-textSecondary max-w-sm mx-auto">
+                            Standardizing 157 target features, calculating sector trend, and resolving infinite values...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stage 3: SAVING DATA (Pulsing Hard Drive Icon) -->
+                <div id="viewCleanSaving" class="hidden py-6 text-center space-y-3">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 mb-1">
+                        <i data-lucide="hard-drive-download" class="w-6 h-6 animate-pulse"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Saving Master Dataset
+                        </h2>
+                        <p id="cleanSavingMessage" class="text-xs text-apple-textSecondary max-w-sm mx-auto">
+                            Flushing master dataset into 5_year_final_data.csv...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stage 4: COMPLETED (Checkmark, duration, rows summary) -->
+                <div id="viewCleanCompleted" class="hidden py-4 text-center space-y-3">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold tracking-tight text-white uppercase font-mono">
+                            Done
+                        </h2>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold">
+                            Completed
+                        </div>
+                        <p id="cleanCompletedDetail" class="text-xs text-apple-textSecondary pt-1">
+                            Successfully consolidated all constituent data into 5_year_final_data.csv.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- CLEAN ERROR STATE -->
+                <div id="viewCleanError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold block text-red-300">Data Cleaning Notice</span>
+                            <p id="cleanErrorDetail" class="text-xs text-red-400/90 pt-0.5">An error occurred.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IDLE / READY STATE -->
+                <div id="viewCleanIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Click <strong class="text-white">Clean & Combine Data</strong> to assemble and sanitize the final master dataset.</span>
+                    </div>
+                    <span class="text-apple-textTertiary font-mono">157 Features Schema</span>
+                </div>
+            </div>
+
         </section>
 
         <!-- ============================================================= -->
@@ -942,6 +1092,171 @@
         }
 
         // ---------------------------------------------------------------------
+        // DATA CLEANING & CONSOLIDATION CONTROLLER
+        // ---------------------------------------------------------------------
+        let cleanCompletedTimer = null;
+
+        function resetDataCleaningToIdle() {
+            const vCleanIdle = document.getElementById('viewCleanIdle');
+            const vCleanCombining = document.getElementById('viewCleanCombining');
+            const vCleanFormatting = document.getElementById('viewCleanFormatting');
+            const vCleanSaving = document.getElementById('viewCleanSaving');
+            const vCleanCompleted = document.getElementById('viewCleanCompleted');
+            const vCleanError = document.getElementById('viewCleanError');
+            const btn = document.getElementById('btnDataClean');
+
+            if (vCleanIdle) vCleanIdle.classList.remove('hidden');
+            if (vCleanCombining) vCleanCombining.classList.add('hidden');
+            if (vCleanFormatting) vCleanFormatting.classList.add('hidden');
+            if (vCleanSaving) vCleanSaving.classList.add('hidden');
+            if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
+            if (vCleanError) vCleanError.classList.add('hidden');
+            if (btn) btn.disabled = false;
+        }
+
+        function renderDataCleaningProgress(prog) {
+            const vCleanIdle = document.getElementById('viewCleanIdle');
+            const vCleanCombining = document.getElementById('viewCleanCombining');
+            const vCleanFormatting = document.getElementById('viewCleanFormatting');
+            const vCleanSaving = document.getElementById('viewCleanSaving');
+            const vCleanCompleted = document.getElementById('viewCleanCompleted');
+            const vCleanError = document.getElementById('viewCleanError');
+            const btn = document.getElementById('btnDataClean');
+
+            const status = prog.status || 'IDLE';
+
+            if (status === 'COMBINING') {
+                if (vCleanIdle) vCleanIdle.classList.add('hidden');
+                if (vCleanCombining) vCleanCombining.classList.remove('hidden');
+                if (vCleanFormatting) vCleanFormatting.classList.add('hidden');
+                if (vCleanSaving) vCleanSaving.classList.add('hidden');
+                if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
+                if (vCleanError) vCleanError.classList.add('hidden');
+                if (btn) btn.disabled = true;
+
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                document.getElementById('cleanStockCounter').innerText = `${curIdx}/${totStocks}`;
+                document.getElementById('cleanStockName').innerText = prog.current_stock || "Constituent";
+                document.getElementById('cleanCombiningMessage').innerText = prog.message || "Ingesting engineered feature files...";
+                document.getElementById('cleanStopwatchBadge').innerText = (prog.elapsed_seconds || 0) + "s";
+
+                const pct = prog.percentage || 0;
+                document.getElementById('cleanPercent').innerText = `${pct}%`;
+                document.getElementById('cleanProgressBarFill').style.width = `${pct}%`;
+
+                updateSystemStatus(`Combining (${curIdx}/${totStocks})`, "emerald", true);
+            }
+            else if (status === 'CLEANING') {
+                if (vCleanIdle) vCleanIdle.classList.add('hidden');
+                if (vCleanCombining) vCleanCombining.classList.add('hidden');
+                if (vCleanFormatting) vCleanFormatting.classList.remove('hidden');
+                if (vCleanSaving) vCleanSaving.classList.add('hidden');
+                if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
+                if (vCleanError) vCleanError.classList.add('hidden');
+                if (btn) btn.disabled = true;
+
+                document.getElementById('cleanFormattingMessage').innerText = prog.message || "Standardizing schema and resolving infinite values...";
+                updateSystemStatus("Cleaning Schema...", "emerald", true);
+            }
+            else if (status === 'SAVING') {
+                if (vCleanIdle) vCleanIdle.classList.add('hidden');
+                if (vCleanCombining) vCleanCombining.classList.add('hidden');
+                if (vCleanFormatting) vCleanFormatting.classList.add('hidden');
+                if (vCleanSaving) vCleanSaving.classList.remove('hidden');
+                if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
+                if (vCleanError) vCleanError.classList.add('hidden');
+                if (btn) btn.disabled = true;
+
+                document.getElementById('cleanSavingMessage').innerText = prog.message || "Flushing master dataset into 5_year_final_data.csv...";
+                updateSystemStatus("Saving Dataset...", "emerald", true);
+            }
+            else if (status === 'COMPLETED') {
+                if (vCleanIdle) vCleanIdle.classList.add('hidden');
+                if (vCleanCombining) vCleanCombining.classList.add('hidden');
+                if (vCleanFormatting) vCleanFormatting.classList.add('hidden');
+                if (vCleanSaving) vCleanSaving.classList.add('hidden');
+                if (vCleanError) vCleanError.classList.add('hidden');
+                if (vCleanCompleted) vCleanCompleted.classList.remove('hidden');
+                if (btn) btn.disabled = false;
+
+                if (prog.last_clean_date) {
+                    const elCleanDate = document.getElementById('statCleanLastDate');
+                    if (elCleanDate) elCleanDate.innerText = prog.last_clean_date;
+                }
+                if (prog.total_rows) {
+                    const elCleanRows = document.getElementById('statCleanRows');
+                    if (elCleanRows) elCleanRows.innerText = `${prog.total_rows.toLocaleString()} Rows`;
+                }
+                if (prog.message) {
+                    document.getElementById('cleanCompletedDetail').innerText = prog.message;
+                } else {
+                    document.getElementById('cleanCompletedDetail').innerText = "Consolidated & cleaned successfully.";
+                }
+                updateSystemStatus("Cleaning Done", "emerald", false, 3500);
+
+                fetchSystemStatus();
+
+                if (!cleanCompletedTimer) {
+                    cleanCompletedTimer = setTimeout(() => {
+                        resetDataCleaningToIdle();
+                        cleanCompletedTimer = null;
+                    }, 3500);
+                }
+            }
+            else if (status === 'ERROR') {
+                if (vCleanIdle) vCleanIdle.classList.add('hidden');
+                if (vCleanCombining) vCleanCombining.classList.add('hidden');
+                if (vCleanFormatting) vCleanFormatting.classList.add('hidden');
+                if (vCleanSaving) vCleanSaving.classList.add('hidden');
+                if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
+                if (vCleanError) vCleanError.classList.remove('hidden');
+                if (btn) btn.disabled = false;
+
+                document.getElementById('cleanErrorDetail').innerText = prog.message || prog.error || "An error occurred during data cleaning.";
+                updateSystemStatus("Cleaning Error", "red", false, 3500);
+
+                if (!cleanCompletedTimer) {
+                    cleanCompletedTimer = setTimeout(() => {
+                        resetDataCleaningToIdle();
+                        cleanCompletedTimer = null;
+                    }, 3500);
+                }
+            }
+            else {
+                resetDataCleaningToIdle();
+            }
+        }
+
+        async function triggerDataClean() {
+            const btn = document.getElementById('btnDataClean');
+            btn.disabled = true;
+
+            // Immediately display progress view so user receives instant zero-latency feedback on click
+            renderDataCleaningProgress({
+                status: 'COMBINING',
+                heading: 'Combining Data',
+                current_stock: 'INITIALIZING',
+                current_index: 0,
+                total_stocks: 207,
+                percentage: 0,
+                message: 'Ingesting constituent features from 5_year_data/generated/...'
+            });
+
+            try {
+                const res = await fetch('/api/data_clean/start', { method: 'POST' });
+                const data = await res.json();
+                if (res.status === 409) {
+                    updateSystemStatus("Already Running", "amber", false, 3000);
+                }
+            } catch (err) {
+                console.error("Failed to start data cleaning:", err);
+                resetDataCleaningToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
+            }
+        }
+
+        // ---------------------------------------------------------------------
         // AUDIT LOGS FETCH
         // ---------------------------------------------------------------------
         async function fetchTaskLogs() {
@@ -999,6 +1314,14 @@
                 if (data.feature_gen_info && data.feature_gen_info.last_feature_gen_date) {
                     document.getElementById('statFeatureLastDate').innerText = data.feature_gen_info.last_feature_gen_date;
                 }
+                if (data.data_cleaning_info) {
+                    if (data.data_cleaning_info.last_clean_date) {
+                        document.getElementById('statCleanLastDate').innerText = data.data_cleaning_info.last_clean_date;
+                    }
+                    if (data.data_cleaning_info.total_rows) {
+                        document.getElementById('statCleanRows').innerText = `${data.data_cleaning_info.total_rows.toLocaleString()} Rows`;
+                    }
+                }
             } catch (err) {
                 console.error("Error fetching system status:", err);
             }
@@ -1034,6 +1357,12 @@
                             if (msg.feature_gen_info && msg.feature_gen_info.last_feature_gen_date) {
                                 document.getElementById('statFeatureLastDate').innerText = msg.feature_gen_info.last_feature_gen_date;
                             }
+                            if (msg.data_cleaning_info && msg.data_cleaning_info.last_clean_date) {
+                                document.getElementById('statCleanLastDate').innerText = msg.data_cleaning_info.last_clean_date;
+                            }
+                            if (msg.data_cleaning_info && msg.data_cleaning_info.total_rows) {
+                                document.getElementById('statCleanRows').innerText = `${msg.data_cleaning_info.total_rows.toLocaleString()} Rows`;
+                            }
                             if (msg.download && (msg.download.status === 'DOWNLOADING' || msg.download.status === 'APPENDING' || msg.download.status === 'CHECKING')) {
                                 renderDownloadProgress(msg.download);
                             } else {
@@ -1043,6 +1372,11 @@
                                 renderFeatureGenProgress(msg.feature_gen);
                             } else {
                                 resetFeatureGenToIdle();
+                            }
+                            if (msg.data_cleaning && (msg.data_cleaning.status === 'COMBINING' || msg.data_cleaning.status === 'CLEANING' || msg.data_cleaning.status === 'SAVING')) {
+                                renderDataCleaningProgress(msg.data_cleaning);
+                            } else {
+                                resetDataCleaningToIdle();
                             }
                             break;
 
@@ -1066,6 +1400,18 @@
                             }
                             break;
 
+                        case 'DATA_CLEAN_PROGRESS':
+                            renderDataCleaningProgress(msg.data);
+                            if (msg.data && msg.data.last_clean_date) {
+                                const elCleanDate = document.getElementById('statCleanLastDate');
+                                if (elCleanDate) elCleanDate.innerText = msg.data.last_clean_date;
+                            }
+                            if (msg.data && msg.data.total_rows) {
+                                const elCleanRows = document.getElementById('statCleanRows');
+                                if (elCleanRows) elCleanRows.innerText = `${msg.data.total_rows.toLocaleString()} Rows`;
+                            }
+                            break;
+
                         case 'STOCKS_DOWNLOAD_INFO':
                             if (msg.data.last_downloaded_date) {
                                 document.getElementById('statLastDate').innerText = msg.data.last_downloaded_date;
@@ -1078,6 +1424,15 @@
                         case 'FEATURE_GEN_INFO':
                             if (msg.data.last_feature_gen_date) {
                                 document.getElementById('statFeatureLastDate').innerText = msg.data.last_feature_gen_date;
+                            }
+                            break;
+
+                        case 'DATA_CLEAN_INFO':
+                            if (msg.data.last_clean_date) {
+                                document.getElementById('statCleanLastDate').innerText = msg.data.last_clean_date;
+                            }
+                            if (msg.data.total_rows) {
+                                document.getElementById('statCleanRows').innerText = `${msg.data.total_rows.toLocaleString()} Rows`;
                             }
                             break;
                     }

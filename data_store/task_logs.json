@@ -1,6 +1,46 @@
 {
   "task_logs": [
     {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T20:22:12.242211+05:30",
+      "readable_time": "2026-11-01 20:22:12 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T20:22:12.204917+05:30",
+      "readable_time": "2026-11-01 20:22:12 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T20:16:04.368053+05:30",
+      "readable_time": "2026-11-01 20:16:04 India Standard Time",
+      "message": "Cleaned & combined 252,382 rows across 207 stocks with 133 features in 52.0s.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T20:15:12.405625+05:30",
+      "readable_time": "2026-11-01 20:15:12 India Standard Time",
+      "message": "Starting data consolidation and cleaning for 207 stocks up to 2026-10-30...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T20:15:01.324204+05:30",
+      "readable_time": "2026-11-01 20:15:01 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
       "task_name": "FEATURE_GENERATION",
       "status": "COMPLETED",
       "timestamp": "2026-11-01T20:09:44.988206+05:30",
@@ -193,7 +233,7 @@
       "error": null
     }
   ],
-  "last_task": "FEATURE_GENERATION",
+  "last_task": "DATA_CLEANING",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-01T20:09:44.988206+05:30"
+  "last_updated": "2026-11-01T20:22:12.242211+05:30"
 }

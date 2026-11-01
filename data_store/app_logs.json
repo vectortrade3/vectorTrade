@@ -1,6 +1,54 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T20:22:12.244247+05:30",
+      "readable_time": "2026-11-01 20:22:12 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:22:12.222335+05:30",
+      "readable_time": "2026-11-01 20:22:12 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:22:12.163963+05:30",
+      "readable_time": "2026-11-01 20:22:12 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:16:04.382684+05:30",
+      "readable_time": "2026-11-01 20:16:04 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Cleaned & combined 252,382 rows across 207 stocks with 133 features in 52.0s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:15:12.420855+05:30",
+      "readable_time": "2026-11-01 20:15:12 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting data consolidation and cleaning for 207 stocks up to 2026-10-30...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:15:01.327205+05:30",
+      "readable_time": "2026-11-01 20:15:01 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T20:09:45.002066+05:30",
       "readable_time": "2026-11-01 20:09:45 India Standard Time",
       "event": "FEATURE_GENERATION",
@@ -369,5 +417,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T20:09:45.002066+05:30"
+  "last_event_time": "2026-11-01T20:22:12.244247+05:30"
 }
