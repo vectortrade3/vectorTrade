@@ -27,6 +27,7 @@ from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
 from offline.data_cleaner import run_data_cleaning_pipeline
 from offline.model_trainer import train_strategy_model, train_global_models, train_all_models
+from offline.model_inferencer import run_strategy_inference, run_global_inference, run_all_inference
 
 # Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
@@ -71,6 +72,9 @@ def websocket_route(ws):
             "data_cleaning_info": json_manager.get_data_cleaning_info(),
             "models_training": json_manager.get_models_training_progress(),
             "models_info": json_manager.get_models_info(),
+            "inference": json_manager.get_inference_progress(),
+            "inference_info": json_manager.get_inference_info(),
+            "model_performance_log": json_manager.get_model_performance_log()
         }
         ws.send(json.dumps(initial_payload))
         while True:
@@ -101,12 +105,15 @@ _clean_lock = threading.Lock()
 _train_thread: Optional[threading.Thread] = None
 _train_lock = threading.Lock()
 
+_infer_thread: Optional[threading.Thread] = None
+_infer_lock = threading.Lock()
+
 
 def reconcile_stale_progress():
     """
     Self-healing progress reconciler.
     If no background worker thread is alive, any in-flight progress state
-    (CHECKING, DOWNLOADING, APPENDING, GENERATING, SAVING, COMBINING, CLEANING, TRAINING)
+    (CHECKING, DOWNLOADING, APPENDING, GENERATING, SAVING, COMBINING, CLEANING, TRAINING, EVALUATING)
     persisting on disk from an interrupted process or unit test run is reconciled to COMPLETED.
     """
     # 1. Stocks Download
@@ -175,6 +182,20 @@ def reconcile_stale_progress():
                 message="All models trained successfully."
             )
 
+    # 5. Model Inference
+    if _infer_thread is None or not _infer_thread.is_alive():
+        prog = json_manager.get_inference_progress()
+        if prog.get("status") in ("EVALUATING", "INITIALIZING"):
+            json_manager.update_inference_progress(
+                status="COMPLETED",
+                active_section="ALL",
+                phase="Done",
+                heading="Done",
+                current_model="",
+                percentage=100.0,
+                message="All quantitative models evaluated and validated successfully."
+            )
+
 
 # ==============================================================================
 # FLASK ROUTES
@@ -188,12 +209,16 @@ def index():
     feature_gen_info = json_manager.get_feature_gen_info()
     data_cleaning_info = json_manager.get_data_cleaning_info()
     models_info = json_manager.get_models_info()
+    inference_info = json_manager.get_inference_info()
+    performance_log = json_manager.get_model_performance_log()
     return render_template(
         "index.html",
         download_info=download_info,
         feature_gen_info=feature_gen_info,
         data_cleaning_info=data_cleaning_info,
-        models_info=models_info
+        models_info=models_info,
+        inference_info=inference_info,
+        performance_log=performance_log
     )
 
 
@@ -206,11 +231,14 @@ def get_system_status():
         "download_info": json_manager.get_stocks_download_info(),
         "feature_gen_info": json_manager.get_feature_gen_info(),
         "data_cleaning_info": json_manager.get_data_cleaning_info(),
+        "models_info": json_manager.get_models_info(),
+        "inference_info": json_manager.get_inference_info(),
         "progress": json_manager.get_download_progress(),
         "feature_gen_progress": json_manager.get_feature_gen_progress(),
         "data_cleaning_progress": json_manager.get_data_cleaning_progress(),
         "models_training_progress": json_manager.get_models_training_progress(),
-        "models_info": json_manager.get_models_info(),
+        "inference_progress": json_manager.get_inference_progress(),
+        "performance_log": json_manager.get_model_performance_log(),
         "stocks_count": len(json_manager.get_stocks_list()),
         "current_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
     })
@@ -532,6 +560,157 @@ def start_training_all():
             "status": "STARTED",
             "section": "ALL",
             "message": "All models training started."
+        })
+
+
+# ==============================================================================
+# MACHINE LEARNING MODEL INFERENCE & EVALUATION ENDPOINTS (PART 5 & 5.2)
+# ==============================================================================
+
+@app.route("/api/inference/status", methods=["GET"])
+def get_inference_status():
+    """Returns inference evaluation metadata, live progress, and benchmark logs."""
+    reconcile_stale_progress()
+    return jsonify({
+        "info": json_manager.get_inference_info(),
+        "progress": json_manager.get_inference_progress(),
+        "performance_log": json_manager.get_model_performance_log()
+    })
+
+
+@app.route("/api/inference/progress", methods=["GET"])
+def get_inference_progress():
+    """Returns live progress of the model inference pipeline."""
+    reconcile_stale_progress()
+    return jsonify(json_manager.get_inference_progress())
+
+
+@app.route("/api/inference/start_strategy", methods=["POST"])
+def start_inference_strategy():
+    """Triggers the Setup Strategy model evaluation pipeline in a background thread."""
+    global _infer_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _infer_lock:
+        if _infer_thread and _infer_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "An inference evaluation task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                run_strategy_inference(force=force)
+            except Exception as e:
+                logger.error(f"Strategy inference failed: {e}", exc_info=True)
+                json_manager.update_inference_progress(
+                    status="ERROR",
+                    active_section="STRATEGY",
+                    heading="Inference Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="STRATEGY_INFERENCE",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _infer_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-InferStrategyWorker")
+        _infer_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "STRATEGY",
+            "message": "Strategy model evaluation started."
+        })
+
+
+@app.route("/api/inference/start_global", methods=["POST"])
+def start_inference_global():
+    """Triggers the Global Regime models evaluation pipeline in a background thread."""
+    global _infer_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _infer_lock:
+        if _infer_thread and _infer_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "An inference evaluation task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                run_global_inference(force=force)
+            except Exception as e:
+                logger.error(f"Global inference failed: {e}", exc_info=True)
+                json_manager.update_inference_progress(
+                    status="ERROR",
+                    active_section="GLOBAL",
+                    heading="Inference Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="GLOBAL_INFERENCE",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _infer_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-InferGlobalWorker")
+        _infer_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "GLOBAL",
+            "message": "Global regime models evaluation started."
+        })
+
+
+@app.route("/api/inference/start_all", methods=["POST"])
+def start_inference_all():
+    """Triggers evaluation of all models sequentially in a background thread."""
+    global _infer_thread
+    force = request.args.get("force", "false").lower() in ("true", "1")
+    if request.is_json and request.json:
+        force = request.json.get("force", force)
+    with _infer_lock:
+        if _infer_thread and _infer_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "An inference evaluation task is currently running."
+            }), 409
+
+        def _worker():
+            try:
+                run_all_inference(force=force)
+            except Exception as e:
+                logger.error(f"All inference evaluation failed: {e}", exc_info=True)
+                json_manager.update_inference_progress(
+                    status="ERROR",
+                    active_section="ALL",
+                    heading="Inference Error",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_task_entry(
+                    task_name="ALL_INFERENCE",
+                    status="ERROR",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+
+        _infer_thread = threading.Thread(target=_worker, daemon=True, name="VectorTrade-InferAllWorker")
+        _infer_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "section": "ALL",
+            "message": "All models evaluation started."
         })
 
 

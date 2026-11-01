@@ -1,0 +1,63 @@
+{
+  "status": "COMPLETED",
+  "last_inference_date": "2026-11-01",
+  "last_inference_run_date": "2026-11-01",
+  "last_run_timestamp": "2026-11-01T22:43:58.019124+05:30",
+  "strategy_inference": {
+    "status": "COMPLETED",
+    "last_run_date": "2026-11-01",
+    "accuracy_base": "44.5%",
+    "mae_base": 0.887,
+    "accuracy_refined": "45.3%",
+    "win_rate_recall": "77.3%",
+    "mae_refined": 0.886,
+    "base_features_count": 137,
+    "refined_features_count": 97,
+    "pruned_features_count": 40,
+    "duration_seconds": 7.74,
+    "message": "Strategy model evaluated: Accuracy 45.3%, Win Rate Recall 77.3%, MAE 0.886 R (97 features, 40 pruned) in 7.7s.",
+    "updated_at": "2026-11-01T22:43:49.238915+05:30"
+  },
+  "global_inference": {
+    "status": "COMPLETED",
+    "last_run_date": "2026-11-01",
+    "mae_gain_base": 15.604,
+    "mae_drop_base": 9.789,
+    "mae_gain_refined": 15.485,
+    "mae_drop_refined": 9.889,
+    "directional_accuracy": "48.7%",
+    "base_features_count": 137,
+    "refined_features_count": 91,
+    "pruned_features_count": 46,
+    "duration_seconds": 8.64,
+    "message": "Global models evaluated: Directional Accuracy 48.7%, Gain MAE 15.485%, Drop MAE 9.889% (91 features, 46 pruned) in 8.6s.",
+    "updated_at": "2026-11-01T22:43:58.019124+05:30"
+  },
+  "message": "Global models evaluated: Directional Accuracy 48.7%, Gain MAE 15.485%, Drop MAE 9.889% (91 features, 46 pruned) in 8.6s.",
+  "history": [
+    {
+      "timestamp": "2026-11-01T22:43:58.019124+05:30",
+      "section": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-01",
+      "mae_gain_refined": 15.485,
+      "mae_drop_refined": 9.889,
+      "directional_accuracy": "48.7%",
+      "duration_seconds": 8.64,
+      "message": "Global models evaluated: Directional Accuracy 48.7%, Gain MAE 15.485%, Drop MAE 9.889% (91 features, 46 pruned) in 8.6s."
+    },
+    {
+      "timestamp": "2026-11-01T22:43:49.238915+05:30",
+      "section": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-01",
+      "accuracy_refined": "45.3%",
+      "win_rate_recall": "77.3%",
+      "mae_refined": 0.886,
+      "duration_seconds": 7.74,
+      "message": "Strategy model evaluated: Accuracy 45.3%, Win Rate Recall 77.3%, MAE 0.886 R (97 features, 40 pruned) in 7.7s."
+    }
+  ]
+}
