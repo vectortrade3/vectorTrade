@@ -80,13 +80,15 @@ def write_json_file(file_path: Path, data: Any) -> bool:
 # ==============================================================================
 
 def initialize_stocks_download_state() -> Dict[str, Any]:
-    """Ensures stocks_download.json is initialized, seeded with 2026-10-06 from raw CSVs."""
+    """Ensures stocks_download.json is initialized with download and append tracking."""
     default_state = {
-        "last_downloaded_date": "2026-10-06",
+        "last_downloaded_date": "2026-10-30",
+        "last_append_date": "2026-10-30",
+        "last_download_run_date": "2026-10-30",
         "status": "COMPLETED",
         "total_stocks": 207,
-        "last_updated": "2026-10-06T18:40:00+05:30",
-        "message": "Baseline 5-year dataset synced up to 2026-10-06.",
+        "last_updated": datetime.now().astimezone().isoformat(),
+        "message": "Market data synced up to 2026-10-30.",
         "download_history": []
     }
     
@@ -95,9 +97,17 @@ def initialize_stocks_download_state() -> Dict[str, Any]:
         return default_state
     
     current = read_json_file(STOCKS_DOWNLOAD_FILE, default_state)
-    # Ensure last_downloaded_date is present
+    needs_save = False
     if not current.get("last_downloaded_date"):
-        current["last_downloaded_date"] = "2026-10-06"
+        current["last_downloaded_date"] = "2026-10-30"
+        needs_save = True
+    if not current.get("last_append_date"):
+        current["last_append_date"] = current.get("last_downloaded_date", "2026-10-30")
+        needs_save = True
+    if not current.get("last_download_run_date"):
+        current["last_download_run_date"] = current.get("last_downloaded_date", "2026-10-30")
+        needs_save = True
+    if needs_save:
         write_json_file(STOCKS_DOWNLOAD_FILE, current)
     return current
 
@@ -108,9 +118,21 @@ def get_stocks_download_info() -> Dict[str, Any]:
 
 
 def get_last_downloaded_date() -> str:
-    """Returns the last date we downloaded (e.g. '2026-10-06')."""
+    """Returns the last market data date downloaded (e.g. '2026-10-30')."""
     info = get_stocks_download_info()
-    return info.get("last_downloaded_date", "2026-10-06")
+    return info.get("last_downloaded_date", "2026-10-30")
+
+
+def get_last_append_date() -> str:
+    """Returns the date on which records were last appended."""
+    info = get_stocks_download_info()
+    return info.get("last_append_date", "")
+
+
+def get_last_download_run_date() -> str:
+    """Returns the calendar date on which the downloader was last executed."""
+    info = get_stocks_download_info()
+    return info.get("last_download_run_date", "")
 
 
 # ==============================================================================
@@ -130,7 +152,7 @@ def notify_progress_listeners(event_type: str, data: Dict[str, Any]):
         try:
             listener(event_type, data)
         except Exception as e:
-            logger.debug(f"Progress notification error: {e}")
+            pass
 
 
 def update_stocks_download_info(
@@ -138,15 +160,23 @@ def update_stocks_download_info(
     status: str = "COMPLETED",
     stocks_updated: int = 207,
     message: str = "",
-    duration_seconds: float = 0.0
+    duration_seconds: float = 0.0,
+    last_append_date: Optional[str] = None,
+    last_download_run_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """Updates the stocks download state and appends to the history log."""
     current = get_stocks_download_info()
-    now_str = datetime.now().astimezone().isoformat()
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    today_str = now_dt.strftime("%Y-%m-%d")
     
+    append_date = last_append_date or current.get("last_append_date") or today_str
+    run_date = last_download_run_date or current.get("last_download_run_date") or today_str
+
     history_entry = {
         "timestamp": now_str,
         "date_synced": last_date,
+        "last_append_date": append_date,
         "status": status,
         "stocks_updated": stocks_updated,
         "duration_seconds": round(duration_seconds, 2),
@@ -154,6 +184,8 @@ def update_stocks_download_info(
     }
     
     current["last_downloaded_date"] = last_date
+    current["last_append_date"] = append_date
+    current["last_download_run_date"] = run_date
     current["status"] = status
     current["total_stocks"] = stocks_updated
     current["last_updated"] = now_str
@@ -244,9 +276,11 @@ def update_download_progress(
     to_date: Optional[str] = None,
     message: str = "",
     elapsed_seconds: float = 0.0,
-    error: Optional[str] = None
+    error: Optional[str] = None,
+    last_downloaded_date: Optional[str] = None,
+    last_append_date: Optional[str] = None
 ) -> None:
-    """Updates the live progress JSON file for UI polling."""
+    """Updates the live progress JSON file for UI polling & WebSocket stream."""
     progress_data = {
         "status": status,
         "heading": heading,
@@ -259,6 +293,8 @@ def update_download_progress(
         "message": message,
         "elapsed_seconds": round(elapsed_seconds, 1),
         "error": error,
+        "last_downloaded_date": last_downloaded_date,
+        "last_append_date": last_append_date,
         "updated_at": datetime.now().astimezone().isoformat()
     }
     write_json_file(DOWNLOAD_PROGRESS_FILE, progress_data)
@@ -322,19 +358,30 @@ def get_stocks_list() -> List[str]:
 # ==============================================================================
 
 def initialize_feature_gen_state() -> Dict[str, Any]:
-    """Ensures feature_gen.json is initialized with previous baseline info."""
+    """Ensures feature_gen.json is initialized with previous baseline info and run tracking."""
     default_state = {
-        "last_feature_gen_date": "2026-10-06",
-        "last_run_timestamp": "2026-10-06T18:55:00+05:30",
+        "last_feature_gen_date": "2026-10-30",
+        "last_feature_run_date": "2026-10-30",
+        "last_run_timestamp": datetime.now().astimezone().isoformat(),
         "status": "COMPLETED",
         "total_stocks": 207,
-        "message": "Baseline 5-year feature engineering computed for 207 stocks.",
+        "message": "Baseline feature engineering computed for 207 stocks.",
         "history": []
     }
     if not FEATURE_GEN_FILE.exists():
         write_json_file(FEATURE_GEN_FILE, default_state)
         return default_state
-    return read_json_file(FEATURE_GEN_FILE, default_state)
+    current = read_json_file(FEATURE_GEN_FILE, default_state)
+    needs_save = False
+    if not current.get("last_feature_gen_date"):
+        current["last_feature_gen_date"] = "2026-10-30"
+        needs_save = True
+    if not current.get("last_feature_run_date"):
+        current["last_feature_run_date"] = current.get("last_feature_gen_date", "2026-10-30")
+        needs_save = True
+    if needs_save:
+        write_json_file(FEATURE_GEN_FILE, current)
+    return current
 
 
 def get_feature_gen_info() -> Dict[str, Any]:
@@ -346,7 +393,9 @@ def update_feature_gen_info(
     status: str = "COMPLETED",
     total_stocks: int = 207,
     message: str = "",
-    duration_seconds: float = 0.0
+    duration_seconds: float = 0.0,
+    last_feature_gen_date: Optional[str] = None,
+    last_feature_run_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """Updates feature_gen.json and appends run entry to history."""
     current = get_feature_gen_info()
@@ -354,16 +403,21 @@ def update_feature_gen_info(
     now_str = now_dt.isoformat()
     today_str = now_dt.strftime("%Y-%m-%d")
 
+    feat_date = last_feature_gen_date or current.get("last_feature_gen_date") or today_str
+    run_date = last_feature_run_date or current.get("last_feature_run_date") or today_str
+
     entry = {
         "timestamp": now_str,
-        "date": today_str,
+        "date": feat_date,
+        "run_date": run_date,
         "status": status,
         "total_stocks": total_stocks,
         "duration_seconds": round(duration_seconds, 2),
         "message": message
     }
 
-    current["last_feature_gen_date"] = today_str
+    current["last_feature_gen_date"] = feat_date
+    current["last_feature_run_date"] = run_date
     current["last_run_timestamp"] = now_str
     current["status"] = status
     current["total_stocks"] = total_stocks
@@ -389,7 +443,8 @@ def get_feature_gen_progress() -> Dict[str, Any]:
         "percentage": 0.0,
         "message": "Ready to generate features.",
         "elapsed_seconds": 0.0,
-        "error": None
+        "error": None,
+        "last_feature_gen_date": None
     }
     return read_json_file(FEATURE_GEN_PROGRESS_FILE, default_progress)
 
@@ -403,7 +458,8 @@ def update_feature_gen_progress(
     percentage: float = 0.0,
     message: str = "",
     elapsed_seconds: float = 0.0,
-    error: Optional[str] = None
+    error: Optional[str] = None,
+    last_feature_gen_date: Optional[str] = None
 ) -> None:
     """Updates live transient feature generation progress."""
     data = {
@@ -416,6 +472,7 @@ def update_feature_gen_progress(
         "message": message,
         "elapsed_seconds": round(elapsed_seconds, 1),
         "error": error,
+        "last_feature_gen_date": last_feature_gen_date,
         "updated_at": datetime.now().astimezone().isoformat()
     }
     write_json_file(FEATURE_GEN_PROGRESS_FILE, data)

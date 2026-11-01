@@ -1,6 +1,126 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T20:09:45.002066+05:30",
+      "readable_time": "2026-11-01 20:09:45 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Features already computed up to 2026-11-01 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:09:36.127337+05:30",
+      "readable_time": "2026-11-01 20:09:36 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:08:58.156151+05:30",
+      "readable_time": "2026-11-01 20:08:58 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-01). Dataset current as of 2026-10-30.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:08:36.675856+05:30",
+      "readable_time": "2026-11-01 20:08:36 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] All 207 stocks already up-to-date with latest market session (2026-10-30).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:08:36.639821+05:30",
+      "readable_time": "2026-11-01 20:08:36 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "All 207 stocks already up-to-date with latest market session (2026-10-30).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T20:07:07.968581+05:30",
+      "readable_time": "2026-11-01 20:07:07 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:54:31.513641+05:30",
+      "readable_time": "2026-11-01 19:54:31 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] All 207 stocks already up-to-date with latest market session (2026-10-30).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:54:31.463728+05:30",
+      "readable_time": "2026-11-01 19:54:31 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "All 207 stocks already up-to-date with latest market session (2026-10-30).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:52:54.716721+05:30",
+      "readable_time": "2026-11-01 19:52:54 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-31 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:52:54.679931+05:30",
+      "readable_time": "2026-11-01 19:52:54 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:52:04.558368+05:30",
+      "readable_time": "2026-11-01 19:52:04 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Successfully appended 1656 new market bars across 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:52:04.498352+05:30",
+      "readable_time": "2026-11-01 19:52:04 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Successfully appended 1656 new market bars across 207 stocks up to 2026-10-30.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:50:34.923767+05:30",
+      "readable_time": "2026-11-01 19:50:34 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-10-21 to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:50:34.883083+05:30",
+      "readable_time": "2026-11-01 19:50:34 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T19:50:14.570044+05:30",
+      "readable_time": "2026-11-01 19:50:14 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T19:45:26.147173+05:30",
       "readable_time": "2026-11-01 19:45:26 India Standard Time",
       "event": "STOCKS_DOWNLOAD",
@@ -249,5 +369,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T19:45:26.147173+05:30"
+  "last_event_time": "2026-11-01T20:09:45.002066+05:30"
 }

@@ -393,15 +393,18 @@ def calculate_features(df: pd.DataFrame, sector_pivot: Optional[pd.DataFrame] = 
 # 3. PIPELINE ORCHESTRATION WITH REAL-TIME PROGRESS
 # ==============================================================================
 
-def run_feature_generation_pipeline() -> Dict[str, Any]:
+def run_feature_generation_pipeline(force: bool = False) -> Dict[str, Any]:
     """
     Executes the full Feature Generation pipeline across all constituent raw CSVs:
-    1. Pre-calculates sector metrics
-    2. Stage: GENERATING (1/207 ... 207/207 with stock name, % and progress line)
-    3. Stage: SAVING (Heading = 'Saving Data', no progress line)
-    4. Stage: COMPLETED (Heading = 'Done', persists metadata and logs)
+    1. Checks if features have already been computed for today or latest raw data date.
+    2. Pre-calculates sector metrics
+    3. Stage: GENERATING (1/207 ... 207/207 with stock name, % and progress line)
+    4. Stage: SAVING (Heading = 'Saving Data', no progress line)
+    5. Stage: COMPLETED (Heading = 'Done', persists metadata and logs)
     """
     start_time = time.time()
+    today = datetime.now().date()
+    today_str = str(today)
     raw_files = sorted(glob.glob(os.path.join(str(RAW_DIR), '*_data.csv')))
     total_files = len(raw_files)
 
@@ -416,11 +419,53 @@ def run_feature_generation_pipeline() -> Dict[str, Any]:
         json_manager.log_task_entry("FEATURE_GENERATION", "ERROR", err_msg, error=err_msg)
         return {"status": "ERROR", "message": err_msg}
 
+    last_downloaded_date = json_manager.get_last_downloaded_date()
+    feat_info = json_manager.get_feature_gen_info()
+    last_feat_date = feat_info.get("last_feature_gen_date", "")
+    last_run_date = feat_info.get("last_feature_run_date", "")
+
+    # DAILY SKIP CHECK:
+    # If already generated for latest market data or already run today
+    if not force and feat_info.get("status") == "COMPLETED":
+        if (last_run_date == today_str and last_feat_date >= last_downloaded_date) or (last_feat_date and last_feat_date >= last_downloaded_date):
+            msg = f"Features already computed up to {last_feat_date} for all {total_files} stocks. Generation skipped."
+            duration = round(time.time() - start_time, 2)
+            json_manager.update_feature_gen_info(
+                status="COMPLETED",
+                total_stocks=total_files,
+                message=msg,
+                duration_seconds=duration,
+                last_feature_gen_date=last_feat_date,
+                last_feature_run_date=today_str
+            )
+            json_manager.update_feature_gen_progress(
+                status="COMPLETED",
+                heading="Done",
+                current_stock="ALL",
+                current_index=total_files,
+                total_stocks=total_files,
+                percentage=100.0,
+                message=msg,
+                elapsed_seconds=duration,
+                last_feature_gen_date=last_feat_date
+            )
+            json_manager.log_task_entry(
+                task_name="FEATURE_GENERATION",
+                status="COMPLETED",
+                message=msg
+            )
+            return {
+                "status": "SUCCESS",
+                "message": msg,
+                "last_feature_gen_date": last_feat_date,
+                "skipped": True
+            }
+
     # Log task start
     json_manager.log_task_entry(
         task_name="FEATURE_GENERATION",
         status="RUNNING",
-        message=f"Starting feature generation for {total_files} stocks..."
+        message=f"Starting feature generation for {total_files} stocks up to {last_downloaded_date}..."
     )
 
     # Pre-calculate sector cross-sectional metrics
@@ -492,16 +537,19 @@ def run_feature_generation_pipeline() -> Dict[str, Any]:
     # STAGE 3: COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    completion_msg = f"Completed. Generated features for {total_files} stocks in {duration:.1f}s."
+    completion_msg = f"Completed. Generated features for {total_files} stocks up to {last_downloaded_date} in {duration:.1f}s."
 
-    # Update state & progress
+    # 1. Update feature_gen.json FIRST
     json_manager.update_feature_gen_info(
         status="COMPLETED",
         total_stocks=total_files,
         message=completion_msg,
-        duration_seconds=duration
+        duration_seconds=duration,
+        last_feature_gen_date=last_downloaded_date,
+        last_feature_run_date=today_str
     )
 
+    # 2. Update live progress SECOND (broadcasts to WebSocket with last_feature_gen_date)
     json_manager.update_feature_gen_progress(
         status="COMPLETED",
         heading="Done",
@@ -510,9 +558,11 @@ def run_feature_generation_pipeline() -> Dict[str, Any]:
         total_stocks=total_files,
         percentage=100.0,
         message=completion_msg,
-        elapsed_seconds=duration
+        elapsed_seconds=duration,
+        last_feature_gen_date=last_downloaded_date
     )
 
+    # 3. Log task audit entry
     json_manager.log_task_entry(
         task_name="FEATURE_GENERATION",
         status="COMPLETED",
@@ -521,6 +571,7 @@ def run_feature_generation_pipeline() -> Dict[str, Any]:
 
     return {
         "status": "SUCCESS",
+        "last_feature_gen_date": last_downloaded_date,
         "total_stocks": total_files,
         "duration_seconds": duration,
         "message": completion_msg

@@ -1,10 +1,53 @@
 {
-  "last_downloaded_date": "2026-10-20",
+  "last_downloaded_date": "2026-10-30",
   "status": "COMPLETED",
   "total_stocks": 207,
-  "last_updated": "2026-11-01T19:48:05.016482+05:30",
-  "message": "Reset dataset to test baseline 2026-10-20. Trimmed 0 rows.",
+  "last_updated": "2026-11-01T20:09:36.107430+05:30",
+  "message": "Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01).",
   "download_history": [
+    {
+      "timestamp": "2026-11-01T20:09:36.107430+05:30",
+      "date_synced": "2026-10-30",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.0,
+      "message": "Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01)."
+    },
+    {
+      "timestamp": "2026-11-01T20:08:58.137294+05:30",
+      "date_synced": "2026-10-30",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 0.0,
+      "message": "Market data already downloaded and appended today (2026-11-01). Dataset current as of 2026-10-30."
+    },
+    {
+      "timestamp": "2026-11-01T20:08:36.637305+05:30",
+      "date_synced": "2026-10-30",
+      "last_append_date": "2026-11-01",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 88.7,
+      "message": "All 207 stocks already up-to-date with latest market session (2026-10-30)."
+    },
+    {
+      "timestamp": "2026-11-01T19:54:31.460393+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 96.78,
+      "message": "All 207 stocks already up-to-date with latest market session (2026-10-30)."
+    },
+    {
+      "timestamp": "2026-11-01T19:52:04.497215+05:30",
+      "date_synced": "2026-10-30",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 89.61,
+      "message": "Successfully appended 1656 new market bars across 207 stocks up to 2026-10-30."
+    },
     {
       "timestamp": "2026-11-01T19:48:05.016482+05:30",
       "date_synced": "2026-10-20",
@@ -53,5 +96,7 @@
       "duration_seconds": 90.16,
       "message": "Appended records up to 2026-10-30 across 207 constituents in 90.2s."
     }
-  ]
+  ],
+  "last_append_date": "2026-11-01",
+  "last_download_run_date": "2026-11-01"
 }

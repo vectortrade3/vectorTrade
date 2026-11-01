@@ -2,13 +2,13 @@
 VectorTrade - Dedicated Stock Downloader & Appender Service
 Implements the exact logic from 5_years_1_download.ipynb with incremental sync:
 1. Reads stocks from stocks_list.txt (207 constituents)
-2. Queries json_manager for last_downloaded_date (e.g. 2026-10-06)
-3. Computes from_date = last_date + 1 day till today
-4. Three distinct progress states:
+2. Queries json_manager for last_downloaded_date, last_append_date, and last_download_run_date
+3. Daily check: If already downloaded and appended today, skips heavy downloading & appending
+4. Three distinct progress states when execution is required:
    - CHECKING: Validates dates and fetches NIFTY 50 benchmark
    - DOWNLOADING: Fetches price bars for each constituent (1/207 ... 207/207)
    - APPENDING: Formats columns and appends new rows into 5_year_data/raw/{symbol}_data.csv
-5. Updates stocks_download.json and app_logs.json upon completion
+5. At the exact moment appending completes, updates stocks_download.json and broadcasts to UI
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import sys
 import time
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import pandas as pd
 import yfinance as yf
 
@@ -49,27 +49,156 @@ def get_sector_index(sector: str) -> str:
     return mapping.get(sector, "Unknown")
 
 
-def run_stock_download_pipeline() -> Dict[str, Any]:
+def get_latest_market_trading_date(ref_datetime: Optional[datetime] = None) -> date:
     """
-    Executes the full 3-stage download & append pipeline:
-    Checking -> Downloading -> Appending -> Completed
+    Returns the date of the latest completed NSE market trading session.
+    NSE trading days: Monday (0) through Friday (4).
+    Trading hours: 09:15 to 15:30 IST. EOD bhavcopy finalized by ~16:00 IST.
+    If Saturday or Sunday -> previous Friday.
+    If Monday before 16:00 -> previous Friday.
+    If Tuesday-Friday before 16:00 -> previous day.
+    """
+    if ref_datetime is None:
+        ref_datetime = datetime.now()
+    
+    current_date = ref_datetime.date()
+    weekday = current_date.weekday()
+    hour = ref_datetime.hour
+
+    if weekday == 5:
+        return current_date - timedelta(days=1)
+    elif weekday == 6:
+        return current_date - timedelta(days=2)
+    else:
+        if hour < 16:
+            if weekday == 0:
+                return current_date - timedelta(days=3)
+            else:
+                return current_date - timedelta(days=1)
+        else:
+            return current_date
+
+
+def run_stock_download_pipeline(force: bool = False) -> Dict[str, Any]:
+    """
+    Executes the stock download & incremental append pipeline.
+    Checks json_manager first:
+    - If last_downloaded_date == today's date (or already run today with no new trading day),
+      skips downloading.
+    - If last_append_date == today's date, skips appending.
+    - Otherwise runs Checking -> Downloading -> Appending -> Completed.
+    - Updates stocks_download.json at the exact moment appending is completed.
     """
     start_time = time.time()
     today = date.today()
+    today_str = str(today)
     symbols = json_manager.get_stocks_list()
     total_symbols = len(symbols)
 
-    # -------------------------------------------------------------------------
-    # STAGE 1: CHECKING
-    # -------------------------------------------------------------------------
-    last_date_str = json_manager.get_last_downloaded_date()
+    download_info = json_manager.get_stocks_download_info()
+    last_date_str = download_info.get("last_downloaded_date", "2026-10-30")
+    last_append_date = download_info.get("last_append_date", "")
+    last_run_date = download_info.get("last_download_run_date", "")
+
     try:
         last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
     except Exception:
         last_date = today - timedelta(days=30)
 
+    # Determine latest completed market trading session on the exchange
+    latest_market_date = get_latest_market_trading_date()
+    latest_market_date_str = str(latest_market_date)
+
+    # -------------------------------------------------------------------------
+    # DAILY SKIP CHECK:
+    # 1. If last_downloaded_date == today's date or >= latest market trading session
+    # 2. If last_append_date == today's date
+    # 3. If already executed today and current with market sessions -> skip both
+    # -------------------------------------------------------------------------
+    is_downloaded_today = (last_date_str >= latest_market_date_str) or (last_date_str == today_str) or (last_run_date == today_str and download_info.get("status") == "COMPLETED")
+    is_appended_today = (last_append_date == today_str) or (last_date_str >= latest_market_date_str and last_append_date != "")
+
+    if not force and is_downloaded_today and is_appended_today:
+        msg = f"Market data already downloaded and appended for latest market session ({last_date_str}). Current as of today ({today_str})."
+        duration = round(time.time() - start_time, 2)
+        
+        # Exact moment completion: write JSON first, then broadcast
+        json_manager.update_stocks_download_info(
+            last_date=last_date_str,
+            status="COMPLETED",
+            stocks_updated=total_symbols,
+            message=msg,
+            duration_seconds=duration,
+            last_append_date=today_str,
+            last_download_run_date=today_str
+        )
+        json_manager.update_download_progress(
+            status="COMPLETED",
+            heading="Done",
+            current_stock="ALL",
+            current_index=total_symbols,
+            total_stocks=total_symbols,
+            percentage=100.0,
+            from_date=last_date_str,
+            to_date=today_str,
+            message=msg,
+            elapsed_seconds=duration,
+            last_downloaded_date=last_date_str,
+            last_append_date=today_str
+        )
+        json_manager.log_task_entry(
+            task_name="STOCKS_DOWNLOAD",
+            status="COMPLETED",
+            message=msg
+        )
+        return {
+            "status": "SUCCESS",
+            "message": msg,
+            "last_downloaded_date": last_date_str,
+            "stocks_updated": total_symbols,
+            "rows_appended": 0,
+            "skipped": True
+        }
+
     from_date = last_date + timedelta(days=1)
-    
+
+    # If from_date is in the future
+    if from_date > today and not force:
+        msg = f"Dataset is already up-to-date ({last_date_str}). No new trading day to download."
+        duration = round(time.time() - start_time, 2)
+        json_manager.update_stocks_download_info(
+            last_date=last_date_str,
+            status="COMPLETED",
+            stocks_updated=total_symbols,
+            message=msg,
+            duration_seconds=duration,
+            last_append_date=today_str,
+            last_download_run_date=today_str
+        )
+        json_manager.update_download_progress(
+            status="COMPLETED",
+            heading="Done",
+            current_stock="ALL",
+            current_index=total_symbols,
+            total_stocks=total_symbols,
+            percentage=100.0,
+            from_date=str(from_date),
+            to_date=today_str,
+            message=msg,
+            elapsed_seconds=duration,
+            last_downloaded_date=last_date_str,
+            last_append_date=today_str
+        )
+        json_manager.log_task_entry(
+            task_name="STOCKS_DOWNLOAD",
+            status="COMPLETED",
+            message=msg
+        )
+        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
+
+    # -------------------------------------------------------------------------
+    # STAGE 1: CHECKING
+    # -------------------------------------------------------------------------
     json_manager.log_task_entry(
         task_name="STOCKS_DOWNLOAD",
         status="RUNNING",
@@ -83,27 +212,9 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         percentage=0.0,
         from_date=str(from_date),
         to_date=str(today),
-        message=f"Checking latest trading days from {from_date} to {today}..."
+        message=f"Checking latest trading days from {from_date} to {today}...",
+        last_downloaded_date=last_date_str
     )
-
-    # If already up-to-date
-    if from_date >= today:
-        msg = f"Dataset is already up to date ({last_date_str}). No new trading day to download."
-        json_manager.update_download_progress(
-            status="COMPLETED",
-            heading="DOWNLOADING STOCKS",
-            total_stocks=total_symbols,
-            percentage=100.0,
-            from_date=str(from_date),
-            to_date=str(today),
-            message=msg
-        )
-        json_manager.log_task_entry(
-            task_name="STOCKS_DOWNLOAD",
-            status="COMPLETED",
-            message=msg
-        )
-        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
 
     # Load universe metadata for sectors
     universe_metadata = {}
@@ -114,12 +225,10 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
     # Fetch NIFTY 50 Benchmark
     nifty50_df = pd.DataFrame()
     try:
-        # End is exclusive in yfinance, so today + 1 day covers today's potential close
         nifty = yf.download("^NSEI", start=from_date, end=today + timedelta(days=1), auto_adjust=False, progress=False)
         if not nifty.empty:
             if isinstance(nifty.columns, pd.MultiIndex):
                 nifty.columns = nifty.columns.droplevel(1)
-            # Filter up to today
             nifty = nifty[nifty.index.date <= today]
             nifty_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
             for c in nifty_cols:
@@ -139,11 +248,11 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
     # STAGE 2: DOWNLOADING (1 to 207)
     # -------------------------------------------------------------------------
     downloaded_dfs: Dict[str, pd.DataFrame] = {}
-    
+
     for idx, sym in enumerate(symbols, 1):
         clean_sym = sym.strip().upper()
         pct = round((idx / total_symbols) * 100.0, 1)
-        
+
         json_manager.update_download_progress(
             status="DOWNLOADING",
             heading="Downloading",
@@ -154,7 +263,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             from_date=str(from_date),
             to_date=str(today),
             message=f"Downloading {clean_sym} market bars ({idx}/{total_symbols})...",
-            elapsed_seconds=time.time() - start_time
+            elapsed_seconds=time.time() - start_time,
+            last_downloaded_date=last_date_str
         )
 
         try:
@@ -168,14 +278,12 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = df.columns.droplevel(1)
-                # Filter up to today
                 df = df[df.index.date <= today]
                 if not df.empty:
                     downloaded_dfs[clean_sym] = df
         except Exception as e:
             print(f"[ERROR] Failed downloading {clean_sym}: {e}")
 
-        # Micro-sleep to prevent rate limiting
         time.sleep(0.04)
 
     # -------------------------------------------------------------------------
@@ -184,8 +292,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
     latest_seen_date = last_date_str
     total_rows_appended = 0
     cols_needed = [
-        'Stock Symbol', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume', 
-        'Sector', 'Sector Index', 
+        'Stock Symbol', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume',
+        'Sector', 'Sector Index',
         'Nifty50_Open', 'Nifty50_High', 'Nifty50_Low', 'Nifty50_Close', 'Nifty50_Volume',
         'Trading_Day_Of_Week'
     ]
@@ -204,7 +312,8 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             from_date=str(from_date),
             to_date=str(today),
             message=f"Appending new records to {clean_sym}_data.csv ({idx}/{total_symbols})...",
-            elapsed_seconds=time.time() - start_time
+            elapsed_seconds=time.time() - start_time,
+            last_downloaded_date=latest_seen_date
         )
 
         df = downloaded_dfs.get(clean_sym)
@@ -212,7 +321,6 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
 
         if df is not None and not df.empty:
             try:
-                # Sector resolution
                 meta = universe_metadata.get(clean_sym, {})
                 sector = meta.get("sector", "Unknown")
                 if sector == "Unknown":
@@ -233,7 +341,6 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
                 if 'Adj Close' not in df_final.columns:
                     df_final['Adj Close'] = df_final['Close'] if 'Close' in df_final.columns else None
 
-                # Join Nifty 50 columns
                 if not nifty50_df.empty:
                     df_final = df_final.join(nifty50_df, how='left')
                 else:
@@ -246,14 +353,12 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
 
                 df_final = df_final[cols_needed]
 
-                # Track latest date
                 max_dt = df_final.index.max()
                 if pd.notnull(max_dt):
                     max_dt_str = max_dt.strftime("%Y-%m-%d")
                     if max_dt_str > latest_seen_date:
                         latest_seen_date = max_dt_str
 
-                # Read existing dates to prevent duplicate rows
                 existing_dates = set()
                 if csv_path.exists():
                     try:
@@ -262,7 +367,6 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
                     except Exception:
                         existing_dates = set()
 
-                # Filter out rows already in CSV
                 df_to_append = df_final[~df_final.index.strftime("%Y-%m-%d").isin(existing_dates)]
 
                 if not df_to_append.empty:
@@ -279,17 +383,31 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         time.sleep(0.01)
 
     # -------------------------------------------------------------------------
-    # STAGE 4: COMPLETED
+    # STAGE 4: EXACT MOMENT APPENDING IS COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    if total_rows_appended > 0:
-        completion_message = f"Successfully appended {total_rows_appended} new market bars across {total_symbols} stocks up to {latest_seen_date}."
-    else:
-        completion_message = f"All {total_symbols} stocks already up-to-date with latest market session ({latest_seen_date})."
+    effective_last_date = latest_seen_date if latest_seen_date > last_date_str else last_date_str
 
+    if total_rows_appended > 0:
+        completion_message = f"Successfully appended {total_rows_appended} new market bars across {total_symbols} stocks up to {effective_last_date}."
+    else:
+        completion_message = f"All {total_symbols} stocks already up-to-date with latest market session ({effective_last_date})."
+
+    # 1. Update stocks_download.json FIRST
+    json_manager.update_stocks_download_info(
+        last_date=effective_last_date,
+        status="COMPLETED",
+        stocks_updated=total_symbols,
+        message=completion_message,
+        duration_seconds=duration,
+        last_append_date=today_str,
+        last_download_run_date=today_str
+    )
+
+    # 2. Update live download progress (broadcasts to WebSocket with latest date synchronously)
     json_manager.update_download_progress(
         status="COMPLETED",
-        heading="DOWNLOADING STOCKS",
+        heading="Done",
         current_stock="ALL",
         current_index=total_symbols,
         total_stocks=total_symbols,
@@ -297,17 +415,12 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
         from_date=str(from_date),
         to_date=str(today),
         message=completion_message,
-        elapsed_seconds=duration
+        elapsed_seconds=duration,
+        last_downloaded_date=effective_last_date,
+        last_append_date=today_str
     )
 
-    json_manager.update_stocks_download_info(
-        last_date=latest_seen_date,
-        status="COMPLETED",
-        stocks_updated=total_symbols,
-        message=completion_message,
-        duration_seconds=duration
-    )
-
+    # 3. Log app event & task audit log
     json_manager.log_app_event(
         event="STOCKS_DOWNLOAD_COMPLETED",
         status="Everything fine",
@@ -322,52 +435,11 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
 
     return {
         "status": "SUCCESS",
-        "last_downloaded_date": latest_seen_date,
+        "last_downloaded_date": effective_last_date,
         "stocks_updated": total_symbols,
         "rows_appended": total_rows_appended,
         "duration_seconds": duration,
         "message": completion_message
-    }
-
-
-def reset_raw_dataset_to_date(cutoff_date: str = "2026-10-20") -> Dict[str, Any]:
-    """
-    Rolls back constituent CSV records and download state back to a cutoff date.
-    Used for testing the end-to-end download, appending, and real-time badge updates.
-    """
-    total_trimmed = 0
-    total_rows_removed = 0
-    for f in RAW_DATA_DIR.glob("*_data.csv"):
-        try:
-            df = pd.read_csv(f)
-            if 'Date' in df.columns:
-                filtered = df[df['Date'] <= cutoff_date]
-                removed = len(df) - len(filtered)
-                if removed > 0:
-                    filtered.to_csv(f, index=False)
-                    total_trimmed += 1
-                    total_rows_removed += removed
-        except Exception as e:
-            print(f"Error resetting {f.name}: {e}")
-
-    json_manager.update_stocks_download_info(
-        last_date=cutoff_date,
-        status="COMPLETED",
-        stocks_updated=len(symbols) if 'symbols' in locals() else 207,
-        message=f"Reset dataset to test baseline {cutoff_date}. Trimmed {total_rows_removed} rows.",
-        duration_seconds=0.1
-    )
-    json_manager.update_download_progress(
-        status="IDLE",
-        heading="Ready",
-        percentage=0.0,
-        message=f"Dataset reset to {cutoff_date}. Ready to test auto-append."
-    )
-    return {
-        "cutoff_date": cutoff_date,
-        "files_trimmed": total_trimmed,
-        "rows_removed": total_rows_removed,
-        "status": "SUCCESS"
     }
 
 

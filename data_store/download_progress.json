@@ -1,14 +1,16 @@
 {
-  "status": "IDLE",
-  "heading": "Ready",
-  "current_stock": "",
-  "current_index": 0,
+  "status": "COMPLETED",
+  "heading": "Done",
+  "current_stock": "ALL",
+  "current_index": 207,
   "total_stocks": 207,
-  "percentage": 0.0,
-  "from_date": null,
-  "to_date": null,
-  "message": "Dataset reset to 2026-10-20. Ready to test auto-append.",
+  "percentage": 100.0,
+  "from_date": "2026-10-30",
+  "to_date": "2026-11-01",
+  "message": "Market data already downloaded and appended for latest market session (2026-10-30). Current as of today (2026-11-01).",
   "elapsed_seconds": 0.0,
   "error": null,
-  "updated_at": "2026-11-01T19:48:05.017523+05:30"
+  "last_downloaded_date": "2026-10-30",
+  "last_append_date": "2026-11-01",
+  "updated_at": "2026-11-01T20:09:36.108430+05:30"
 }

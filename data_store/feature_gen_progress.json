@@ -1,12 +1,13 @@
 {
-  "status": "IDLE",
-  "heading": "Ready",
-  "current_stock": "",
-  "current_index": 0,
+  "status": "COMPLETED",
+  "heading": "Done",
+  "current_stock": "ALL",
+  "current_index": 207,
   "total_stocks": 207,
-  "percentage": 0.0,
-  "message": "Ready to generate features.",
+  "percentage": 100.0,
+  "message": "Features already computed up to 2026-11-01 for all 207 stocks. Generation skipped.",
   "elapsed_seconds": 0.0,
   "error": null,
-  "updated_at": "2026-11-01T18:42:00.000000+05:30"
+  "last_feature_gen_date": "2026-11-01",
+  "updated_at": "2026-11-01T20:09:44.988206+05:30"
 }

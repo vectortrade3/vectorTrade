@@ -188,15 +188,10 @@
                     </div>
 
                     <!-- Action Controls -->
-                    <div class="flex flex-col sm:flex-row items-center gap-3">
-                        <button id="btnDownload" onclick="triggerDownload()" class="apple-btn w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-apple-blue text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-40 disabled:pointer-events-none">
+                    <div class="flex items-center gap-3">
+                        <button id="btnDownload" onclick="triggerDownload()" class="apple-btn px-6 py-3.5 rounded-2xl bg-apple-blue hover:bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
                             <i data-lucide="download-cloud" class="w-4 h-4"></i>
                             <span>Download Data</span>
-                        </button>
-
-                        <button id="btnResetTest" onclick="triggerResetTest()" class="apple-btn w-full sm:w-auto px-4 py-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-apple-textSecondary hover:text-white text-xs font-medium border border-white/10 flex items-center justify-center gap-1.5" title="Rolls back records to 2026-10-20 so you can test auto-append anytime">
-                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                            <span>Test Reset (2026-10-20)</span>
                         </button>
                     </div>
                 </div>
@@ -733,17 +728,28 @@
                 vCompleted.classList.remove('hidden');
                 btn.disabled = false;
 
-                document.getElementById('completedDetail').innerText = prog.message || "Completed successfully.";
-                updateSystemStatus("Sync Complete", "emerald", false, 3000);
+                // Synchronously update the website DOM at the exact moment appending completes
+                if (prog.last_downloaded_date) {
+                    const elDate = document.getElementById('statLastDate');
+                    if (elDate) elDate.innerText = prog.last_downloaded_date;
+                }
+                if (prog.message) {
+                    const elBatch = document.getElementById('statBatchDetail');
+                    if (elBatch) elBatch.innerText = prog.message;
+                    document.getElementById('completedDetail').innerText = prog.message;
+                } else {
+                    document.getElementById('completedDetail').innerText = "Completed successfully.";
+                }
+                updateSystemStatus("Sync Complete", "emerald", false, 3500);
 
-                // Fetch latest status to immediately refresh Last Downloaded Date
+                // Fetch latest status to ensure complete system state synchronization
                 fetchSystemStatus();
 
                 if (!downloadTimer) {
                     downloadTimer = setTimeout(() => {
                         resetDownloadToIdle();
                         downloadTimer = null;
-                    }, 3000);
+                    }, 3500);
                 }
             }
             else if (status === 'ERROR') {
@@ -755,13 +761,13 @@
                 btn.disabled = false;
 
                 document.getElementById('errorDetail').innerText = prog.message || prog.error || "An error occurred during download.";
-                updateSystemStatus("Download Error", "red", false, 3000);
+                updateSystemStatus("Download Error", "red", false, 3500);
 
                 if (!downloadTimer) {
                     downloadTimer = setTimeout(() => {
                         resetDownloadToIdle();
                         downloadTimer = null;
-                    }, 3000);
+                    }, 3500);
                 }
             }
             else {
@@ -772,31 +778,24 @@
         async function triggerDownload() {
             const btn = document.getElementById('btnDownload');
             btn.disabled = true;
+
+            // Immediately show Checking UI so user receives instant zero-latency feedback on click
+            renderDownloadProgress({
+                status: 'CHECKING',
+                heading: 'Checking Data',
+                message: 'Verifying market dates and connecting to feed...'
+            });
+
             try {
                 const res = await fetch('/api/download/start', { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 409) {
-                    alert(data.message);
-                    btn.disabled = false;
+                    updateSystemStatus("Already Running", "amber", false, 3000);
                 }
             } catch (err) {
                 console.error("Failed to start download:", err);
-                btn.disabled = false;
-            }
-        }
-
-        async function triggerResetTest() {
-            if (!confirm("This will roll back all constituent CSV files back to 2026-10-20 so you can test the full download & auto-append workflow. Proceed?")) {
-                return;
-            }
-            try {
-                const res = await fetch('/api/download/reset_test', { method: 'POST' });
-                const data = await res.json();
-                document.getElementById('statLastDate').innerText = '2026-10-20';
-                document.getElementById('statBatchDetail').innerText = `Dataset reset to 2026-10-20 (${data.rows_removed} rows rolled back). Click Download to test auto-append!`;
-                alert(`Dataset successfully reset to 2026-10-20!\n\n${data.files_trimmed} files rolled back.\nNow click 'Download Data' to watch it download, auto-append all 8 missing trading days, and update the badge in real time!`);
-            } catch (err) {
-                alert("Failed to reset dataset: " + err);
+                resetDownloadToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
             }
         }
 
@@ -871,8 +870,16 @@
                 vFeatCompleted.classList.remove('hidden');
                 btn.disabled = false;
 
-                document.getElementById('featCompletedDetail').innerText = prog.message || "Completed successfully.";
-                updateSystemStatus("Features Done", "emerald", false, 3000);
+                if (prog.last_feature_gen_date) {
+                    const elFeatDate = document.getElementById('statFeatureLastDate');
+                    if (elFeatDate) elFeatDate.innerText = prog.last_feature_gen_date;
+                }
+                if (prog.message) {
+                    document.getElementById('featCompletedDetail').innerText = prog.message;
+                } else {
+                    document.getElementById('featCompletedDetail').innerText = "Completed successfully.";
+                }
+                updateSystemStatus("Features Done", "emerald", false, 3500);
 
                 fetchSystemStatus();
 
@@ -880,7 +887,7 @@
                     featCompletedTimer = setTimeout(() => {
                         resetFeatureGenToIdle();
                         featCompletedTimer = null;
-                    }, 3000);
+                    }, 3500);
                 }
             }
             else if (status === 'ERROR') {
@@ -892,13 +899,13 @@
                 btn.disabled = false;
 
                 document.getElementById('featErrorDetail').innerText = prog.message || prog.error || "An error occurred during feature generation.";
-                updateSystemStatus("Feature Error", "red", false, 3000);
+                updateSystemStatus("Feature Error", "red", false, 3500);
 
                 if (!featCompletedTimer) {
                     featCompletedTimer = setTimeout(() => {
                         resetFeatureGenToIdle();
                         featCompletedTimer = null;
-                    }, 3000);
+                    }, 3500);
                 }
             }
             else {
@@ -909,16 +916,28 @@
         async function triggerFeatureGen() {
             const btn = document.getElementById('btnFeatureGen');
             btn.disabled = true;
+
+            // Immediately display progress view so user receives instant feedback on click
+            renderFeatureGenProgress({
+                status: 'GENERATING',
+                heading: 'Features Generating',
+                current_stock: 'INITIALIZING',
+                current_index: 0,
+                total_stocks: 207,
+                percentage: 0,
+                message: 'Initializing quantitative feature models...'
+            });
+
             try {
                 const res = await fetch('/api/feature_gen/start', { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 409) {
-                    alert(data.message);
-                    btn.disabled = false;
+                    updateSystemStatus("Already Running", "amber", false, 3000);
                 }
             } catch (err) {
                 console.error("Failed to start feature generation:", err);
-                btn.disabled = false;
+                resetFeatureGenToIdle();
+                updateSystemStatus("Connection Error", "red", false, 3000);
             }
         }
 
@@ -1029,10 +1048,22 @@
 
                         case 'DOWNLOAD_PROGRESS':
                             renderDownloadProgress(msg.data);
+                            if (msg.data && msg.data.last_downloaded_date) {
+                                const elLastDate = document.getElementById('statLastDate');
+                                if (elLastDate) elLastDate.innerText = msg.data.last_downloaded_date;
+                            }
+                            if (msg.data && msg.data.message) {
+                                const elBatch = document.getElementById('statBatchDetail');
+                                if (elBatch) elBatch.innerText = msg.data.message;
+                            }
                             break;
 
                         case 'FEATURE_GEN_PROGRESS':
                             renderFeatureGenProgress(msg.data);
+                            if (msg.data && msg.data.last_feature_gen_date) {
+                                const elFeatDate = document.getElementById('statFeatureLastDate');
+                                if (elFeatDate) elFeatDate.innerText = msg.data.last_feature_gen_date;
+                            }
                             break;
 
                         case 'STOCKS_DOWNLOAD_INFO':

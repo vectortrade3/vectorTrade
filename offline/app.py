@@ -23,7 +23,7 @@ sys.path.insert(0, str(BASE_DIR))
 sys.path.insert(0, str(OFFLINE_DIR))
 
 from offline import json_manager
-from offline.downloader import run_stock_download_pipeline, reset_raw_dataset_to_date
+from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
 
 # Initialize Flask & WebSockets
@@ -170,13 +170,6 @@ def start_download():
 def get_progress():
     """Returns the live download progress for UI polling."""
     return jsonify(json_manager.get_download_progress())
-
-
-@app.route("/api/download/reset_test", methods=["POST"])
-def reset_test_download():
-    """Rolls back the dataset to 2026-10-20 so the user can test downloading & auto-appending."""
-    res = reset_raw_dataset_to_date("2026-10-20")
-    return jsonify(res)
 
 
 # ==============================================================================
