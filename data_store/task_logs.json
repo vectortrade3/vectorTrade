@@ -3,6 +3,14 @@
     {
       "task_name": "STOCKS_DOWNLOAD",
       "status": "COMPLETED",
+      "timestamp": "2026-11-01T22:04:21.747517+05:30",
+      "readable_time": "2026-11-01 22:04:21 India Standard Time",
+      "message": "Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
       "timestamp": "2026-11-01T21:50:00.098417+05:30",
       "readable_time": "2026-11-01 21:50:00 India Standard Time",
       "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01).",
@@ -451,5 +459,5 @@
   ],
   "last_task": "STOCKS_DOWNLOAD",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-01T21:50:00.098417+05:30"
+  "last_updated": "2026-11-01T22:04:21.747517+05:30"
 }

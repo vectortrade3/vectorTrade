@@ -1,13 +1,13 @@
 {
-  "status": "GENERATING",
-  "heading": "Features Generating",
-  "current_stock": "",
-  "current_index": 0,
+  "status": "COMPLETED",
+  "heading": "Done",
+  "current_stock": "ALL",
+  "current_index": 207,
   "total_stocks": 207,
-  "percentage": 25.0,
-  "message": "Test feature progress",
+  "percentage": 100.0,
+  "message": "Features already computed up to 2026-11-01 for all 207 stocks. Generation skipped.",
   "elapsed_seconds": 0.0,
   "error": null,
-  "last_feature_gen_date": null,
-  "updated_at": "2026-11-01T21:49:22.161294+05:30"
+  "last_feature_gen_date": "2026-11-01",
+  "updated_at": "2026-11-01T22:17:59.237169+05:30"
 }

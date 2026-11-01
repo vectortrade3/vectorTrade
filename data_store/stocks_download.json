@@ -2,17 +2,17 @@
   "last_downloaded_date": "2026-11-01",
   "status": "COMPLETED",
   "total_stocks": 207,
-  "last_updated": "2026-11-01T21:50:00.092067+05:30",
-  "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01).",
+  "last_updated": "2026-11-01T22:17:51.126145+05:30",
+  "message": "Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date.",
   "download_history": [
     {
-      "timestamp": "2026-11-01T21:50:00.092067+05:30",
+      "timestamp": "2026-11-01T22:17:51.126145+05:30",
       "date_synced": "2026-11-01",
       "last_append_date": "2026-11-01",
       "status": "COMPLETED",
       "stocks_updated": 207,
-      "duration_seconds": 0.01,
-      "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01)."
+      "duration_seconds": 0.02,
+      "message": "Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date."
     },
     {
       "timestamp": "2026-11-01T21:44:08.893959+05:30",

@@ -1,6 +1,30 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-01T22:04:21.771801+05:30",
+      "readable_time": "2026-11-01 22:04:21 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T22:04:21.706530+05:30",
+      "readable_time": "2026-11-01 22:04:21 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T22:04:12.735482+05:30",
+      "readable_time": "2026-11-01 22:04:12 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T21:50:00.112537+05:30",
       "readable_time": "2026-11-01 21:50:00 India Standard Time",
       "event": "STOCKS_DOWNLOAD",
@@ -689,5 +713,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T21:50:00.112537+05:30"
+  "last_event_time": "2026-11-01T22:04:21.771801+05:30"
 }

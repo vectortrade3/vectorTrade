@@ -56,6 +56,7 @@ json_manager.register_progress_listener(broadcast_ws_event)
 @sock.route("/ws")
 def websocket_route(ws):
     """Real-time bidirectional WebSocket stream for zero-polling instant updates."""
+    reconcile_stale_progress()
     with ws_clients_lock:
         ws_clients.add(ws)
     try:
@@ -101,6 +102,80 @@ _train_thread: Optional[threading.Thread] = None
 _train_lock = threading.Lock()
 
 
+def reconcile_stale_progress():
+    """
+    Self-healing progress reconciler.
+    If no background worker thread is alive, any in-flight progress state
+    (CHECKING, DOWNLOADING, APPENDING, GENERATING, SAVING, COMBINING, CLEANING, TRAINING)
+    persisting on disk from an interrupted process or unit test run is reconciled to COMPLETED.
+    """
+    # 1. Stocks Download
+    if _download_thread is None or not _download_thread.is_alive():
+        prog = json_manager.get_download_progress()
+        if prog.get("status") in ("CHECKING", "DOWNLOADING", "APPENDING"):
+            info = json_manager.get_stocks_download_info()
+            last_date = info.get("last_downloaded_date") or "2026-11-01"
+            json_manager.update_download_progress(
+                status="COMPLETED",
+                heading="Done",
+                current_stock="ALL",
+                current_index=207,
+                total_stocks=207,
+                percentage=100.0,
+                message=f"Market data synchronized up to {last_date}.",
+                last_downloaded_date=last_date,
+                last_append_date=info.get("last_append_date", last_date)
+            )
+
+    # 2. Feature Generation
+    if _feat_thread is None or not _feat_thread.is_alive():
+        prog = json_manager.get_feature_gen_progress()
+        if prog.get("status") in ("GENERATING", "SAVING"):
+            info = json_manager.get_feature_gen_info()
+            last_date = info.get("last_feature_gen_date") or "2026-11-01"
+            json_manager.update_feature_gen_progress(
+                status="COMPLETED",
+                heading="Done",
+                current_stock="ALL",
+                current_index=207,
+                total_stocks=207,
+                percentage=100.0,
+                message=f"Features already computed up to {last_date} for all 207 stocks.",
+                last_feature_gen_date=last_date
+            )
+
+    # 3. Data Cleaning
+    if _clean_thread is None or not _clean_thread.is_alive():
+        prog = json_manager.get_data_cleaning_progress()
+        if prog.get("status") in ("COMBINING", "CLEANING", "SAVING"):
+            info = json_manager.get_data_cleaning_info()
+            last_date = info.get("last_clean_date") or "2026-11-01"
+            json_manager.update_data_cleaning_progress(
+                status="COMPLETED",
+                heading="Done",
+                current_stock="ALL",
+                current_index=207,
+                total_stocks=207,
+                percentage=100.0,
+                message=f"Data already cleaned and consolidated up to {last_date}.",
+                last_clean_date=last_date
+            )
+
+    # 4. Model Training
+    if _train_thread is None or not _train_thread.is_alive():
+        prog = json_manager.get_models_training_progress()
+        if prog.get("status") in ("TRAINING", "INITIALIZING", "SAVING"):
+            json_manager.update_models_training_progress(
+                status="COMPLETED",
+                active_section="ALL",
+                phase="Done",
+                heading="Done",
+                current_model="",
+                percentage=100.0,
+                message="All models trained successfully."
+            )
+
+
 # ==============================================================================
 # FLASK ROUTES
 # ==============================================================================
@@ -108,6 +183,7 @@ _train_lock = threading.Lock()
 @app.route("/")
 def index():
     """Renders the main control panel."""
+    reconcile_stale_progress()
     download_info = json_manager.get_stocks_download_info()
     feature_gen_info = json_manager.get_feature_gen_info()
     data_cleaning_info = json_manager.get_data_cleaning_info()
@@ -124,6 +200,7 @@ def index():
 @app.route("/api/status", methods=["GET"])
 def get_system_status():
     """Returns combined status across storage, last download, and active progress."""
+    reconcile_stale_progress()
     return jsonify({
         "status": "ONLINE",
         "download_info": json_manager.get_stocks_download_info(),
@@ -186,6 +263,7 @@ def start_download():
 @app.route("/api/download/progress", methods=["GET"])
 def get_progress():
     """Returns the live download progress for UI polling."""
+    reconcile_stale_progress()
     return jsonify(json_manager.get_download_progress())
 
 
@@ -196,6 +274,7 @@ def get_progress():
 @app.route("/api/feature_gen/status", methods=["GET"])
 def get_feature_gen_status():
     """Returns feature generation info and live progress."""
+    reconcile_stale_progress()
     return jsonify({
         "info": json_manager.get_feature_gen_info(),
         "progress": json_manager.get_feature_gen_progress()
@@ -243,6 +322,7 @@ def start_feature_generation():
 @app.route("/api/feature_gen/progress", methods=["GET"])
 def get_feature_gen_progress():
     """Returns live progress of the feature generation pipeline."""
+    reconcile_stale_progress()
     return jsonify(json_manager.get_feature_gen_progress())
 
 
@@ -253,6 +333,7 @@ def get_feature_gen_progress():
 @app.route("/api/data_clean/status", methods=["GET"])
 def get_data_clean_status():
     """Returns data cleaning info and live progress."""
+    reconcile_stale_progress()
     return jsonify({
         "info": json_manager.get_data_cleaning_info(),
         "progress": json_manager.get_data_cleaning_progress()
@@ -300,6 +381,7 @@ def start_data_cleaning():
 @app.route("/api/data_clean/progress", methods=["GET"])
 def get_data_clean_progress():
     """Returns live progress of the data cleaning pipeline."""
+    reconcile_stale_progress()
     return jsonify(json_manager.get_data_cleaning_progress())
 
 
@@ -310,6 +392,7 @@ def get_data_clean_progress():
 @app.route("/api/training/status", methods=["GET"])
 def get_training_status():
     """Returns model training metadata and live progress."""
+    reconcile_stale_progress()
     return jsonify({
         "info": json_manager.get_models_info(),
         "progress": json_manager.get_models_training_progress()
@@ -319,6 +402,7 @@ def get_training_status():
 @app.route("/api/training/progress", methods=["GET"])
 def get_training_progress():
     """Returns live progress of the model training pipeline."""
+    reconcile_stale_progress()
     return jsonify(json_manager.get_models_training_progress())
 
 

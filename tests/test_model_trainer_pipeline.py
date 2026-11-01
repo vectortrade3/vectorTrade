@@ -32,6 +32,11 @@ class TestModelTrainerPipeline(unittest.TestCase):
 
     def setUp(self):
         self.app_client = app.test_client()
+        self._models_prog_snapshot = json_manager.get_models_training_progress()
+
+    def tearDown(self):
+        if hasattr(self, '_models_prog_snapshot') and self._models_prog_snapshot:
+            json_manager.write_json_file(json_manager.MODELS_TRAINING_PROGRESS_FILE, self._models_prog_snapshot)
 
     def test_01_models_state_initialization(self):
         """Verifies models_state.json contains Section 1 (Strategy) and Section 2 (Global)."""
@@ -65,18 +70,22 @@ class TestModelTrainerPipeline(unittest.TestCase):
             received.append((event_type, data))
 
         json_manager.register_progress_listener(dummy_listener)
-        json_manager.update_models_training_progress(
-            status="TRAINING",
-            active_section="TEST",
-            phase="Unit Test Phase",
-            percentage=50.0,
-            message="Dispatch test"
-        )
+        try:
+            json_manager.update_models_training_progress(
+                status="TRAINING",
+                active_section="TEST",
+                phase="Unit Test Phase",
+                percentage=50.0,
+                message="Dispatch test"
+            )
 
-        self.assertTrue(len(received) > 0)
-        self.assertEqual(received[-1][0], "MODELS_TRAINING_PROGRESS")
-        self.assertEqual(received[-1][1]["active_section"], "TEST")
-        self.assertEqual(received[-1][1]["percentage"], 50.0)
+            self.assertTrue(len(received) > 0)
+            self.assertEqual(received[-1][0], "MODELS_TRAINING_PROGRESS")
+            self.assertEqual(received[-1][1]["active_section"], "TEST")
+            self.assertEqual(received[-1][1]["percentage"], 50.0)
+        finally:
+            if dummy_listener in json_manager._progress_listeners:
+                json_manager._progress_listeners.remove(dummy_listener)
 
     def test_04_feature_pruning_unit_logic(self):
         """Tests zero-importance elimination and multicollinearity pruning."""

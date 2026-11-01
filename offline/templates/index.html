@@ -1295,19 +1295,27 @@
         let featCompletedTimer = null;
 
         function resetFeatureGenToIdle() {
+            if (typeof featPollInterval !== 'undefined' && featPollInterval) {
+                clearInterval(featPollInterval);
+                featPollInterval = null;
+            }
             const vFeatIdle = document.getElementById('viewFeatIdle');
             const vFeatGenerating = document.getElementById('viewFeatGenerating');
             const vFeatSaving = document.getElementById('viewFeatSaving');
             const vFeatCompleted = document.getElementById('viewFeatCompleted');
             const vFeatError = document.getElementById('viewFeatError');
             const btn = document.getElementById('btnFeatureGen');
+            const elFeatState = document.getElementById('statFeatState');
 
-            vFeatIdle.classList.remove('hidden');
-            vFeatGenerating.classList.add('hidden');
-            vFeatSaving.classList.add('hidden');
-            vFeatCompleted.classList.add('hidden');
-            vFeatError.classList.add('hidden');
-            btn.disabled = false;
+            if (vFeatIdle) vFeatIdle.classList.remove('hidden');
+            if (vFeatGenerating) vFeatGenerating.classList.add('hidden');
+            if (vFeatSaving) vFeatSaving.classList.add('hidden');
+            if (vFeatCompleted) vFeatCompleted.classList.add('hidden');
+            if (vFeatError) vFeatError.classList.add('hidden');
+            if (btn) btn.disabled = false;
+            if (elFeatState) {
+                elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+            }
         }
 
         function renderFeatureGenProgress(prog) {
@@ -1452,6 +1460,10 @@
         let cleanCompletedTimer = null;
 
         function resetDataCleaningToIdle() {
+            if (typeof cleanPollInterval !== 'undefined' && cleanPollInterval) {
+                clearInterval(cleanPollInterval);
+                cleanPollInterval = null;
+            }
             const vCleanIdle = document.getElementById('viewCleanIdle');
             const vCleanCombining = document.getElementById('viewCleanCombining');
             const vCleanFormatting = document.getElementById('viewCleanFormatting');
@@ -1459,6 +1471,7 @@
             const vCleanCompleted = document.getElementById('viewCleanCompleted');
             const vCleanError = document.getElementById('viewCleanError');
             const btn = document.getElementById('btnDataClean');
+            const elCleanState = document.getElementById('statCleanState');
 
             if (vCleanIdle) vCleanIdle.classList.remove('hidden');
             if (vCleanCombining) vCleanCombining.classList.add('hidden');
@@ -1467,6 +1480,9 @@
             if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
             if (vCleanError) vCleanError.classList.add('hidden');
             if (btn) btn.disabled = false;
+            if (elCleanState) {
+                elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
+            }
         }
 
         function renderDataCleaningProgress(prog) {

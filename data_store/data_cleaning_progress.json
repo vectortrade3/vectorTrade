@@ -5,10 +5,10 @@
   "current_index": 207,
   "total_stocks": 207,
   "percentage": 100.0,
-  "message": "Data already combined and cleaned up to 2026-10-30 for all 207 constituents today (2026-11-01). Consolidation skipped.",
+  "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-01). Consolidation skipped.",
   "elapsed_seconds": 0.0,
   "error": null,
-  "last_clean_date": "2026-10-30",
-  "total_rows": 252382,
-  "updated_at": "2026-11-01T21:49:22.196373+05:30"
+  "last_clean_date": "2026-11-01",
+  "total_rows": 248863,
+  "updated_at": "2026-11-01T22:18:06.979087+05:30"
 }

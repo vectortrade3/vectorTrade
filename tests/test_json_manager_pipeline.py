@@ -24,6 +24,23 @@ class TestJsonManagerPipeline(unittest.TestCase):
         self.test_listener = listener
         json_manager.register_progress_listener(self.test_listener)
 
+        # Snapshot progress files so unit tests never leave dirty state on disk
+        self._dl_snapshot = json_manager.get_download_progress()
+        self._fg_snapshot = json_manager.get_feature_gen_progress()
+        self._dc_snapshot = json_manager.get_data_cleaning_progress()
+
+    def tearDown(self):
+        # Deregister listener
+        if hasattr(self, 'test_listener') and self.test_listener in json_manager._progress_listeners:
+            json_manager._progress_listeners.remove(self.test_listener)
+        # Restore clean progress states
+        if hasattr(self, '_dl_snapshot') and self._dl_snapshot:
+            json_manager.write_json_file(json_manager.DOWNLOAD_PROGRESS_FILE, self._dl_snapshot)
+        if hasattr(self, '_fg_snapshot') and self._fg_snapshot:
+            json_manager.write_json_file(json_manager.FEATURE_GEN_PROGRESS_FILE, self._fg_snapshot)
+        if hasattr(self, '_dc_snapshot') and self._dc_snapshot:
+            json_manager.write_json_file(json_manager.DATA_CLEANING_PROGRESS_FILE, self._dc_snapshot)
+
     def test_stocks_download_state(self):
         info = json_manager.get_stocks_download_info()
         self.assertIn("last_downloaded_date", info)

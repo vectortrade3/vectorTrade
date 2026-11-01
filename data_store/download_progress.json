@@ -7,10 +7,10 @@
   "percentage": 100.0,
   "from_date": "2026-11-01",
   "to_date": "2026-11-01",
-  "message": "Market data already downloaded and appended for latest market session (2026-11-01). Current as of today (2026-11-01).",
+  "message": "Market data already downloaded and appended today (2026-11-01). Dataset is up-to-date.",
   "elapsed_seconds": 0.0,
   "error": null,
   "last_downloaded_date": "2026-11-01",
   "last_append_date": "2026-11-01",
-  "updated_at": "2026-11-01T21:50:00.096415+05:30"
+  "updated_at": "2026-11-01T22:17:51.129151+05:30"
 }
