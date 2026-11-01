@@ -296,7 +296,7 @@
                     </div>
                 </div>
 
-                <!-- Stage 4: COMPLETED BANNER -->
+                <!-- Stage 4: COMPLETED BANNER (AUTO-DISAPPEARS AFTER 2.5s) -->
                 <div id="viewCompleted" class="hidden py-4 text-center space-y-3">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
                         <i data-lucide="check-circle" class="w-6 h-6"></i>
@@ -314,6 +314,17 @@
                     </div>
                 </div>
 
+                <!-- ERROR STATE (AUTO-DISAPPEARS AFTER 2.5s) -->
+                <div id="viewError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold block text-red-300">Download Notice</span>
+                            <p id="errorDetail" class="text-xs text-red-400/90 pt-0.5">An error occurred.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- IDLE / READY STATE -->
                 <div id="viewIdle" class="py-3 flex items-center justify-between text-xs text-apple-textSecondary">
                     <div class="flex items-center gap-2">
@@ -321,21 +332,6 @@
                         <span>Click <strong class="text-white">Download Data</strong> to begin incremental download.</span>
                     </div>
                     <span class="text-apple-textTertiary font-mono">Zero Background CPU</span>
-                </div>
-            </div>
-
-            <!-- APP ACTIVITY & AUDIT LOGS -->
-            <div class="glass-panel rounded-3xl p-6 space-y-4">
-                <div class="flex items-center justify-between border-b border-white/5 pb-4">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-apple-textSecondary"></i>
-                        <h3 class="text-sm font-semibold text-white">Application Event Logs</h3>
-                    </div>
-                    <span class="text-[11px] text-apple-textTertiary font-mono">Persisted in data_store/app_logs.json</span>
-                </div>
-
-                <div id="logsContainer" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    <div class="text-xs text-apple-textSecondary py-4 text-center">Loading audit logs...</div>
                 </div>
             </div>
 
@@ -479,6 +475,17 @@
                         <p id="featCompletedDetail" class="text-xs text-apple-textSecondary pt-1">
                             Successfully generated and stored all constituent feature records.
                         </p>
+                    </div>
+                </div>
+
+                <!-- FEAT ERROR STATE (AUTO-DISAPPEARS AFTER 2.5s) -->
+                <div id="viewFeatError" class="hidden py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold block text-red-300">Feature Generation Notice</span>
+                            <p id="featErrorDetail" class="text-xs text-red-400/90 pt-0.5">An error occurred.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -631,6 +638,8 @@
             }
         }
 
+        let downloadTimer = null;
+
         async function pollProgress() {
             try {
                 const res = await fetch('/api/download/progress');
@@ -640,6 +649,7 @@
                 const vChecking = document.getElementById('viewChecking');
                 const vProgressing = document.getElementById('viewProgressing');
                 const vCompleted = document.getElementById('viewCompleted');
+                const vError = document.getElementById('viewError');
                 const btn = document.getElementById('btnDownload');
                 const pulseDot = document.getElementById('systemPulseDot');
                 const statusText = document.getElementById('systemStatusText');
@@ -652,6 +662,7 @@
                     vChecking.classList.remove('hidden');
                     vProgressing.classList.add('hidden');
                     vCompleted.classList.add('hidden');
+                    vError.classList.add('hidden');
                     btn.disabled = true;
 
                     document.getElementById('checkingHeading').innerText = prog.heading || "Checking";
@@ -666,6 +677,7 @@
                     vChecking.classList.add('hidden');
                     vProgressing.classList.remove('hidden');
                     vCompleted.classList.add('hidden');
+                    vError.classList.add('hidden');
                     btn.disabled = true;
 
                     document.getElementById('progressHeading').innerText = prog.heading || (status === 'DOWNLOADING' ? "Downloading" : "Appending Data");
@@ -688,6 +700,7 @@
                     vIdle.classList.add('hidden');
                     vChecking.classList.add('hidden');
                     vProgressing.classList.add('hidden');
+                    vError.classList.add('hidden');
                     vCompleted.classList.remove('hidden');
                     btn.disabled = false;
 
@@ -696,26 +709,49 @@
                     statusText.innerText = "Completed";
 
                     fetchSystemStatus();
+
+                    // Disappear after 2.5 seconds back to clean idle
+                    if (!downloadTimer) {
+                        downloadTimer = setTimeout(() => {
+                            vCompleted.classList.add('hidden');
+                            vIdle.classList.remove('hidden');
+                            downloadTimer = null;
+                        }, 2500);
+                    }
                 }
                 else if (status === 'ERROR') {
-                    vIdle.classList.remove('hidden');
+                    vIdle.classList.add('hidden');
                     vChecking.classList.add('hidden');
                     vProgressing.classList.add('hidden');
                     vCompleted.classList.add('hidden');
+                    vError.classList.remove('hidden');
                     btn.disabled = false;
 
+                    document.getElementById('errorDetail').innerText = prog.message || prog.error || "An error occurred during download.";
                     pulseDot.className = "w-2 h-2 rounded-full bg-red-400";
                     statusText.innerText = "Error";
+
+                    // Disappear after 3 seconds back to clean idle
+                    if (!downloadTimer) {
+                        downloadTimer = setTimeout(() => {
+                            vError.classList.add('hidden');
+                            vIdle.classList.remove('hidden');
+                            downloadTimer = null;
+                        }, 3000);
+                    }
                 }
                 else {
-                    vIdle.classList.remove('hidden');
-                    vChecking.classList.add('hidden');
-                    vProgressing.classList.add('hidden');
-                    vCompleted.classList.add('hidden');
-                    btn.disabled = false;
+                    if (!downloadTimer) {
+                        vIdle.classList.remove('hidden');
+                        vChecking.classList.add('hidden');
+                        vProgressing.classList.add('hidden');
+                        vCompleted.classList.add('hidden');
+                        vError.classList.add('hidden');
+                        btn.disabled = false;
 
-                    pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                    statusText.innerText = "Ready";
+                        pulseDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                        statusText.innerText = "Ready";
+                    }
                 }
 
             } catch (err) {
@@ -754,6 +790,7 @@
                 const vFeatGenerating = document.getElementById('viewFeatGenerating');
                 const vFeatSaving = document.getElementById('viewFeatSaving');
                 const vFeatCompleted = document.getElementById('viewFeatCompleted');
+                const vFeatError = document.getElementById('viewFeatError');
                 const btn = document.getElementById('btnFeatureGen');
                 const pulseDot = document.getElementById('systemPulseDot');
                 const statusText = document.getElementById('systemStatusText');
@@ -766,6 +803,7 @@
                     vFeatGenerating.classList.remove('hidden');
                     vFeatSaving.classList.add('hidden');
                     vFeatCompleted.classList.add('hidden');
+                    vFeatError.classList.add('hidden');
                     btn.disabled = true;
 
                     const curIdx = prog.current_index || 0;
@@ -788,6 +826,7 @@
                     vFeatGenerating.classList.add('hidden');
                     vFeatSaving.classList.remove('hidden');
                     vFeatCompleted.classList.add('hidden');
+                    vFeatError.classList.add('hidden');
                     btn.disabled = true;
 
                     document.getElementById('featSavingMessage').innerText = prog.message || "Flushing engineered features into 5_year_data/generated/...";
@@ -799,6 +838,7 @@
                     vFeatIdle.classList.add('hidden');
                     vFeatGenerating.classList.add('hidden');
                     vFeatSaving.classList.add('hidden');
+                    vFeatError.classList.add('hidden');
                     vFeatCompleted.classList.remove('hidden');
                     btn.disabled = false;
 
@@ -818,14 +858,25 @@
                     }
                 }
                 else if (status === 'ERROR') {
-                    vFeatIdle.classList.remove('hidden');
+                    vFeatIdle.classList.add('hidden');
                     vFeatGenerating.classList.add('hidden');
                     vFeatSaving.classList.add('hidden');
                     vFeatCompleted.classList.add('hidden');
+                    vFeatError.classList.remove('hidden');
                     btn.disabled = false;
 
+                    document.getElementById('featErrorDetail').innerText = prog.message || prog.error || "An error occurred during feature generation.";
                     pulseDot.className = "w-2 h-2 rounded-full bg-red-400";
                     statusText.innerText = "Feature Error";
+
+                    // Disappear after 3 seconds back to clean idle
+                    if (!featCompletedTimer) {
+                        featCompletedTimer = setTimeout(() => {
+                            vFeatError.classList.add('hidden');
+                            vFeatIdle.classList.remove('hidden');
+                            featCompletedTimer = null;
+                        }, 3000);
+                    }
                 }
                 else {
                     // IDLE
@@ -834,6 +885,7 @@
                         vFeatGenerating.classList.add('hidden');
                         vFeatSaving.classList.add('hidden');
                         vFeatCompleted.classList.add('hidden');
+                        vFeatError.classList.add('hidden');
                         btn.disabled = false;
                     }
                 }
@@ -844,7 +896,7 @@
         }
 
         // ---------------------------------------------------------------------
-        // FETCH SYSTEM STATUS & AUDIT LOGS
+        // FETCH SYSTEM STATUS
         // ---------------------------------------------------------------------
         async function fetchSystemStatus() {
             try {
@@ -867,50 +919,14 @@
             }
         }
 
-        async function fetchLogs() {
-            try {
-                const res = await fetch('/api/logs?limit=25');
-                const data = await res.json();
-                const container = document.getElementById('logsContainer');
-
-                if (!data.logs || data.logs.length === 0) {
-                    container.innerHTML = '<div class="text-xs text-apple-textSecondary py-4 text-center">No logs recorded yet.</div>';
-                    return;
-                }
-
-                container.innerHTML = data.logs.map(l => {
-                    const isOk = l.status === 'Everything fine';
-                    const pillClass = isOk ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20';
-                    const timeStr = l.readable_time ? l.readable_time.split(' ')[1] : l.timestamp?.split('T')[1]?.split('.')[0] || '';
-                    return `
-                        <div class="px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs hover:bg-white/[0.04] transition">
-                            <div class="flex items-center gap-2.5">
-                                <span class="font-mono text-apple-textTertiary text-[11px]">${timeStr}</span>
-                                <span class="font-semibold text-white font-mono">${l.event}</span>
-                                <span class="text-apple-textSecondary text-[11px] hidden sm:inline">${l.message || ''}</span>
-                            </div>
-                            <span class="px-2 py-0.5 rounded-md text-[10px] font-medium border ${pillClass}">
-                                ${l.status}
-                            </span>
-                        </div>
-                    `;
-                }).join('');
-
-            } catch (err) {
-                console.error("Error fetching logs:", err);
-            }
-        }
-
         // Initialize polling intervals
         setInterval(pollProgress, 1200);
         setInterval(pollFeatureGenProgress, 1200);
-        setInterval(fetchLogs, 4000);
 
         // Initial loads
         pollProgress();
         pollFeatureGenProgress();
         fetchSystemStatus();
-        fetchLogs();
     </script>
 </body>
 </html>

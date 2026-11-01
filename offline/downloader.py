@@ -99,12 +99,11 @@ def run_stock_download_pipeline() -> Dict[str, Any]:
             message=msg
         )
         json_manager.log_task_entry(
-        task_name="STOCKS_DOWNLOAD",
-        status="COMPLETED",
-        message=completion_message
-    )
-
-    return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
+            task_name="STOCKS_DOWNLOAD",
+            status="COMPLETED",
+            message=msg
+        )
+        return {"status": "SUCCESS", "message": msg, "stocks_updated": 0, "date": last_date_str}
 
     # Load universe metadata for sectors
     universe_metadata = {}
