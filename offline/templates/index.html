@@ -106,7 +106,7 @@
     <header class="sticky top-0 z-50 glass-nav">
         <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <!-- Brand Logo -->
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('download')">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
                 <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                     <i data-lucide="activity" class="w-4 h-4 text-white"></i>
                 </div>
@@ -121,34 +121,40 @@
 
             <!-- Navigation Links -->
             <nav class="hidden md:flex items-center space-x-1 bg-black/40 p-1.5 rounded-full border border-white/5">
-                <!-- 1. Download (Working) -->
-                <button id="nav-download" onclick="switchTab('download')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-white bg-white/15 shadow-sm">
-                    Download
+                <!-- 0. Dashboard (Default Homepage) -->
+                <button id="nav-dashboard" onclick="switchTab('dashboard')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-white bg-white/15 shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                    <span>Dashboard</span>
                 </button>
 
-                <!-- 2. Feature Gen (Working) -->
+                <!-- 1. Download -->
+                <button id="nav-download" onclick="switchTab('download')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
+                    <span>Download</span>
+                </button>
+
+                <!-- 2. Feature Gen -->
                 <button id="nav-features" onclick="switchTab('features')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Feature Gen
+                    <span>Feature Gen</span>
                 </button>
 
                 <!-- 3. Data Cleaning -->
                 <button id="nav-cleaning" onclick="switchTab('cleaning')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Data Cleaning
+                    <span>Data Cleaning</span>
                 </button>
 
                 <!-- 4. Model Training -->
                 <button id="nav-training" onclick="switchTab('training')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Model Training
+                    <span>Model Training</span>
                 </button>
 
-                <!-- 5. Inference (Working) -->
+                <!-- 5. Inference -->
                 <button id="nav-inference" onclick="switchTab('inference')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Inference
+                    <span>Inference</span>
                 </button>
 
                 <!-- 6. Logs -->
                 <button id="nav-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
-                    Task Logs
+                    <span>Task Logs</span>
                 </button>
             </nav>
 
@@ -164,9 +170,373 @@
     <main class="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
 
         <!-- ============================================================= -->
+        <!-- TAB 0: DASHBOARD (PRIMARY HOMEPAGE & COMMAND CENTER) -->
+        <!-- ============================================================= -->
+        <section id="tab-dashboard-view" class="space-y-6">
+
+            <!-- Hero Banner -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                            Central Command Center
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                            Quantitative Pipeline Dashboard
+                        </h1>
+                        <p class="text-sm text-apple-textSecondary leading-relaxed">
+                            Monitor and trigger all quantitative stages: market data synchronization, alpha engineering, dataset hygiene, estimator calibration, and out-of-sample strategy inference.
+                        </p>
+                    </div>
+
+                    <!-- System Pulse Status Card -->
+                    <div class="flex flex-col items-end gap-3">
+                        <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 shadow-inner">
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                <i data-lucide="server" class="w-5 h-5 text-blue-400"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-[11px] uppercase tracking-wider text-apple-textSecondary font-medium">Engine Mode</div>
+                                <div class="text-sm font-semibold text-white flex items-center gap-2">
+                                    VectorTrade Local
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-apple-textSecondary font-mono">
+                            Port 8684 &bull; <span id="dashHostBadge">vectortrade:8684</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtle Background Grid/Glow -->
+                <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-20 -top-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+            </div>
+
+            <!-- Executive KPI Strip (4 Pillars) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Market Feed Date</span>
+                    <div class="mt-2">
+                        <span id="dashKpiMarketDate" class="text-xl font-semibold text-white font-mono">{{ download_info.last_downloaded_date or '2026-10-30' }}</span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">207 Active Stocks</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Alpha Signals</span>
+                    <div class="mt-2">
+                        <span id="dashKpiFeatureDate" class="text-xl font-semibold text-purple-400 font-mono">{{ feature_gen_info.last_feature_gen_date or '2026-11-01' }}</span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">137 Signal Indicators</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Cleaned Dataset</span>
+                    <div class="mt-2">
+                        <span id="dashKpiCleanRows" class="text-xl font-semibold text-teal-400 font-mono">
+                            {% if data_cleaning_info and data_cleaning_info.total_rows %}
+                                {{ "{:,}".format(data_cleaning_info.total_rows) }}
+                            {% else %}
+                                55,598
+                            {% endif %}
+                        </span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">Master Rows Cleaned</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Estimators Calibrated</span>
+                    <div class="mt-2">
+                        <span id="dashKpiModelsState" class="text-xl font-semibold text-indigo-400 font-mono">{{ models_info.status or 'COMPLETED' }}</span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">Strategy &amp; Global Models</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Controls Grid (5 Stages) -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between px-1">
+                    <h2 class="text-base font-semibold text-white tracking-tight flex items-center gap-2">
+                        <i data-lucide="layers" class="w-4 h-4 text-blue-400"></i>
+                        Pipeline Execution Control
+                    </h2>
+                    <span class="text-xs text-apple-textSecondary">Click any stage to execute asynchronously with real-time telemetry</span>
+                </div>
+
+                <!-- STAGE 1 CARD: DOWNLOAD -->
+                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="database" class="w-5 h-5 text-blue-400"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-medium">Stage 01</span>
+                                    <h3 class="text-base font-semibold text-white">Market Data Synchronization</h3>
+                                    <span id="dashDownloadBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary max-w-xl">
+                                    Downloads latest EOD candles from Yahoo Finance for 207 Nifty constituents and appends to 5-year archives.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
+                            <button id="btnDashDownload" onclick="triggerDownload()" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                <span>Download Data</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Container for Stage 1 -->
+                    <div id="dashProgressDownload" class="hidden mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span id="dashDownloadPhase" class="font-medium text-white">Synchronizing Market Feed</span>
+                                <span class="text-white/20">&bull;</span>
+                                <span id="dashDownloadStock" class="text-blue-400 font-mono">Constituent</span>
+                            </div>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span id="dashDownloadPercent" class="text-white font-semibold">0%</span>
+                                <span id="dashDownloadStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div id="dashDownloadBarFill" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                            <span id="dashDownloadMessage">Connecting to market feed...</span>
+                            <span id="dashDownloadCounter" class="font-mono">0 / 207 Stocks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STAGE 2 CARD: FEATURE GEN -->
+                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="cpu" class="w-5 h-5 text-purple-400"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 font-medium">Stage 02</span>
+                                    <h3 class="text-base font-semibold text-white">Quantitative Feature Engineering</h3>
+                                    <span id="dashFeatBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary max-w-xl">
+                                    Generates 137 momentum, volatility, RSI, Bollinger Bands, and candlestick morphology alpha features across 207 stocks.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
+                            <button id="btnDashFeatureGen" onclick="triggerFeatureGen()" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-purple-500/20">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                <span>Generate Features</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Container for Stage 2 -->
+                    <div id="dashProgressFeatures" class="hidden mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span id="dashFeatPhase" class="font-medium text-white">Computing Alpha Indicators</span>
+                                <span class="text-white/20">&bull;</span>
+                                <span id="dashFeatStock" class="text-purple-400 font-mono">Constituent</span>
+                            </div>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span id="dashFeatPercent" class="text-white font-semibold">0%</span>
+                                <span id="dashFeatStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div id="dashFeatBarFill" class="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                            <span id="dashFeatMessage">Initializing indicators...</span>
+                            <span id="dashFeatCounter" class="font-mono">0 / 207 Stocks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STAGE 3 CARD: DATA CLEANING -->
+                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="filter" class="w-5 h-5 text-teal-400"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-teal-500/15 text-teal-300 font-medium">Stage 03</span>
+                                    <h3 class="text-base font-semibold text-white">Data Cleaning &amp; Consolidation</h3>
+                                    <span id="dashCleanBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary max-w-xl">
+                                    Ingests engineered CSVs, sanitizes infinite values, resolves schema alignment, and flushes into 5_year_final_data.csv.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
+                            <button id="btnDashDataClean" onclick="triggerDataClean()" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-teal-500/20">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span>Clean &amp; Consolidate</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Container for Stage 3 -->
+                    <div id="dashProgressCleaning" class="hidden mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span id="dashCleanPhase" class="font-medium text-white">Sanitizing &amp; Merging Datasets</span>
+                                <span class="text-white/20">&bull;</span>
+                                <span id="dashCleanStock" class="text-teal-400 font-mono">Constituent</span>
+                            </div>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span id="dashCleanPercent" class="text-white font-semibold">0%</span>
+                                <span id="dashCleanStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div id="dashCleanBarFill" class="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                            <span id="dashCleanMessage">Combining datasets...</span>
+                            <span id="dashCleanCounter" class="font-mono">0 / 207 Stocks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STAGE 4 CARD: MODEL TRAINING -->
+                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="brain" class="w-5 h-5 text-indigo-400"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-medium">Stage 04</span>
+                                    <h3 class="text-base font-semibold text-white">Machine Learning Model Training</h3>
+                                    <span id="dashTrainBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                                        {{ models_info.status or 'READY' }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary max-w-xl">
+                                    Trains 5-year XGBoost strategy &amp; global regime regressors, prunes collinear features, and saves calibrated models.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row items-end md:items-center gap-3 shrink-0 self-end md:self-center">
+                            <!-- Direct Page Link Button (Step 4 Requirement) -->
+                            <div id="dashTrainingResultLink" class="{% if models_info.status == 'COMPLETED' %}{% else %}hidden{% endif %}">
+                                <button onclick="switchTab('training')" class="px-4 py-2.5 rounded-xl text-xs font-medium text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 flex items-center gap-1.5 transition-all">
+                                    <span>View Model Training Results</span>
+                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <button id="btnDashTrainAll" onclick="triggerTrainAll(true)" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                                <i data-lucide="flame" class="w-4 h-4"></i>
+                                <span>Train All Models</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Container for Stage 4 -->
+                    <div id="dashProgressTraining" class="hidden mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span id="dashTrainPhase" class="font-medium text-white">Calibrating Estimators</span>
+                                <span class="text-white/20">&bull;</span>
+                                <span id="dashTrainModel" class="text-indigo-400 font-mono">5_year_xgboost_model.pkl</span>
+                            </div>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span id="dashTrainPercent" class="text-white font-semibold">0%</span>
+                                <span id="dashTrainStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div id="dashTrainBarFill" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                            <span id="dashTrainMessage">Optimizing hyperparameters...</span>
+                            <span id="dashTrainPhaseDetail" class="font-mono">Training Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STAGE 5 CARD: INFERENCE -->
+                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-violet-400"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 font-medium">Stage 05</span>
+                                    <h3 class="text-base font-semibold text-white">Quantitative Model Inference</h3>
+                                    <span id="dashInferBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                                        {{ inference_info.status or 'READY' }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary max-w-xl">
+                                    Executes validation suites on unseen out-of-sample data, records trade ledgers, win rates, and R-multiple P&amp;L distributions.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row items-end md:items-center gap-3 shrink-0 self-end md:self-center">
+                            <!-- Direct Page Link Button (Step 5 Requirement) -->
+                            <div id="dashInferenceResultLink" class="{% if inference_info.status == 'COMPLETED' %}{% else %}hidden{% endif %}">
+                                <button onclick="switchTab('inference')" class="px-4 py-2.5 rounded-xl text-xs font-medium text-violet-300 hover:text-white bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/30 flex items-center gap-1.5 transition-all">
+                                    <span>View Inference &amp; Strategy Ledgers</span>
+                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <button id="btnDashInferAll" onclick="triggerInferenceAll(true)" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-violet-500/20">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                                <span>Run Inference</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Container for Stage 5 -->
+                    <div id="dashProgressInference" class="hidden mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span id="dashInferPhase" class="font-medium text-white">Evaluating Models</span>
+                                <span class="text-white/20">&bull;</span>
+                                <span id="dashInferModel" class="text-violet-400 font-mono">5_year_xgboost_model.pkl</span>
+                            </div>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span id="dashInferPercent" class="text-white font-semibold">0%</span>
+                                <span id="dashInferStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div id="dashInferBarFill" class="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                            <span id="dashInferMessage">Validating predictions on unseen test split...</span>
+                            <span id="dashInferPhaseDetail" class="font-mono">Evaluating</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ============================================================= -->
         <!-- TAB 1: DOWNLOAD (ACTIVE & FULLY FUNCTIONAL) -->
         <!-- ============================================================= -->
-        <section id="tab-download-view" class="space-y-6">
+        <section id="tab-download-view" class="hidden space-y-6">
             
             <!-- Hero Card -->
             <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
@@ -1735,11 +2105,11 @@
         // ---------------------------------------------------------------------
         // TAB SWITCHING
         // ---------------------------------------------------------------------
-        let activeTabId = 'download';
+        let activeTabId = 'dashboard';
 
         function switchTab(tab) {
             activeTabId = tab;
-            const tabs = ['download', 'features', 'cleaning', 'training', 'inference', 'logs'];
+            const tabs = ['dashboard', 'download', 'features', 'cleaning', 'training', 'inference', 'logs'];
             tabs.forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
                 const view = document.getElementById(`tab-${t}-view`);
@@ -1758,6 +2128,8 @@
                     if (view) view.classList.add('hidden');
                 }
             });
+
+            lucide.createIcons();
 
             if (tab === 'logs') {
                 fetchTaskLogs();
@@ -1814,6 +2186,294 @@
         }
 
         // ---------------------------------------------------------------------
+        // DASHBOARD PROGRESS & CONTROLLER SYNCHRONIZATION
+        // ---------------------------------------------------------------------
+        function renderDashDownloadProgress(prog) {
+            const box = document.getElementById('dashProgressDownload');
+            const btn = document.getElementById('btnDashDownload');
+            const badge = document.getElementById('dashDownloadBadge');
+            const phase = document.getElementById('dashDownloadPhase');
+            const stock = document.getElementById('dashDownloadStock');
+            const percent = document.getElementById('dashDownloadPercent');
+            const fill = document.getElementById('dashDownloadBarFill');
+            const msg = document.getElementById('dashDownloadMessage');
+            const counter = document.getElementById('dashDownloadCounter');
+            const stopwatch = document.getElementById('dashDownloadStopwatch');
+            const kpiDate = document.getElementById('dashKpiMarketDate');
+
+            if (!box) return;
+            const status = prog.status || 'IDLE';
+
+            if (status === 'CHECKING') {
+                box.classList.remove('hidden');
+                if (btn) btn.disabled = true;
+                if (badge) { badge.innerText = 'CHECKING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400'; }
+                if (phase) phase.innerText = 'Verifying Market Dates';
+                if (stock) stock.innerText = 'Feed Link';
+                if (percent) percent.innerText = '0%';
+                if (fill) fill.style.width = '10%';
+                if (msg) msg.innerText = prog.message || 'Connecting to market feed...';
+                if (counter) counter.innerText = 'Checking';
+                if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'DOWNLOADING' || status === 'APPENDING') {
+                box.classList.remove('hidden');
+                if (btn) btn.disabled = true;
+                const isDown = status === 'DOWNLOADING';
+                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400'; }
+                if (phase) phase.innerText = isDown ? 'Synchronizing Market Feed' : 'Appending Market Data';
+                if (stock) stock.innerText = prog.current_stock || 'Constituent';
+                const pct = Math.round(prog.percentage || 0);
+                if (percent) percent.innerText = `${pct}%`;
+                if (fill) fill.style.width = `${pct}%`;
+                if (msg) msg.innerText = prog.message || 'Fetching candle data...';
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
+                if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'COMPLETED') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
+                if (fill) fill.style.width = '100%';
+                if (percent) percent.innerText = '100%';
+                if (msg) msg.innerText = prog.message || 'Synchronization complete.';
+                if (prog.last_downloaded_date && kpiDate) {
+                    kpiDate.innerText = prog.last_downloaded_date;
+                }
+                setTimeout(() => {
+                    if (box && !downloadPollInterval) box.classList.add('hidden');
+                }, 4000);
+            } else if (status === 'ERROR') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
+                if (msg) msg.innerText = prog.message || prog.error || 'Error during download.';
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else {
+                if (btn) btn.disabled = false;
+                if (box) box.classList.add('hidden');
+            }
+        }
+
+        function renderDashFeatureGenProgress(prog) {
+            const box = document.getElementById('dashProgressFeatures');
+            const btn = document.getElementById('btnDashFeatureGen');
+            const badge = document.getElementById('dashFeatBadge');
+            const phase = document.getElementById('dashFeatPhase');
+            const stock = document.getElementById('dashFeatStock');
+            const percent = document.getElementById('dashFeatPercent');
+            const fill = document.getElementById('dashFeatBarFill');
+            const msg = document.getElementById('dashFeatMessage');
+            const counter = document.getElementById('dashFeatCounter');
+            const stopwatch = document.getElementById('dashFeatStopwatch');
+            const kpiDate = document.getElementById('dashKpiFeatureDate');
+
+            if (!box) return;
+            const status = prog.status || 'IDLE';
+
+            if (status === 'GENERATING' || status === 'SAVING') {
+                box.classList.remove('hidden');
+                if (btn) btn.disabled = true;
+                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400'; }
+                if (phase) phase.innerText = status === 'GENERATING' ? 'Computing Alpha Indicators' : 'Flushing Features';
+                if (stock) stock.innerText = prog.current_stock || 'Constituent';
+                const pct = Math.round(prog.percentage || 0);
+                if (percent) percent.innerText = `${pct}%`;
+                if (fill) fill.style.width = `${pct}%`;
+                if (msg) msg.innerText = prog.message || 'Computing indicators...';
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
+                if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'COMPLETED') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
+                if (fill) fill.style.width = '100%';
+                if (percent) percent.innerText = '100%';
+                if (msg) msg.innerText = prog.message || 'Features generated successfully.';
+                if (prog.last_feature_gen_date && kpiDate) {
+                    kpiDate.innerText = prog.last_feature_gen_date;
+                }
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else if (status === 'ERROR') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
+                if (msg) msg.innerText = prog.message || prog.error || 'Error during feature gen.';
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else {
+                if (btn) btn.disabled = false;
+                if (box) box.classList.add('hidden');
+            }
+        }
+
+        function renderDashDataCleaningProgress(prog) {
+            const box = document.getElementById('dashProgressCleaning');
+            const btn = document.getElementById('btnDashDataClean');
+            const badge = document.getElementById('dashCleanBadge');
+            const phase = document.getElementById('dashCleanPhase');
+            const stock = document.getElementById('dashCleanStock');
+            const percent = document.getElementById('dashCleanPercent');
+            const fill = document.getElementById('dashCleanBarFill');
+            const msg = document.getElementById('dashCleanMessage');
+            const counter = document.getElementById('dashCleanCounter');
+            const stopwatch = document.getElementById('dashCleanStopwatch');
+            const kpiRows = document.getElementById('dashKpiCleanRows');
+
+            if (!box) return;
+            const status = prog.status || 'IDLE';
+
+            if (status === 'COMBINING' || status === 'CLEANING' || status === 'SAVING') {
+                box.classList.remove('hidden');
+                if (btn) btn.disabled = true;
+                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-400'; }
+                if (phase) phase.innerText = status === 'COMBINING' ? 'Merging Feature Files' : (status === 'CLEANING' ? 'Sanitizing Schema' : 'Flushing Master CSV');
+                if (stock) stock.innerText = prog.current_stock || 'Constituent';
+                const pct = Math.round(prog.percentage || 0);
+                if (percent) percent.innerText = `${pct}%`;
+                if (fill) fill.style.width = `${pct}%`;
+                if (msg) msg.innerText = prog.message || 'Processing dataset...';
+                const curIdx = prog.current_index || 0;
+                const totStocks = prog.total_stocks || 207;
+                if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
+                if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'COMPLETED') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
+                if (fill) fill.style.width = '100%';
+                if (percent) percent.innerText = '100%';
+                if (msg) msg.innerText = prog.message || 'Dataset cleaned and consolidated.';
+                if (prog.total_rows && kpiRows) {
+                    kpiRows.innerText = prog.total_rows.toLocaleString();
+                }
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else if (status === 'ERROR') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
+                if (msg) msg.innerText = prog.message || prog.error || 'Error during data cleaning.';
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else {
+                if (btn) btn.disabled = false;
+                if (box) box.classList.add('hidden');
+            }
+        }
+
+        function renderDashTrainingProgress(prog) {
+            const box = document.getElementById('dashProgressTraining');
+            const btn = document.getElementById('btnDashTrainAll');
+            const badge = document.getElementById('dashTrainBadge');
+            const phase = document.getElementById('dashTrainPhase');
+            const model = document.getElementById('dashTrainModel');
+            const percent = document.getElementById('dashTrainPercent');
+            const fill = document.getElementById('dashTrainBarFill');
+            const msg = document.getElementById('dashTrainMessage');
+            const phaseDetail = document.getElementById('dashTrainPhaseDetail');
+            const stopwatch = document.getElementById('dashTrainStopwatch');
+            const kpiState = document.getElementById('dashKpiModelsState');
+            const linkBox = document.getElementById('dashTrainingResultLink');
+
+            if (!box) return;
+            const status = prog.status || 'IDLE';
+
+            if (status === 'TRAINING') {
+                box.classList.remove('hidden');
+                if (linkBox) linkBox.classList.add('hidden');
+                if (btn) btn.disabled = true;
+                if (badge) { badge.innerText = 'TRAINING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400'; }
+                if (phase) phase.innerText = prog.phase || 'Calibrating Estimators';
+                if (model) model.innerText = prog.current_model || '5_year_xgboost_model.pkl';
+                const pct = Math.round(prog.percentage || 0);
+                if (percent) percent.innerText = `${pct}%`;
+                if (fill) fill.style.width = `${pct}%`;
+                if (msg) msg.innerText = prog.message || 'Optimizing estimators...';
+                if (phaseDetail) phaseDetail.innerText = prog.phase || 'Training';
+                if (stopwatch) stopwatch.innerText = Math.round(prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'COMPLETED') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
+                if (fill) fill.style.width = '100%';
+                if (percent) percent.innerText = '100%';
+                if (msg) msg.innerText = prog.message || 'Models calibrated and saved successfully.';
+                if (kpiState) kpiState.innerText = 'COMPLETED';
+                // REVEAL RESULT LINK FOR STEP 4
+                if (linkBox) linkBox.classList.remove('hidden');
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else if (status === 'ERROR') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
+                if (msg) msg.innerText = prog.message || prog.error || 'Error during training.';
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else {
+                if (btn) btn.disabled = false;
+                if (box) box.classList.add('hidden');
+            }
+        }
+
+        function renderDashInferenceProgress(prog) {
+            const box = document.getElementById('dashProgressInference');
+            const btn = document.getElementById('btnDashInferAll');
+            const badge = document.getElementById('dashInferBadge');
+            const phase = document.getElementById('dashInferPhase');
+            const model = document.getElementById('dashInferModel');
+            const percent = document.getElementById('dashInferPercent');
+            const fill = document.getElementById('dashInferBarFill');
+            const msg = document.getElementById('dashInferMessage');
+            const phaseDetail = document.getElementById('dashInferPhaseDetail');
+            const stopwatch = document.getElementById('dashInferStopwatch');
+            const linkBox = document.getElementById('dashInferenceResultLink');
+
+            if (!box) return;
+            const status = prog.status || 'IDLE';
+
+            if (status === 'EVALUATING') {
+                box.classList.remove('hidden');
+                if (linkBox) linkBox.classList.add('hidden');
+                if (btn) btn.disabled = true;
+                if (badge) { badge.innerText = 'EVALUATING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400'; }
+                if (phase) phase.innerText = prog.phase || 'Evaluating Models';
+                if (model) model.innerText = prog.current_model || '5_year_xgboost_model.pkl';
+                const pct = Math.round(prog.percentage || 0);
+                if (percent) percent.innerText = `${pct}%`;
+                if (fill) fill.style.width = `${pct}%`;
+                if (msg) msg.innerText = prog.message || 'Validating models...';
+                if (phaseDetail) phaseDetail.innerText = prog.phase || 'Evaluating';
+                if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
+            } else if (status === 'COMPLETED') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
+                if (fill) fill.style.width = '100%';
+                if (percent) percent.innerText = '100%';
+                if (msg) msg.innerText = prog.message || 'Inference validation complete.';
+                // REVEAL RESULT LINK FOR STEP 5
+                if (linkBox) linkBox.classList.remove('hidden');
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else if (status === 'ERROR') {
+                if (btn) btn.disabled = false;
+                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
+                if (msg) msg.innerText = prog.message || prog.error || 'Error during inference.';
+                setTimeout(() => {
+                    if (box) box.classList.add('hidden');
+                }, 4000);
+            } else {
+                if (btn) btn.disabled = false;
+                if (box) box.classList.add('hidden');
+            }
+        }
+
+        // ---------------------------------------------------------------------
         // DOWNLOAD PIPELINE CONTROLLER
         // ---------------------------------------------------------------------
         let downloadTimer = null;
@@ -1830,6 +2490,7 @@
             const vCompleted = document.getElementById('viewCompleted');
             const vError = document.getElementById('viewError');
             const btn = document.getElementById('btnDownload');
+            const btnDash = document.getElementById('btnDashDownload');
             const elPipelineState = document.getElementById('statPipelineState');
 
             if (vIdle) vIdle.classList.remove('hidden');
@@ -1838,12 +2499,16 @@
             if (vCompleted) vCompleted.classList.add('hidden');
             if (vError) vError.classList.add('hidden');
             if (btn) btn.disabled = false;
+            if (btnDash) btnDash.disabled = false;
             if (elPipelineState) {
                 elPipelineState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
             }
+            renderDashDownloadProgress({ status: 'IDLE' });
         }
 
         function renderDownloadProgress(prog) {
+            renderDashDownloadProgress(prog);
+
             const vIdle = document.getElementById('viewIdle');
             const vChecking = document.getElementById('viewChecking');
             const vProgressing = document.getElementById('viewProgressing');
@@ -1978,6 +2643,8 @@
         async function triggerDownload() {
             const btn = document.getElementById('btnDownload');
             if (btn) btn.disabled = true;
+            const btnDash = document.getElementById('btnDashDownload');
+            if (btnDash) btnDash.disabled = true;
 
             // Immediately show Checking UI so user receives instant zero-latency feedback on click
             renderDownloadProgress({
@@ -2043,6 +2710,7 @@
             const vFeatCompleted = document.getElementById('viewFeatCompleted');
             const vFeatError = document.getElementById('viewFeatError');
             const btn = document.getElementById('btnFeatureGen');
+            const btnDash = document.getElementById('btnDashFeatureGen');
             const elFeatState = document.getElementById('statFeatState');
 
             if (vFeatIdle) vFeatIdle.classList.remove('hidden');
@@ -2051,12 +2719,16 @@
             if (vFeatCompleted) vFeatCompleted.classList.add('hidden');
             if (vFeatError) vFeatError.classList.add('hidden');
             if (btn) btn.disabled = false;
+            if (btnDash) btnDash.disabled = false;
             if (elFeatState) {
                 elFeatState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
             }
+            renderDashFeatureGenProgress({ status: 'IDLE' });
         }
 
         function renderFeatureGenProgress(prog) {
+            renderDashFeatureGenProgress(prog);
+
             const vFeatIdle = document.getElementById('viewFeatIdle');
             const vFeatGenerating = document.getElementById('viewFeatGenerating');
             const vFeatSaving = document.getElementById('viewFeatSaving');
@@ -2166,7 +2838,9 @@
 
         async function triggerFeatureGen() {
             const btn = document.getElementById('btnFeatureGen');
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
+            const btnDash = document.getElementById('btnDashFeatureGen');
+            if (btnDash) btnDash.disabled = true;
 
             // Immediately display progress view so user receives instant feedback on click
             renderFeatureGenProgress({
@@ -2209,6 +2883,7 @@
             const vCleanCompleted = document.getElementById('viewCleanCompleted');
             const vCleanError = document.getElementById('viewCleanError');
             const btn = document.getElementById('btnDataClean');
+            const btnDash = document.getElementById('btnDashDataClean');
             const elCleanState = document.getElementById('statCleanState');
 
             if (vCleanIdle) vCleanIdle.classList.remove('hidden');
@@ -2218,12 +2893,16 @@
             if (vCleanCompleted) vCleanCompleted.classList.add('hidden');
             if (vCleanError) vCleanError.classList.add('hidden');
             if (btn) btn.disabled = false;
+            if (btnDash) btnDash.disabled = false;
             if (elCleanState) {
                 elCleanState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
             }
+            renderDashDataCleaningProgress({ status: 'IDLE' });
         }
 
         function renderDataCleaningProgress(prog) {
+            renderDashDataCleaningProgress(prog);
+
             const vCleanIdle = document.getElementById('viewCleanIdle');
             const vCleanCombining = document.getElementById('viewCleanCombining');
             const vCleanFormatting = document.getElementById('viewCleanFormatting');
@@ -2356,7 +3035,9 @@
 
         async function triggerDataClean() {
             const btn = document.getElementById('btnDataClean');
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
+            const btnDash = document.getElementById('btnDashDataClean');
+            if (btnDash) btnDash.disabled = true;
 
             // Immediately display progress view so user receives instant zero-latency feedback on click
             renderDataCleaningProgress({
@@ -2395,6 +3076,7 @@
             const btnStrat = document.getElementById('btnTrainStrategy');
             const btnGlobal = document.getElementById('btnTrainGlobal');
             const btnAll = document.getElementById('btnTrainAll');
+            const btnDash = document.getElementById('btnDashTrainAll');
 
             if (vTrainIdle) vTrainIdle.classList.remove('hidden');
             if (vTrainRunning) vTrainRunning.classList.add('hidden');
@@ -2403,6 +3085,8 @@
             if (btnStrat) btnStrat.disabled = false;
             if (btnGlobal) btnGlobal.disabled = false;
             if (btnAll) btnAll.disabled = false;
+            if (btnDash) btnDash.disabled = false;
+            renderDashTrainingProgress({ status: 'IDLE' });
         }
 
         function renderTrainingInfo(info) {
@@ -2473,6 +3157,8 @@
         }
 
         function renderTrainingProgress(prog) {
+            renderDashTrainingProgress(prog);
+
             const vTrainIdle = document.getElementById('viewTrainIdle');
             const vTrainRunning = document.getElementById('viewTrainRunning');
             const vTrainCompleted = document.getElementById('viewTrainCompleted');
@@ -2637,6 +3323,8 @@
         async function triggerTrainAll(force = true) {
             const btn = document.getElementById('btnTrainAll');
             if (btn) btn.disabled = true;
+            const btnDash = document.getElementById('btnDashTrainAll');
+            if (btnDash) btnDash.disabled = true;
 
             // Immediate zero-latency UI transition
             renderTrainingProgress({
@@ -2683,6 +3371,7 @@
             const btnStrat = document.getElementById('btnInferStrategy');
             const btnGlobal = document.getElementById('btnInferGlobal');
             const btnAll = document.getElementById('btnInferAll');
+            const btnDash = document.getElementById('btnDashInferAll');
             const elState = document.getElementById('statInferState');
 
             if (vIdle) vIdle.classList.remove('hidden');
@@ -2692,9 +3381,11 @@
             if (btnStrat) btnStrat.disabled = false;
             if (btnGlobal) btnGlobal.disabled = false;
             if (btnAll) btnAll.disabled = false;
+            if (btnDash) btnDash.disabled = false;
             if (elState) {
                 elState.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> COMPLETED';
             }
+            renderDashInferenceProgress({ status: 'IDLE' });
         }
 
         function renderInferenceInfo(info, perfLog) {
@@ -2895,6 +3586,8 @@
         }
 
         function renderInferenceProgress(prog) {
+            renderDashInferenceProgress(prog);
+
             const vIdle = document.getElementById('viewInferIdle');
             const vRunning = document.getElementById('viewInferRunning');
             const vCompleted = document.getElementById('viewInferCompleted');
@@ -3075,6 +3768,8 @@
         async function triggerInferenceAll(force = true) {
             const btn = document.getElementById('btnInferAll');
             if (btn) btn.disabled = true;
+            const btnDash = document.getElementById('btnDashInferAll');
+            if (btnDash) btnDash.disabled = true;
 
             renderInferenceProgress({
                 status: 'EVALUATING',
@@ -3514,25 +4209,40 @@
                 const data = await res.json();
                 if (data.download_info) {
                     if (data.download_info.last_downloaded_date) {
-                        document.getElementById('statLastDate').innerText = data.download_info.last_downloaded_date;
+                        const el = document.getElementById('statLastDate');
+                        if (el) el.innerText = data.download_info.last_downloaded_date;
+                        const elDash = document.getElementById('dashKpiMarketDate');
+                        if (elDash) elDash.innerText = data.download_info.last_downloaded_date;
                     }
                     if (data.download_info.message) {
-                        document.getElementById('statBatchDetail').innerText = data.download_info.message;
+                        const el = document.getElementById('statBatchDetail');
+                        if (el) el.innerText = data.download_info.message;
                     }
                 }
                 if (data.feature_gen_info && data.feature_gen_info.last_feature_gen_date) {
-                    document.getElementById('statFeatureLastDate').innerText = data.feature_gen_info.last_feature_gen_date;
+                    const el = document.getElementById('statFeatureLastDate');
+                    if (el) el.innerText = data.feature_gen_info.last_feature_gen_date;
+                    const elDash = document.getElementById('dashKpiFeatureDate');
+                    if (elDash) elDash.innerText = data.feature_gen_info.last_feature_gen_date;
                 }
                 if (data.data_cleaning_info) {
                     if (data.data_cleaning_info.last_clean_date) {
-                        document.getElementById('statCleanLastDate').innerText = data.data_cleaning_info.last_clean_date;
+                        const el = document.getElementById('statCleanLastDate');
+                        if (el) el.innerText = data.data_cleaning_info.last_clean_date;
                     }
                     if (data.data_cleaning_info.total_rows) {
-                        document.getElementById('statCleanRows').innerText = `${data.data_cleaning_info.total_rows.toLocaleString()} Rows`;
+                        const el = document.getElementById('statCleanRows');
+                        if (el) el.innerText = `${data.data_cleaning_info.total_rows.toLocaleString()} Rows`;
+                        const elDash = document.getElementById('dashKpiCleanRows');
+                        if (elDash) elDash.innerText = data.data_cleaning_info.total_rows.toLocaleString();
                     }
                 }
                 if (data.models_info) {
                     renderTrainingInfo(data.models_info);
+                    if (data.models_info.status) {
+                        const elDash = document.getElementById('dashKpiModelsState');
+                        if (elDash) elDash.innerText = data.models_info.status;
+                    }
                 }
                 if (data.models_training_progress && data.models_training_progress.status === 'TRAINING') {
                     renderTrainingProgress(data.models_training_progress);
@@ -3705,6 +4415,10 @@
         const footerHostEl = document.getElementById('engineFooterHost');
         if (footerHostEl && window.location.host) {
             footerHostEl.innerText = window.location.host;
+        }
+        const dashHostEl = document.getElementById('dashHostBadge');
+        if (dashHostEl && window.location.host) {
+            dashHostEl.innerText = window.location.host;
         }
         connectWebSocket();
         loadTradeLedgerData();
