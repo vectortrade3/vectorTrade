@@ -90,6 +90,23 @@ class TestDashboardOrchestrator:
         assert "setPipelineStageCardState(stages[j], 'idle')" in html
         assert "pipelineAbortRequested" in html
         assert "checkAborted" in html
+        assert "isStageDoneForToday" in html
+        assert "already completed today. Skipping to next stage" in html
+
+    def test_06_model_trainer_concurrency_safety(self):
+        # Verify model_trainer avoids n_jobs=-1 in RandomizedSearchCV to prevent Windows process termination
+        with open('offline/model_trainer.py', 'r', encoding='utf-8') as f:
+            code = f.read()
+        assert "RandomizedSearchCV(" in code
+        assert "n_jobs=-1" not in code, "Found dangerous n_jobs=-1 in model_trainer.py"
+        assert "n_jobs=1" in code, "Expected n_jobs=1 in RandomizedSearchCV"
+
+    def test_07_feature_generator_flushing_progress(self):
+        # Verify feature_generator emits incremental saving progress
+        with open('offline/feature_generator.py', 'r', encoding='utf-8') as f:
+            code = f.read()
+        assert "Flushing engineered CSV" in code
+        assert "total_saved = len(generated_results)" in code
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

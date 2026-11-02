@@ -486,9 +486,9 @@ def run_feature_generation_pipeline(force: bool = False) -> Dict[str, Any]:
     for i, file_path in enumerate(raw_files, 1):
         file_name = os.path.basename(file_path)
         clean_symbol = file_name.replace('_data.csv', '').upper()
-        pct = round((i / total_files) * 100.0, 1)
+        pct = round((i / total_files) * 90.0, 1)
 
-        # Update progress for UI (Left: i/total_files, symbol; Right: %)
+        # Update progress for UI (0% -> 90% during computation)
         json_manager.update_feature_gen_progress(
             status="GENERATING",
             heading="Features Generating",
@@ -512,26 +512,29 @@ def run_feature_generation_pipeline(force: bool = False) -> Dict[str, Any]:
             print(f"[ERROR] Failed feature computation for {clean_symbol}: {e}")
 
     # -------------------------------------------------------------------------
-    # STAGE 2: SAVING (Heading = 'Saving Data', no progress line)
+    # STAGE 2: SAVING (90% -> 100% while flushing CSVs to disk)
     # -------------------------------------------------------------------------
-    json_manager.update_feature_gen_progress(
-        status="SAVING",
-        heading="Saving Data",
-        current_stock="ALL_STOCKS",
-        current_index=total_files,
-        total_stocks=total_files,
-        percentage=100.0,
-        message="Flushing engineered features into 5_year_data/generated/...",
-        elapsed_seconds=time.time() - start_time
-    )
-
-    # Write each DataFrame to disk
-    for file_name, df_feat in generated_results.items():
+    total_saved = len(generated_results)
+    for idx, (file_name, df_feat) in enumerate(generated_results.items(), 1):
+        clean_symbol = file_name.replace('_data.csv', '').replace('_generated.csv', '').upper()
         out_path = GENERATED_DIR / file_name
         try:
             df_feat.to_csv(out_path)
         except Exception as e:
             print(f"[ERROR] Writing {out_path}: {e}")
+
+        if idx % 3 == 0 or idx == total_saved:
+            save_pct = round(90.0 + (idx / max(1, total_saved)) * 10.0, 1)
+            json_manager.update_feature_gen_progress(
+                status="SAVING",
+                heading="Saving Data",
+                current_stock=clean_symbol,
+                current_index=idx,
+                total_stocks=total_saved,
+                percentage=min(100.0, save_pct),
+                message=f"Flushing engineered CSV {idx}/{total_saved}: {file_name} to disk...",
+                elapsed_seconds=time.time() - start_time
+            )
 
     # -------------------------------------------------------------------------
     # STAGE 3: COMPLETED

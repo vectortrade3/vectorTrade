@@ -254,7 +254,7 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     base_xgb = xgb.XGBRegressor(
         random_state=42, 
         objective='reg:squarederror', 
-        n_jobs=-1, 
+        n_jobs=2, 
         tree_method='hist'
     )
     random_search = RandomizedSearchCV(
@@ -264,7 +264,7 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     random_search.fit(X_train_s, y_train)
 
@@ -330,7 +330,7 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     random_search_ref.fit(X_train_s_ref, y_train)
 
@@ -535,7 +535,7 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
     base_xgb = xgb.XGBRegressor(
         random_state=42, 
         objective='reg:squarederror', 
-        n_jobs=-1, 
+        n_jobs=2, 
         tree_method='hist'
     )
     search_gain = RandomizedSearchCV(
@@ -545,7 +545,7 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     search_gain.fit(X_train_s, y_train_gain)
     best_gain_base = search_gain.best_estimator_
@@ -568,7 +568,7 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     search_drop.fit(X_train_s, y_train_drop)
     best_drop_base = search_drop.best_estimator_
@@ -633,7 +633,7 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     search_gain_ref.fit(X_train_s_ref, y_train_gain)
     best_gain_ref = search_gain_ref.best_estimator_
@@ -659,7 +659,7 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
         cv=3,
         scoring='neg_mean_absolute_error',
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
     search_drop_ref.fit(X_train_s_ref, y_train_drop)
     best_drop_ref = search_drop_ref.best_estimator_

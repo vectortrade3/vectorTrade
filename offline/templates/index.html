@@ -2362,64 +2362,69 @@
             }
         }
 
+        let cachedSystemStatus = null;
+
         function checkAndApplyDoneForTodayPills(data) {
+            const statusObj = data || cachedSystemStatus;
             const today = new Date().toISOString().slice(0, 10);
             const localToday = new Date().toLocaleDateString('en-CA');
-            const matchToday = (d) => d && (d === today || d === localToday || String(d).startsWith(today) || String(d).startsWith(localToday));
+            const isToday = (d) => Boolean(d && (d === today || d === localToday || String(d).startsWith(today) || String(d).startsWith(localToday)));
+
+            const setPill = (id, condition) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (condition) {
+                    el.classList.remove('hidden');
+                    el.classList.add('inline-flex');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('inline-flex');
+                }
+            };
 
             // 1. Download
-            const downDate = (data && data.download_info && (data.download_info.last_download_run_date || data.download_info.last_downloaded_date)) ||
-                             (document.getElementById('dashDate-download') ? document.getElementById('dashDate-download').innerText.trim() : '');
-            const downMsg = (data && data.download_info && data.download_info.message) || '';
-            const downTodayPill = document.getElementById('dashToday-download');
-            if (downTodayPill) {
-                if (matchToday(downDate) || downMsg.includes('already downloaded') || downMsg.includes('Current as of today')) {
-                    downTodayPill.classList.remove('hidden');
-                    downTodayPill.classList.add('inline-flex');
-                }
-            }
+            const downDate = statusObj && statusObj.download_info ?
+                (statusObj.download_info.last_download_run_date || statusObj.download_info.last_downloaded_date) : null;
+            setPill('dashToday-download', isToday(downDate));
 
             // 2. Feature Gen
-            const featDate = (data && data.feature_gen_info && (data.feature_gen_info.last_feature_run_date || data.feature_gen_info.last_feature_gen_date)) ||
-                             (document.getElementById('dashDate-features') ? document.getElementById('dashDate-features').innerText.trim() : '');
-            const featMsg = (data && data.feature_gen_info && data.feature_gen_info.message) || '';
-            const featTodayPill = document.getElementById('dashToday-features');
-            if (featTodayPill) {
-                if (matchToday(featDate) || featMsg.includes('already') || featMsg.includes('Done for today')) {
-                    featTodayPill.classList.remove('hidden');
-                    featTodayPill.classList.add('inline-flex');
-                }
-            }
+            const featDate = statusObj && statusObj.feature_gen_info ?
+                (statusObj.feature_gen_info.last_feature_run_date || statusObj.feature_gen_info.last_feature_gen_date) : null;
+            setPill('dashToday-features', isToday(featDate));
 
             // 3. Data Cleaning
-            const cleanDate = (data && data.data_cleaning_info && (data.data_cleaning_info.last_clean_run_date || data.data_cleaning_info.last_clean_date)) ||
-                              (document.getElementById('dashDate-cleaning') ? document.getElementById('dashDate-cleaning').innerText.trim() : '');
-            const cleanMsg = (data && data.data_cleaning_info && data.data_cleaning_info.message) || '';
-            const cleanTodayPill = document.getElementById('dashToday-cleaning');
-            if (cleanTodayPill) {
-                if (matchToday(cleanDate) || cleanMsg.includes('already') || cleanMsg.includes('Done for today')) {
-                    cleanTodayPill.classList.remove('hidden');
-                    cleanTodayPill.classList.add('inline-flex');
-                }
-            }
+            const cleanDate = statusObj && statusObj.data_cleaning_info ?
+                (statusObj.data_cleaning_info.last_clean_run_date || statusObj.data_cleaning_info.last_clean_date) : null;
+            setPill('dashToday-cleaning', isToday(cleanDate));
 
             // 4. Model Training
-            const trainDate = (data && data.models_info && (data.models_info.last_trained_run_date || data.models_info.last_trained_date)) ||
-                              (document.getElementById('dashDate-training') ? document.getElementById('dashDate-training').innerText.trim() : '');
-            const trainTodayPill = document.getElementById('dashToday-training');
-            if (trainTodayPill && matchToday(trainDate)) {
-                trainTodayPill.classList.remove('hidden');
-                trainTodayPill.classList.add('inline-flex');
-            }
+            const trainDate = statusObj && statusObj.models_info ?
+                (statusObj.models_info.last_trained_run_date || statusObj.models_info.last_trained_date) : null;
+            setPill('dashToday-training', isToday(trainDate));
 
             // 5. Inference
-            const inferDate = (data && data.inference_info && (data.inference_info.last_inference_run_date || data.inference_info.last_inference_date)) ||
-                              (document.getElementById('dashDate-inference') ? document.getElementById('dashDate-inference').innerText.trim() : '');
-            const inferTodayPill = document.getElementById('dashToday-inference');
-            if (inferTodayPill && matchToday(inferDate)) {
-                inferTodayPill.classList.remove('hidden');
-                inferTodayPill.classList.add('inline-flex');
+            const inferDate = statusObj && statusObj.inference_info ?
+                (statusObj.inference_info.last_inference_run_date || statusObj.inference_info.last_inference_date) : null;
+            setPill('dashToday-inference', isToday(inferDate));
+        }
+
+        function isStageDoneForToday(stage, statusData) {
+            const data = statusData || cachedSystemStatus;
+            const today = new Date().toISOString().slice(0, 10);
+            const localToday = new Date().toLocaleDateString('en-CA');
+            const isToday = (d) => Boolean(d && (d === today || d === localToday || String(d).startsWith(today) || String(d).startsWith(localToday)));
+
+            if (stage === 'download') {
+                const d = (data && data.download_info && (data.download_info.last_download_run_date || data.download_info.last_downloaded_date));
+                return isToday(d);
+            } else if (stage === 'features') {
+                const d = (data && data.feature_gen_info && (data.feature_gen_info.last_feature_run_date || data.feature_gen_info.last_feature_gen_date));
+                return isToday(d);
+            } else if (stage === 'cleaning') {
+                const d = (data && data.data_cleaning_info && (data.data_cleaning_info.last_clean_run_date || data.data_cleaning_info.last_clean_date));
+                return isToday(d);
             }
+            return false;
         }
 
         // Live telemetry renderers for each individual stage
@@ -2739,10 +2744,31 @@
                 if (window.lucide) lucide.createIcons();
             };
 
+            // Pre-fetch latest system status so we accurately know today's completion states
+            try {
+                const sRes = await fetch('/api/status');
+                if (sRes.ok) {
+                    cachedSystemStatus = await sRes.json();
+                    checkAndApplyDoneForTodayPills(cachedSystemStatus);
+                }
+            } catch (statusErr) {
+                console.warn("Could not fetch pre-run status:", statusErr);
+            }
+
             // Execute stages strictly sequentially
             for (let i = 0; i < stages.length; i++) {
                 if (checkAborted(i)) return;
                 const currentStage = stages[i];
+
+                // User specification: If Steps 1 to 3 are already completed today, skip them directly!
+                // Steps 4 (Model Training) and 5 (Inference) are compulsory when clicked!
+                if (i < 3 && isStageDoneForToday(currentStage, cachedSystemStatus)) {
+                    if (statusText) statusText.innerText = `Stage ${i + 1}/5 (${currentStage.toUpperCase()}) already completed today. Skipping to next stage...`;
+                    setPipelineStageCardState(currentStage, 'done');
+                    checkAndApplyDoneForTodayPills(cachedSystemStatus);
+                    await new Promise(r => setTimeout(r, 600));
+                    continue;
+                }
 
                 if (statusText) statusText.innerText = `Executing Stage ${i + 1}/5: ${currentStage.toUpperCase()}...`;
                 if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse";
@@ -2760,7 +2786,13 @@
 
                     // Stage complete: card becomes DONE and progress bar disappears!
                     setPipelineStageCardState(currentStage, 'done');
-                    checkAndApplyDoneForTodayPills();
+                    try {
+                        const sRes = await fetch('/api/status');
+                        if (sRes.ok) {
+                            cachedSystemStatus = await sRes.json();
+                            checkAndApplyDoneForTodayPills(cachedSystemStatus);
+                        }
+                    } catch (_) {}
                 } catch (err) {
                     console.error(`Error in stage ${currentStage}:`, err);
                     handleStageError(i, err.message || "Execution exception");
@@ -4850,7 +4882,13 @@
         }
         connectWebSocket();
         loadTradeLedgerData();
-        checkAndApplyDoneForTodayPills();
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                cachedSystemStatus = data;
+                checkAndApplyDoneForTodayPills(data);
+            })
+            .catch(() => checkAndApplyDoneForTodayPills());
     </script>
 </body>
 </html>
