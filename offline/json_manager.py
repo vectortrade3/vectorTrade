@@ -96,6 +96,7 @@ def initialize_stocks_download_state() -> Dict[str, Any]:
         "status": "COMPLETED",
         "total_stocks": 207,
         "last_updated": datetime.now().astimezone().isoformat(),
+        "last_run_timestamp": datetime.now().astimezone().isoformat(),
         "message": "Market data synced up to 2026-10-30.",
         "download_history": []
     }
@@ -114,6 +115,9 @@ def initialize_stocks_download_state() -> Dict[str, Any]:
         needs_save = True
     if not current.get("last_download_run_date"):
         current["last_download_run_date"] = current.get("last_downloaded_date", "2026-10-30")
+        needs_save = True
+    if not current.get("last_run_timestamp"):
+        current["last_run_timestamp"] = current.get("last_updated") or datetime.now().astimezone().isoformat()
         needs_save = True
     if needs_save:
         write_json_file(STOCKS_DOWNLOAD_FILE, current)
@@ -197,6 +201,7 @@ def update_stocks_download_info(
     current["status"] = status
     current["total_stocks"] = stocks_updated
     current["last_updated"] = now_str
+    current["last_run_timestamp"] = now_str
     current["message"] = message
     
     history = current.get("download_history", [])

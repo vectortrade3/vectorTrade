@@ -34,13 +34,20 @@ def test_dashboard_template():
     assert 'id="dashCard-training"' in html, 'dashCard-training missing'
     assert 'id="dashCard-inference"' in html, 'dashCard-inference missing'
 
-    # 5 Card State Badges (Default IDLE)
+    # 5 Card State Badges (DONE when stages are completed, IDLE otherwise)
     assert 'id="dashBadge-download"' in html, 'dashBadge-download missing'
     assert 'id="dashBadge-features"' in html, 'dashBadge-features missing'
     assert 'id="dashBadge-cleaning"' in html, 'dashBadge-cleaning missing'
     assert 'id="dashBadge-training"' in html, 'dashBadge-training missing'
     assert 'id="dashBadge-inference"' in html, 'dashBadge-inference missing'
-    assert '>IDLE</span>' in html, 'Default IDLE badge text missing'
+    assert '>DONE</span>' in html, 'Expected DONE badge text when stages are completed'
+
+    # Completion Timestamp indicators for all 5 stages
+    assert 'id="dashCompleted-download"' in html, 'dashCompleted-download missing'
+    assert 'id="dashCompleted-features"' in html, 'dashCompleted-features missing'
+    assert 'id="dashCompleted-cleaning"' in html, 'dashCompleted-cleaning missing'
+    assert 'id="dashCompleted-training"' in html, 'dashCompleted-training missing'
+    assert 'id="dashCompleted-inference"' in html, 'dashCompleted-inference missing'
 
     # Date and "Done for today" pills
     assert 'id="dashDate-download"' in html, 'dashDate-download missing'
@@ -73,6 +80,9 @@ def test_dashboard_template():
     assert 'function triggerRunAllAnalysis()' in html, 'triggerRunAllAnalysis missing in JS'
     assert 'function setPipelineStageCardState(' in html, 'setPipelineStageCardState missing in JS'
     assert 'function checkAndApplyDoneForTodayPills(' in html, 'checkAndApplyDoneForTodayPills missing in JS'
+    assert 'function renderInitialDashboardStates(' in html, 'renderInitialDashboardStates missing in JS'
+    assert 'function updateCompletionTimestamps(' in html, 'updateCompletionTimestamps missing in JS'
+    assert 'function shouldSkipStage(' in html, 'shouldSkipStage missing in JS'
     assert 'function executeStageAndWait(' in html, 'executeStageAndWait missing in JS'
     assert 'function abortPipeline()' in html, 'abortPipeline missing in JS'
     assert 'const STAGE_CONFIG =' in html, 'STAGE_CONFIG map missing in JS'

@@ -26,10 +26,15 @@ class TestDashboardOrchestrator:
         assert "models_info" in data
         assert "inference_info" in data
 
-        # Check date fields
+        # Check date and completion timestamp fields
         assert "last_downloaded_date" in data["download_info"]
         assert "last_feature_gen_date" in data["feature_gen_info"]
         assert "last_clean_date" in data["data_cleaning_info"]
+        assert "last_run_timestamp" in data["download_info"]
+        assert "last_run_timestamp" in data["feature_gen_info"]
+        assert "last_run_timestamp" in data["data_cleaning_info"]
+        assert "last_run_timestamp" in data["models_info"]
+        assert "last_run_timestamp" in data["inference_info"]
 
     def test_02_all_stage_progress_endpoints(self):
         endpoints = [
@@ -85,13 +90,18 @@ class TestDashboardOrchestrator:
         assert res.status_code == 200
         html = res.data.decode('utf-8')
 
-        # Check that error halt logic is present in the orchestrator
+        # Check that error halt logic and smart skip functions are present in the orchestrator
         assert "handleStageError" in html
         assert "setPipelineStageCardState(stages[j], 'idle')" in html
         assert "pipelineAbortRequested" in html
         assert "checkAborted" in html
         assert "isStageDoneForToday" in html
-        assert "already completed today. Skipping to next stage" in html
+        assert "shouldSkipStage" in html
+        assert "renderInitialDashboardStates" in html
+        assert "updateCompletionTimestamps" in html
+        assert "already completed. Skipping to Stage" in html
+        assert "dashCompleted-download" in html
+        assert "dashCompleted-training" in html
 
     def test_06_model_trainer_concurrency_safety(self):
         # Verify model_trainer avoids n_jobs=-1 in RandomizedSearchCV to prevent Windows process termination
