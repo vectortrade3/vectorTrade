@@ -450,7 +450,10 @@ def start_training_strategy():
 
         def _worker():
             try:
-                train_strategy_model(force=force)
+                import importlib
+                import offline.model_trainer
+                importlib.reload(offline.model_trainer)
+                offline.model_trainer.train_strategy_model(force=force)
             except Exception as e:
                 logger.error(f"Strategy model training failed: {e}", exc_info=True)
                 json_manager.update_models_training_progress(
@@ -493,7 +496,10 @@ def start_training_global():
 
         def _worker():
             try:
-                train_global_models(force=force)
+                import importlib
+                import offline.model_trainer
+                importlib.reload(offline.model_trainer)
+                offline.model_trainer.train_global_models(force=force)
             except Exception as e:
                 logger.error(f"Global models training failed: {e}", exc_info=True)
                 json_manager.update_models_training_progress(
@@ -536,7 +542,10 @@ def start_training_all():
 
         def _worker():
             try:
-                train_all_models(force=force)
+                import importlib
+                import offline.model_trainer
+                importlib.reload(offline.model_trainer)
+                offline.model_trainer.train_all_models(force=force)
             except Exception as e:
                 logger.error(f"All models training failed: {e}", exc_info=True)
                 json_manager.update_models_training_progress(
