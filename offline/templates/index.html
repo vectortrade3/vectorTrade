@@ -174,13 +174,13 @@
         <!-- ============================================================= -->
         <section id="tab-dashboard-view" class="space-y-6">
 
-            <!-- Hero Banner -->
-            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                    <div class="space-y-2 max-w-xl">
+            <!-- Main Hero Banner with Run All Analysis CTA -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden border border-white/10 shadow-2xl">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-3 max-w-xl">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
                             <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-                            Central Command Center
+                            Central Command Center &bull; Pipeline Orchestrator
                         </div>
                         <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
                             Quantitative Pipeline Dashboard
@@ -188,24 +188,40 @@
                         <p class="text-sm text-apple-textSecondary leading-relaxed">
                             Monitor and trigger all quantitative stages: market data synchronization, alpha engineering, dataset hygiene, estimator calibration, and out-of-sample strategy inference.
                         </p>
+
+                        <!-- Pipeline Status Strip -->
+                        <div class="flex items-center gap-3 pt-1">
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-mono">
+                                <span id="pipelineStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                                <span id="pipelineStatusText" class="text-slate-300">System Idle &bull; Click Run All Analysis to begin</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- System Pulse Status Card -->
-                    <div class="flex flex-col items-end gap-3">
-                        <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 shadow-inner">
-                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                                <i data-lucide="server" class="w-5 h-5 text-blue-400"></i>
-                            </div>
+                    <!-- Master Action & System Pulse Status Card -->
+                    <div class="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                            <button id="btnRunAllAnalysis" onclick="triggerRunAllAnalysis()" class="apple-btn px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2.5 shadow-xl shadow-indigo-500/25 disabled:opacity-50 disabled:pointer-events-none transition-all">
+                                <i data-lucide="play-circle" class="w-5 h-5"></i>
+                                <span>Run All Analysis</span>
+                            </button>
+                            <button id="btnAbortPipeline" onclick="abortPipeline()" class="hidden px-4 py-3.5 rounded-2xl bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-all">
+                                <i data-lucide="square" class="w-3.5 h-3.5"></i>
+                                <span>Abort</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 shadow-inner">
                             <div class="text-left">
-                                <div class="text-[11px] uppercase tracking-wider text-apple-textSecondary font-medium">Engine Mode</div>
-                                <div class="text-sm font-semibold text-white flex items-center gap-2">
+                                <div class="text-[10px] uppercase tracking-wider text-apple-textSecondary font-medium">Engine Mode</div>
+                                <div class="text-xs font-semibold text-white flex items-center gap-2">
                                     VectorTrade Local
                                     <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                                 </div>
                             </div>
-                        </div>
-                        <div class="text-[11px] text-apple-textSecondary font-mono">
-                            Port 8684 &bull; <span id="dashHostBadge">vectortrade:8684</span>
+                            <div class="h-6 w-px bg-white/10"></div>
+                            <div class="text-[11px] text-apple-textSecondary font-mono">
+                                Port 8684 &bull; <span id="dashHostBadge">vectortrade:8684</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -267,7 +283,7 @@
                 </div>
 
                 <!-- STAGE 1 CARD: DOWNLOAD -->
-                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                <div id="dashCard-download" class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -277,11 +293,19 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-medium">Stage 01</span>
                                     <h3 class="text-base font-semibold text-white">Market Data Synchronization</h3>
-                                    <span id="dashDownloadBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                    <span id="dashBadge-download" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">IDLE</span>
+                                    <span id="dashDownloadBadge" class="hidden">IDLE</span>
                                 </div>
                                 <p class="text-xs text-apple-textSecondary max-w-xl">
                                     Downloads latest EOD candles from Yahoo Finance for 207 Nifty constituents and appends to 5-year archives.
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-apple-textSecondary">
+                                    <span>Market Sync:</span>
+                                    <span id="dashDate-download" class="font-mono text-white font-medium">{{ download_info.last_downloaded_date or '2026-10-30' }}</span>
+                                    <span id="dashToday-download" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 items-center gap-1">
+                                        <i data-lucide="check-check" class="w-3 h-3"></i> Done for today
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
@@ -316,7 +340,7 @@
                 </div>
 
                 <!-- STAGE 2 CARD: FEATURE GEN -->
-                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                <div id="dashCard-features" class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -326,11 +350,19 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 font-medium">Stage 02</span>
                                     <h3 class="text-base font-semibold text-white">Quantitative Feature Engineering</h3>
-                                    <span id="dashFeatBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                    <span id="dashBadge-features" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">IDLE</span>
+                                    <span id="dashFeatBadge" class="hidden">IDLE</span>
                                 </div>
                                 <p class="text-xs text-apple-textSecondary max-w-xl">
                                     Generates 137 momentum, volatility, RSI, Bollinger Bands, and candlestick morphology alpha features across 207 stocks.
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-apple-textSecondary">
+                                    <span>Alpha Generated:</span>
+                                    <span id="dashDate-features" class="font-mono text-purple-300 font-medium">{{ feature_gen_info.last_feature_gen_date or '2026-11-01' }}</span>
+                                    <span id="dashToday-features" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 items-center gap-1">
+                                        <i data-lucide="check-check" class="w-3 h-3"></i> Done for today
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
@@ -365,7 +397,7 @@
                 </div>
 
                 <!-- STAGE 3 CARD: DATA CLEANING -->
-                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                <div id="dashCard-cleaning" class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -375,11 +407,19 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-teal-500/15 text-teal-300 font-medium">Stage 03</span>
                                     <h3 class="text-base font-semibold text-white">Data Cleaning &amp; Consolidation</h3>
-                                    <span id="dashCleanBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">READY</span>
+                                    <span id="dashBadge-cleaning" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">IDLE</span>
+                                    <span id="dashCleanBadge" class="hidden">IDLE</span>
                                 </div>
                                 <p class="text-xs text-apple-textSecondary max-w-xl">
                                     Ingests engineered CSVs, sanitizes infinite values, resolves schema alignment, and flushes into 5_year_final_data.csv.
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-apple-textSecondary">
+                                    <span>Dataset Cleaned:</span>
+                                    <span id="dashDate-cleaning" class="font-mono text-teal-300 font-medium">{{ data_cleaning_info.last_clean_date or '2026-11-01' }}</span>
+                                    <span id="dashToday-cleaning" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 items-center gap-1">
+                                        <i data-lucide="check-check" class="w-3 h-3"></i> Done for today
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
@@ -414,7 +454,7 @@
                 </div>
 
                 <!-- STAGE 4 CARD: MODEL TRAINING -->
-                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                <div id="dashCard-training" class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -424,13 +464,19 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-medium">Stage 04</span>
                                     <h3 class="text-base font-semibold text-white">Machine Learning Model Training</h3>
-                                    <span id="dashTrainBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
-                                        {{ models_info.status or 'READY' }}
-                                    </span>
+                                    <span id="dashBadge-training" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">IDLE</span>
+                                    <span id="dashTrainBadge" class="hidden">IDLE</span>
                                 </div>
                                 <p class="text-xs text-apple-textSecondary max-w-xl">
                                     Trains 5-year XGBoost strategy &amp; global regime regressors, prunes collinear features, and saves calibrated models.
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-apple-textSecondary">
+                                    <span>Models Calibrated:</span>
+                                    <span id="dashDate-training" class="font-mono text-indigo-300 font-medium">{{ models_info.last_trained_date or '2026-10-30' }}</span>
+                                    <span id="dashToday-training" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 items-center gap-1">
+                                        <i data-lucide="check-check" class="w-3 h-3"></i> Done for today
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex flex-col md:flex-row items-end md:items-center gap-3 shrink-0 self-end md:self-center">
@@ -472,7 +518,7 @@
                 </div>
 
                 <!-- STAGE 5 CARD: INFERENCE -->
-                <div class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
+                <div id="dashCard-inference" class="glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -482,13 +528,19 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 font-medium">Stage 05</span>
                                     <h3 class="text-base font-semibold text-white">Quantitative Model Inference</h3>
-                                    <span id="dashInferBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
-                                        {{ inference_info.status or 'READY' }}
-                                    </span>
+                                    <span id="dashBadge-inference" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">IDLE</span>
+                                    <span id="dashInferBadge" class="hidden">IDLE</span>
                                 </div>
                                 <p class="text-xs text-apple-textSecondary max-w-xl">
                                     Executes validation suites on unseen out-of-sample data, records trade ledgers, win rates, and R-multiple P&amp;L distributions.
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-apple-textSecondary">
+                                    <span>Ledger Inferred:</span>
+                                    <span id="dashDate-inference" class="font-mono text-violet-300 font-medium">{{ inference_info.last_inference_date or '2026-11-01' }}</span>
+                                    <span id="dashToday-inference" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 items-center gap-1">
+                                        <i data-lucide="check-check" class="w-3 h-3"></i> Done for today
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex flex-col md:flex-row items-end md:items-center gap-3 shrink-0 self-end md:self-center">
@@ -527,6 +579,7 @@
                             <span id="dashInferPhaseDetail" class="font-mono">Evaluating</span>
                         </div>
                     </div>
+                </div>
                 </div>
 
             </div>
@@ -2188,10 +2241,191 @@
         // ---------------------------------------------------------------------
         // DASHBOARD PROGRESS & CONTROLLER SYNCHRONIZATION
         // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // DASHBOARD ORCHESTRATOR & STAGE CONTROLLERS (STEPS 1-5)
+        // ---------------------------------------------------------------------
+        const STAGE_CONFIG = {
+            download: {
+                cardId: 'dashCard-download',
+                badgeId: 'dashBadge-download',
+                aliasBadgeId: 'dashDownloadBadge',
+                progressBoxId: 'dashProgressDownload',
+                btnId: 'btnDashDownload',
+                dateId: 'dashDate-download',
+                todayId: 'dashToday-download',
+                color: 'blue'
+            },
+            features: {
+                cardId: 'dashCard-features',
+                badgeId: 'dashBadge-features',
+                aliasBadgeId: 'dashFeatBadge',
+                progressBoxId: 'dashProgressFeatures',
+                btnId: 'btnDashFeatureGen',
+                dateId: 'dashDate-features',
+                todayId: 'dashToday-features',
+                color: 'purple'
+            },
+            cleaning: {
+                cardId: 'dashCard-cleaning',
+                badgeId: 'dashBadge-cleaning',
+                aliasBadgeId: 'dashCleanBadge',
+                progressBoxId: 'dashProgressCleaning',
+                btnId: 'btnDashDataClean',
+                dateId: 'dashDate-cleaning',
+                todayId: 'dashToday-cleaning',
+                color: 'teal'
+            },
+            training: {
+                cardId: 'dashCard-training',
+                badgeId: 'dashBadge-training',
+                aliasBadgeId: 'dashTrainBadge',
+                progressBoxId: 'dashProgressTraining',
+                btnId: 'btnDashTrainAll',
+                dateId: 'dashDate-training',
+                todayId: 'dashToday-training',
+                linkId: 'dashTrainingResultLink',
+                color: 'indigo'
+            },
+            inference: {
+                cardId: 'dashCard-inference',
+                badgeId: 'dashBadge-inference',
+                aliasBadgeId: 'dashInferBadge',
+                progressBoxId: 'dashProgressInference',
+                btnId: 'btnDashInferAll',
+                dateId: 'dashDate-inference',
+                todayId: 'dashToday-inference',
+                linkId: 'dashInferenceResultLink',
+                color: 'violet'
+            }
+        };
+
+        function setPipelineStageCardState(stage, state) {
+            const cfg = STAGE_CONFIG[stage];
+            if (!cfg) return;
+
+            const card = document.getElementById(cfg.cardId);
+            const badge = document.getElementById(cfg.badgeId);
+            const aliasBadge = document.getElementById(cfg.aliasBadgeId);
+            const progressBox = document.getElementById(cfg.progressBoxId);
+            const btn = document.getElementById(cfg.btnId);
+
+            const updateBadge = (text, className) => {
+                if (badge) {
+                    badge.innerText = text;
+                    badge.className = className;
+                }
+                if (aliasBadge) {
+                    aliasBadge.innerText = text;
+                }
+            };
+
+            if (state === 'idle') {
+                if (card) card.className = "glass-panel rounded-2xl p-6 transition-all border border-white/5 hover:border-white/10";
+                updateBadge('IDLE', 'text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10');
+                if (progressBox) progressBox.classList.add('hidden');
+                if (btn) btn.disabled = false;
+            } else if (state === 'waiting') {
+                if (card) card.className = "glass-panel rounded-2xl p-6 transition-all border border-amber-500/25 bg-amber-500/[0.02]";
+                updateBadge('WAITING', 'text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25');
+                if (progressBox) progressBox.classList.add('hidden');
+                if (btn) btn.disabled = true;
+            } else if (state === 'running') {
+                const borderGlow = cfg.color === 'blue' ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-blue-500/[0.03]' :
+                                  (cfg.color === 'purple' ? 'border-purple-500/50 shadow-lg shadow-purple-500/10 bg-purple-500/[0.03]' :
+                                  (cfg.color === 'teal' ? 'border-teal-500/50 shadow-lg shadow-teal-500/10 bg-teal-500/[0.03]' :
+                                  (cfg.color === 'indigo' ? 'border-indigo-500/50 shadow-lg shadow-indigo-500/10 bg-indigo-500/[0.03]' :
+                                  'border-violet-500/50 shadow-lg shadow-violet-500/10 bg-violet-500/[0.03]')));
+                const badgeColor = cfg.color === 'blue' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                  (cfg.color === 'purple' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                  (cfg.color === 'teal' ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' :
+                                  (cfg.color === 'indigo' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                                  'bg-violet-500/20 text-violet-300 border-violet-500/30')));
+                if (card) card.className = `glass-panel rounded-2xl p-6 transition-all border ${borderGlow}`;
+                updateBadge('RUNNING', `text-[11px] font-mono px-2.5 py-0.5 rounded-full ${badgeColor} border animate-pulse`);
+                if (progressBox) progressBox.classList.remove('hidden');
+                if (btn) btn.disabled = true;
+            } else if (state === 'done') {
+                if (card) card.className = "glass-panel rounded-2xl p-6 transition-all border border-emerald-500/35 bg-emerald-500/[0.02]";
+                updateBadge('DONE', 'text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25');
+                // As required: progress bar disappears when done!
+                if (progressBox) progressBox.classList.add('hidden');
+                if (btn) btn.disabled = false;
+                if (cfg.linkId) {
+                    const link = document.getElementById(cfg.linkId);
+                    if (link) link.classList.remove('hidden');
+                }
+            } else if (state === 'error') {
+                if (card) card.className = "glass-panel rounded-2xl p-6 transition-all border border-rose-500/50 shadow-lg shadow-rose-500/10 bg-rose-500/[0.03]";
+                updateBadge('ERROR', 'text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25');
+                if (progressBox) progressBox.classList.add('hidden');
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function checkAndApplyDoneForTodayPills(data) {
+            const today = new Date().toISOString().slice(0, 10);
+            const localToday = new Date().toLocaleDateString('en-CA');
+            const matchToday = (d) => d && (d === today || d === localToday || String(d).startsWith(today) || String(d).startsWith(localToday));
+
+            // 1. Download
+            const downDate = (data && data.download_info && (data.download_info.last_download_run_date || data.download_info.last_downloaded_date)) ||
+                             (document.getElementById('dashDate-download') ? document.getElementById('dashDate-download').innerText.trim() : '');
+            const downMsg = (data && data.download_info && data.download_info.message) || '';
+            const downTodayPill = document.getElementById('dashToday-download');
+            if (downTodayPill) {
+                if (matchToday(downDate) || downMsg.includes('already downloaded') || downMsg.includes('Current as of today')) {
+                    downTodayPill.classList.remove('hidden');
+                    downTodayPill.classList.add('inline-flex');
+                }
+            }
+
+            // 2. Feature Gen
+            const featDate = (data && data.feature_gen_info && (data.feature_gen_info.last_feature_run_date || data.feature_gen_info.last_feature_gen_date)) ||
+                             (document.getElementById('dashDate-features') ? document.getElementById('dashDate-features').innerText.trim() : '');
+            const featMsg = (data && data.feature_gen_info && data.feature_gen_info.message) || '';
+            const featTodayPill = document.getElementById('dashToday-features');
+            if (featTodayPill) {
+                if (matchToday(featDate) || featMsg.includes('already') || featMsg.includes('Done for today')) {
+                    featTodayPill.classList.remove('hidden');
+                    featTodayPill.classList.add('inline-flex');
+                }
+            }
+
+            // 3. Data Cleaning
+            const cleanDate = (data && data.data_cleaning_info && (data.data_cleaning_info.last_clean_run_date || data.data_cleaning_info.last_clean_date)) ||
+                              (document.getElementById('dashDate-cleaning') ? document.getElementById('dashDate-cleaning').innerText.trim() : '');
+            const cleanMsg = (data && data.data_cleaning_info && data.data_cleaning_info.message) || '';
+            const cleanTodayPill = document.getElementById('dashToday-cleaning');
+            if (cleanTodayPill) {
+                if (matchToday(cleanDate) || cleanMsg.includes('already') || cleanMsg.includes('Done for today')) {
+                    cleanTodayPill.classList.remove('hidden');
+                    cleanTodayPill.classList.add('inline-flex');
+                }
+            }
+
+            // 4. Model Training
+            const trainDate = (data && data.models_info && (data.models_info.last_trained_run_date || data.models_info.last_trained_date)) ||
+                              (document.getElementById('dashDate-training') ? document.getElementById('dashDate-training').innerText.trim() : '');
+            const trainTodayPill = document.getElementById('dashToday-training');
+            if (trainTodayPill && matchToday(trainDate)) {
+                trainTodayPill.classList.remove('hidden');
+                trainTodayPill.classList.add('inline-flex');
+            }
+
+            // 5. Inference
+            const inferDate = (data && data.inference_info && (data.inference_info.last_inference_run_date || data.inference_info.last_inference_date)) ||
+                              (document.getElementById('dashDate-inference') ? document.getElementById('dashDate-inference').innerText.trim() : '');
+            const inferTodayPill = document.getElementById('dashToday-inference');
+            if (inferTodayPill && matchToday(inferDate)) {
+                inferTodayPill.classList.remove('hidden');
+                inferTodayPill.classList.add('inline-flex');
+            }
+        }
+
+        // Live telemetry renderers for each individual stage
         function renderDashDownloadProgress(prog) {
             const box = document.getElementById('dashProgressDownload');
             const btn = document.getElementById('btnDashDownload');
-            const badge = document.getElementById('dashDownloadBadge');
             const phase = document.getElementById('dashDownloadPhase');
             const stock = document.getElementById('dashDownloadStock');
             const percent = document.getElementById('dashDownloadPercent');
@@ -2200,14 +2434,13 @@
             const counter = document.getElementById('dashDownloadCounter');
             const stopwatch = document.getElementById('dashDownloadStopwatch');
             const kpiDate = document.getElementById('dashKpiMarketDate');
+            const dateEl = document.getElementById('dashDate-download');
 
             if (!box) return;
             const status = prog.status || 'IDLE';
 
             if (status === 'CHECKING') {
-                box.classList.remove('hidden');
-                if (btn) btn.disabled = true;
-                if (badge) { badge.innerText = 'CHECKING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400'; }
+                if (!isPipelineRunning) setPipelineStageCardState('download', 'running');
                 if (phase) phase.innerText = 'Verifying Market Dates';
                 if (stock) stock.innerText = 'Feed Link';
                 if (percent) percent.innerText = '0%';
@@ -2216,10 +2449,8 @@
                 if (counter) counter.innerText = 'Checking';
                 if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
             } else if (status === 'DOWNLOADING' || status === 'APPENDING') {
-                box.classList.remove('hidden');
-                if (btn) btn.disabled = true;
+                if (!isPipelineRunning) setPipelineStageCardState('download', 'running');
                 const isDown = status === 'DOWNLOADING';
-                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400'; }
                 if (phase) phase.innerText = isDown ? 'Synchronizing Market Feed' : 'Appending Market Data';
                 if (stock) stock.innerText = prog.current_stock || 'Constituent';
                 const pct = Math.round(prog.percentage || 0);
@@ -2231,34 +2462,27 @@
                 if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
                 if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
             } else if (status === 'COMPLETED') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
                 if (fill) fill.style.width = '100%';
                 if (percent) percent.innerText = '100%';
                 if (msg) msg.innerText = prog.message || 'Synchronization complete.';
-                if (prog.last_downloaded_date && kpiDate) {
-                    kpiDate.innerText = prog.last_downloaded_date;
+                if (prog.last_downloaded_date) {
+                    if (kpiDate) kpiDate.innerText = prog.last_downloaded_date;
+                    if (dateEl) dateEl.innerText = prog.last_downloaded_date;
                 }
-                setTimeout(() => {
-                    if (box && !downloadPollInterval) box.classList.add('hidden');
-                }, 4000);
+                checkAndApplyDoneForTodayPills();
+                if (!isPipelineRunning) {
+                    setPipelineStageCardState('download', 'done');
+                }
             } else if (status === 'ERROR') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
-                if (msg) msg.innerText = prog.message || prog.error || 'Error during download.';
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
-            } else {
-                if (btn) btn.disabled = false;
-                if (box) box.classList.add('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('download', 'error');
+            } else if (status === 'IDLE') {
+                if (!isPipelineRunning) setPipelineStageCardState('download', 'idle');
             }
         }
 
         function renderDashFeatureGenProgress(prog) {
             const box = document.getElementById('dashProgressFeatures');
             const btn = document.getElementById('btnDashFeatureGen');
-            const badge = document.getElementById('dashFeatBadge');
             const phase = document.getElementById('dashFeatPhase');
             const stock = document.getElementById('dashFeatStock');
             const percent = document.getElementById('dashFeatPercent');
@@ -2267,14 +2491,13 @@
             const counter = document.getElementById('dashFeatCounter');
             const stopwatch = document.getElementById('dashFeatStopwatch');
             const kpiDate = document.getElementById('dashKpiFeatureDate');
+            const dateEl = document.getElementById('dashDate-features');
 
             if (!box) return;
             const status = prog.status || 'IDLE';
 
             if (status === 'GENERATING' || status === 'SAVING') {
-                box.classList.remove('hidden');
-                if (btn) btn.disabled = true;
-                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400'; }
+                if (!isPipelineRunning) setPipelineStageCardState('features', 'running');
                 if (phase) phase.innerText = status === 'GENERATING' ? 'Computing Alpha Indicators' : 'Flushing Features';
                 if (stock) stock.innerText = prog.current_stock || 'Constituent';
                 const pct = Math.round(prog.percentage || 0);
@@ -2286,34 +2509,27 @@
                 if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
                 if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
             } else if (status === 'COMPLETED') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
                 if (fill) fill.style.width = '100%';
                 if (percent) percent.innerText = '100%';
                 if (msg) msg.innerText = prog.message || 'Features generated successfully.';
-                if (prog.last_feature_gen_date && kpiDate) {
-                    kpiDate.innerText = prog.last_feature_gen_date;
+                if (prog.last_feature_gen_date) {
+                    if (kpiDate) kpiDate.innerText = prog.last_feature_gen_date;
+                    if (dateEl) dateEl.innerText = prog.last_feature_gen_date;
                 }
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
+                checkAndApplyDoneForTodayPills();
+                if (!isPipelineRunning) {
+                    setPipelineStageCardState('features', 'done');
+                }
             } else if (status === 'ERROR') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
-                if (msg) msg.innerText = prog.message || prog.error || 'Error during feature gen.';
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
-            } else {
-                if (btn) btn.disabled = false;
-                if (box) box.classList.add('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('features', 'error');
+            } else if (status === 'IDLE') {
+                if (!isPipelineRunning) setPipelineStageCardState('features', 'idle');
             }
         }
 
         function renderDashDataCleaningProgress(prog) {
             const box = document.getElementById('dashProgressCleaning');
             const btn = document.getElementById('btnDashDataClean');
-            const badge = document.getElementById('dashCleanBadge');
             const phase = document.getElementById('dashCleanPhase');
             const stock = document.getElementById('dashCleanStock');
             const percent = document.getElementById('dashCleanPercent');
@@ -2322,14 +2538,13 @@
             const counter = document.getElementById('dashCleanCounter');
             const stopwatch = document.getElementById('dashCleanStopwatch');
             const kpiRows = document.getElementById('dashKpiCleanRows');
+            const dateEl = document.getElementById('dashDate-cleaning');
 
             if (!box) return;
             const status = prog.status || 'IDLE';
 
             if (status === 'COMBINING' || status === 'CLEANING' || status === 'SAVING') {
-                box.classList.remove('hidden');
-                if (btn) btn.disabled = true;
-                if (badge) { badge.innerText = status; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-400'; }
+                if (!isPipelineRunning) setPipelineStageCardState('cleaning', 'running');
                 if (phase) phase.innerText = status === 'COMBINING' ? 'Merging Feature Files' : (status === 'CLEANING' ? 'Sanitizing Schema' : 'Flushing Master CSV');
                 if (stock) stock.innerText = prog.current_stock || 'Constituent';
                 const pct = Math.round(prog.percentage || 0);
@@ -2341,34 +2556,29 @@
                 if (counter) counter.innerText = `${curIdx} / ${totStocks} Stocks`;
                 if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
             } else if (status === 'COMPLETED') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
                 if (fill) fill.style.width = '100%';
                 if (percent) percent.innerText = '100%';
                 if (msg) msg.innerText = prog.message || 'Dataset cleaned and consolidated.';
                 if (prog.total_rows && kpiRows) {
                     kpiRows.innerText = prog.total_rows.toLocaleString();
                 }
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
+                if (prog.last_clean_date && dateEl) {
+                    dateEl.innerText = prog.last_clean_date;
+                }
+                checkAndApplyDoneForTodayPills();
+                if (!isPipelineRunning) {
+                    setPipelineStageCardState('cleaning', 'done');
+                }
             } else if (status === 'ERROR') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
-                if (msg) msg.innerText = prog.message || prog.error || 'Error during data cleaning.';
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
-            } else {
-                if (btn) btn.disabled = false;
-                if (box) box.classList.add('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('cleaning', 'error');
+            } else if (status === 'IDLE') {
+                if (!isPipelineRunning) setPipelineStageCardState('cleaning', 'idle');
             }
         }
 
         function renderDashTrainingProgress(prog) {
             const box = document.getElementById('dashProgressTraining');
             const btn = document.getElementById('btnDashTrainAll');
-            const badge = document.getElementById('dashTrainBadge');
             const phase = document.getElementById('dashTrainPhase');
             const model = document.getElementById('dashTrainModel');
             const percent = document.getElementById('dashTrainPercent');
@@ -2378,15 +2588,14 @@
             const stopwatch = document.getElementById('dashTrainStopwatch');
             const kpiState = document.getElementById('dashKpiModelsState');
             const linkBox = document.getElementById('dashTrainingResultLink');
+            const dateEl = document.getElementById('dashDate-training');
 
             if (!box) return;
             const status = prog.status || 'IDLE';
 
             if (status === 'TRAINING') {
-                box.classList.remove('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('training', 'running');
                 if (linkBox) linkBox.classList.add('hidden');
-                if (btn) btn.disabled = true;
-                if (badge) { badge.innerText = 'TRAINING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400'; }
                 if (phase) phase.innerText = prog.phase || 'Calibrating Estimators';
                 if (model) model.innerText = prog.current_model || '5_year_xgboost_model.pkl';
                 const pct = Math.round(prog.percentage || 0);
@@ -2396,34 +2605,25 @@
                 if (phaseDetail) phaseDetail.innerText = prog.phase || 'Training';
                 if (stopwatch) stopwatch.innerText = Math.round(prog.elapsed_seconds || 0) + 's';
             } else if (status === 'COMPLETED') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
                 if (fill) fill.style.width = '100%';
                 if (percent) percent.innerText = '100%';
                 if (msg) msg.innerText = prog.message || 'Models calibrated and saved successfully.';
                 if (kpiState) kpiState.innerText = 'COMPLETED';
-                // REVEAL RESULT LINK FOR STEP 4
                 if (linkBox) linkBox.classList.remove('hidden');
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
+                checkAndApplyDoneForTodayPills();
+                if (!isPipelineRunning) {
+                    setPipelineStageCardState('training', 'done');
+                }
             } else if (status === 'ERROR') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
-                if (msg) msg.innerText = prog.message || prog.error || 'Error during training.';
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
-            } else {
-                if (btn) btn.disabled = false;
-                if (box) box.classList.add('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('training', 'error');
+            } else if (status === 'IDLE') {
+                if (!isPipelineRunning) setPipelineStageCardState('training', 'idle');
             }
         }
 
         function renderDashInferenceProgress(prog) {
             const box = document.getElementById('dashProgressInference');
             const btn = document.getElementById('btnDashInferAll');
-            const badge = document.getElementById('dashInferBadge');
             const phase = document.getElementById('dashInferPhase');
             const model = document.getElementById('dashInferModel');
             const percent = document.getElementById('dashInferPercent');
@@ -2432,15 +2632,14 @@
             const phaseDetail = document.getElementById('dashInferPhaseDetail');
             const stopwatch = document.getElementById('dashInferStopwatch');
             const linkBox = document.getElementById('dashInferenceResultLink');
+            const dateEl = document.getElementById('dashDate-inference');
 
             if (!box) return;
             const status = prog.status || 'IDLE';
 
             if (status === 'EVALUATING') {
-                box.classList.remove('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('inference', 'running');
                 if (linkBox) linkBox.classList.add('hidden');
-                if (btn) btn.disabled = true;
-                if (badge) { badge.innerText = 'EVALUATING'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400'; }
                 if (phase) phase.innerText = prog.phase || 'Evaluating Models';
                 if (model) model.innerText = prog.current_model || '5_year_xgboost_model.pkl';
                 const pct = Math.round(prog.percentage || 0);
@@ -2450,27 +2649,255 @@
                 if (phaseDetail) phaseDetail.innerText = prog.phase || 'Evaluating';
                 if (stopwatch) stopwatch.innerText = (prog.elapsed_seconds || 0) + 's';
             } else if (status === 'COMPLETED') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'COMPLETED'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400'; }
                 if (fill) fill.style.width = '100%';
                 if (percent) percent.innerText = '100%';
                 if (msg) msg.innerText = prog.message || 'Inference validation complete.';
-                // REVEAL RESULT LINK FOR STEP 5
                 if (linkBox) linkBox.classList.remove('hidden');
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
+                checkAndApplyDoneForTodayPills();
+                if (!isPipelineRunning) {
+                    setPipelineStageCardState('inference', 'done');
+                }
             } else if (status === 'ERROR') {
-                if (btn) btn.disabled = false;
-                if (badge) { badge.innerText = 'ERROR'; badge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-500/15 text-red-400'; }
-                if (msg) msg.innerText = prog.message || prog.error || 'Error during inference.';
-                setTimeout(() => {
-                    if (box) box.classList.add('hidden');
-                }, 4000);
-            } else {
-                if (btn) btn.disabled = false;
-                if (box) box.classList.add('hidden');
+                if (!isPipelineRunning) setPipelineStageCardState('inference', 'error');
+            } else if (status === 'IDLE') {
+                if (!isPipelineRunning) setPipelineStageCardState('inference', 'idle');
             }
+        }
+
+        // ---------------------------------------------------------------------
+        // SEQUENTIAL MASTER PIPELINE ORCHESTRATOR
+        // ---------------------------------------------------------------------
+        let isPipelineRunning = false;
+        let pipelineAbortRequested = false;
+
+        function abortPipeline() {
+            pipelineAbortRequested = true;
+            const statusText = document.getElementById('pipelineStatusText');
+            if (statusText) statusText.innerText = "Aborting pipeline execution...";
+        }
+
+        async function triggerRunAllAnalysis() {
+            if (isPipelineRunning) return;
+            isPipelineRunning = true;
+            pipelineAbortRequested = false;
+
+            const btnRun = document.getElementById('btnRunAllAnalysis');
+            const btnAbort = document.getElementById('btnAbortPipeline');
+            const statusText = document.getElementById('pipelineStatusText');
+            const statusDot = document.getElementById('pipelineStatusDot');
+
+            if (btnRun) {
+                btnRun.disabled = true;
+                btnRun.classList.add('opacity-75');
+                btnRun.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Running Pipeline...</span>`;
+            }
+            if (btnAbort) btnAbort.classList.remove('hidden');
+            if (statusDot) {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse";
+            }
+            if (statusText) {
+                statusText.innerText = "Initializing Pipeline • Setting all stages to WAITING";
+            }
+
+            const stages = ['download', 'features', 'cleaning', 'training', 'inference'];
+
+            // 1. Initial transition: all cards become WAITING
+            stages.forEach(stg => setPipelineStageCardState(stg, 'waiting'));
+
+            const checkAborted = (currentIdx) => {
+                if (pipelineAbortRequested) {
+                    for (let j = currentIdx; j < stages.length; j++) {
+                        setPipelineStageCardState(stages[j], 'idle');
+                    }
+                    if (statusText) statusText.innerText = "Pipeline aborted by user.";
+                    if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+                    finishPipeline(false);
+                    return true;
+                }
+                return false;
+            };
+
+            const handleStageError = (errorIdx, errorMsg) => {
+                setPipelineStageCardState(stages[errorIdx], 'error');
+                // Strict rule: if there is error in any, all cards after that revert to idle
+                for (let j = errorIdx + 1; j < stages.length; j++) {
+                    setPipelineStageCardState(stages[j], 'idle');
+                }
+                if (statusText) statusText.innerText = `Pipeline halted: Error in ${stages[errorIdx]} stage (${errorMsg})`;
+                if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                finishPipeline(false);
+            };
+
+            const finishPipeline = (allSuccess = true) => {
+                isPipelineRunning = false;
+                if (btnRun) {
+                    btnRun.disabled = false;
+                    btnRun.classList.remove('opacity-75');
+                    btnRun.innerHTML = `<i data-lucide="play-circle" class="w-5 h-5"></i><span>${allSuccess ? 'Re-run All Analysis' : 'Run All Analysis'}</span>`;
+                }
+                if (btnAbort) btnAbort.classList.add('hidden');
+                if (window.lucide) lucide.createIcons();
+            };
+
+            // Execute stages strictly sequentially
+            for (let i = 0; i < stages.length; i++) {
+                if (checkAborted(i)) return;
+                const currentStage = stages[i];
+
+                if (statusText) statusText.innerText = `Executing Stage ${i + 1}/5: ${currentStage.toUpperCase()}...`;
+                if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse";
+
+                // Mark current as running (progress bar appears)
+                setPipelineStageCardState(currentStage, 'running');
+
+                try {
+                    const success = await executeStageAndWait(currentStage);
+                    if (!success) {
+                        handleStageError(i, "Execution failed");
+                        return;
+                    }
+                    if (checkAborted(i + 1)) return;
+
+                    // Stage complete: card becomes DONE and progress bar disappears!
+                    setPipelineStageCardState(currentStage, 'done');
+                    checkAndApplyDoneForTodayPills();
+                } catch (err) {
+                    console.error(`Error in stage ${currentStage}:`, err);
+                    handleStageError(i, err.message || "Execution exception");
+                    return;
+                }
+            }
+
+            // All 5 stages successfully finished!
+            if (statusText) statusText.innerText = "All 5 Quantitative Pipeline Stages Successfully Completed!";
+            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+            finishPipeline(true);
+        }
+
+        async function executeStageAndWait(stage) {
+            let startUrl = '';
+            let startOptions = { method: 'POST' };
+            let pollUrl = '';
+            let renderFunc = null;
+
+            if (stage === 'download') {
+                startUrl = '/api/download/start';
+                pollUrl = '/api/download/progress';
+                renderFunc = (p) => {
+                    renderDashDownloadProgress(p);
+                    if (typeof renderDownloadProgress === 'function') renderDownloadProgress(p);
+                };
+            } else if (stage === 'features') {
+                startUrl = '/api/feature_gen/start';
+                pollUrl = '/api/feature_gen/progress';
+                renderFunc = (p) => {
+                    renderDashFeatureGenProgress(p);
+                    if (typeof renderFeatureGenProgress === 'function') renderFeatureGenProgress(p);
+                };
+            } else if (stage === 'cleaning') {
+                startUrl = '/api/data_clean/start';
+                pollUrl = '/api/data_clean/progress';
+                renderFunc = (p) => {
+                    renderDashDataCleaningProgress(p);
+                    if (typeof renderDataCleaningProgress === 'function') renderDataCleaningProgress(p);
+                };
+            } else if (stage === 'training') {
+                startUrl = '/api/training/start_all';
+                startOptions = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: true })
+                };
+                pollUrl = '/api/training/progress';
+                renderFunc = (p) => {
+                    renderDashTrainingProgress(p);
+                    if (typeof renderTrainingProgress === 'function') renderTrainingProgress(p);
+                };
+            } else if (stage === 'inference') {
+                startUrl = '/api/inference/start_all';
+                startOptions = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: true })
+                };
+                pollUrl = '/api/inference/progress';
+                renderFunc = (p) => {
+                    renderDashInferenceProgress(p);
+                    if (typeof renderInferenceProgress === 'function') renderInferenceProgress(p);
+                };
+            }
+
+            try {
+                const startRes = await fetch(startUrl, startOptions);
+                if (!startRes.ok && startRes.status !== 409) {
+                    console.error(`Failed to trigger ${stage}: HTTP ${startRes.status}`);
+                    return false;
+                }
+            } catch (err) {
+                console.error(`Network error starting ${stage}:`, err);
+                return false;
+            }
+
+            // Brief delay to allow background thread to register initial state
+            await new Promise(r => setTimeout(r, 250));
+
+            return new Promise((resolve) => {
+                let attempts = 0;
+                const maxAttempts = 600; // 5 minutes at 500ms intervals
+                const timer = setInterval(async () => {
+                    if (pipelineAbortRequested) {
+                        clearInterval(timer);
+                        resolve(false);
+                        return;
+                    }
+
+                    attempts++;
+                    if (attempts > maxAttempts) {
+                        clearInterval(timer);
+                        console.error(`Stage ${stage} timed out.`);
+                        resolve(false);
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(pollUrl);
+                        if (!res.ok) return;
+                        const prog = await res.json();
+                        if (renderFunc) renderFunc(prog);
+
+                        const status = (prog.status || '').toUpperCase();
+                        if (status === 'COMPLETED') {
+                            clearInterval(timer);
+                            if (stage === 'download' && prog.last_downloaded_date) {
+                                const d = document.getElementById('dashDate-download');
+                                if (d) d.innerText = prog.last_downloaded_date;
+                                const kpiD = document.getElementById('dashKpiMarketDate');
+                                if (kpiD) kpiD.innerText = prog.last_downloaded_date;
+                            } else if (stage === 'features' && prog.last_feature_gen_date) {
+                                const d = document.getElementById('dashDate-features');
+                                if (d) d.innerText = prog.last_feature_gen_date;
+                                const kpiD = document.getElementById('dashKpiFeatureDate');
+                                if (kpiD) kpiD.innerText = prog.last_feature_gen_date;
+                            } else if (stage === 'cleaning') {
+                                if (prog.last_clean_date) {
+                                    const d = document.getElementById('dashDate-cleaning');
+                                    if (d) d.innerText = prog.last_clean_date;
+                                }
+                                if (prog.total_rows) {
+                                    const kpiRows = document.getElementById('dashKpiCleanRows');
+                                    if (kpiRows) kpiRows.innerText = prog.total_rows.toLocaleString();
+                                }
+                            }
+                            resolve(true);
+                        } else if (status === 'ERROR') {
+                            clearInterval(timer);
+                            resolve(false);
+                        }
+                    } catch (pollErr) {
+                        console.error(`Error polling ${stage}:`, pollErr);
+                    }
+                }, 500);
+            });
         }
 
         // ---------------------------------------------------------------------
@@ -4319,6 +4746,7 @@
                             } else {
                                 resetInferenceToIdle();
                             }
+                            checkAndApplyDoneForTodayPills(msg);
                             break;
 
                         case 'DOWNLOAD_PROGRESS':
@@ -4422,6 +4850,7 @@
         }
         connectWebSocket();
         loadTradeLedgerData();
+        checkAndApplyDoneForTodayPills();
     </script>
 </body>
 </html>
