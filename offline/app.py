@@ -23,6 +23,7 @@ sys.path.insert(0, str(BASE_DIR))
 sys.path.insert(0, str(OFFLINE_DIR))
 
 from offline import json_manager
+from offline import ma50_service
 from offline.downloader import run_stock_download_pipeline
 from offline.feature_generator import run_feature_generation_pipeline
 from offline.data_cleaner import run_data_cleaning_pipeline
@@ -896,6 +897,69 @@ def get_logs():
         "logs": json_manager.get_app_logs(limit=limit)
     })
 
+
+# ==============================================================================
+# 50MA STRATEGY TRADE LEDGER & CUSTOM TRADINGVIEW CHART API
+# ==============================================================================
+
+@app.route("/api/strategy/50ma/trades", methods=["GET"])
+def get_strategy_50ma_trades_api():
+    """
+    Returns filtered, sorted, and paginated 50MA trades from the verified 50MA dataset.
+    Supports query parameters:
+      - outcome: ALL, SUCCESS, LOSS, NEUTRAL, PENDING (default: ALL)
+      - setup: ALL, 1, 2, 3 (default: ALL)
+      - symbol: Search query substring (e.g. RELIANCE)
+      - sector: Filter by sector name
+      - sort_by: setup_date, realized_r, realized_pnl_pct, days_held, entry_price, symbol
+      - order: desc (default) or asc
+      - page: Page number (1-based, default: 1)
+      - limit: Page size limit (default: 50, max: 500)
+    """
+    outcome = request.args.get("outcome", default="ALL", type=str)
+    setup = request.args.get("setup", default="ALL", type=str)
+    symbol = request.args.get("symbol", default="", type=str)
+    sector = request.args.get("sector", default="", type=str)
+    sort_by = request.args.get("sort_by", default="setup_date", type=str)
+    order = request.args.get("order", default="desc", type=str)
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=50, type=int)
+
+    result = ma50_service.query_50ma_trades(
+        outcome=outcome,
+        setup=setup,
+        symbol=symbol,
+        sector=sector,
+        sort_by=sort_by,
+        order=order,
+        page=page,
+        limit=limit
+    )
+    return jsonify(result), 200
+
+
+@app.route("/api/strategy/50ma/trade/<trade_id>/chart", methods=["GET"])
+def get_strategy_50ma_trade_chart_api(trade_id: str):
+    """
+    Returns the parsed 38-bar TradingView candlestick series and exact Entry, SL, Target
+    coordinates for custom TradingView-style candlestick chart visualization.
+    """
+    res = ma50_service.get_50ma_trade_by_id(trade_id)
+    if not res:
+        return jsonify({
+            "status": "ERROR",
+            "message": f"Trade '{trade_id}' not found in 50MA dataset."
+        }), 404
+    return jsonify(res), 200
+
+
+@app.route("/api/strategy/50ma/summary", methods=["GET"])
+def get_strategy_50ma_summary_api():
+    """
+    Returns executive KPI metrics, setup subclass distributions (1, 2, 3), and yearly performance breakdown.
+    """
+    summary = ma50_service.get_50ma_strategy_summary()
+    return jsonify(summary), 200
 
 # ==============================================================================
 # DAILY MARKET ANALYSIS & TRADE FINALIZER ENDPOINTS
