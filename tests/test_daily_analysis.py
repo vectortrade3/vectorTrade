@@ -170,24 +170,29 @@ def test_json_manager_daily_analysis_info_persistence():
             "risk_reward_num": 2.0
         }
     ]
-    updated = json_manager.update_daily_analysis_info(
-        status="COMPLETED",
-        market_session_date="2026-11-02",
-        market_status="Market Closed",
-        total_stocks_analyzed=207,
-        finalized_trades=sample_trades,
-        strategies_breakdown={"50 MA Setup": 1},
-        message="Test update",
-        duration_seconds=5.2
-    )
-    assert updated["status"] == "COMPLETED"
-    assert len(updated["finalized_trades"]) == 1
-    assert updated["strategies_breakdown"]["50 MA Setup"] == 1
+    try:
+        updated = json_manager.update_daily_analysis_info(
+            status="COMPLETED",
+            market_session_date="2026-11-02",
+            market_status="Market Closed",
+            total_stocks_analyzed=207,
+            finalized_trades=sample_trades,
+            strategies_breakdown={"50 MA Setup": 1},
+            message="Test update",
+            duration_seconds=5.2
+        )
+        assert updated["status"] == "COMPLETED"
+        assert len(updated["finalized_trades"]) == 1
+        assert updated["strategies_breakdown"]["50 MA Setup"] == 1
 
-    # Read back from disk
-    stored = json_manager.get_daily_analysis_info()
-    assert stored["status"] == "COMPLETED"
-    assert stored["finalized_trades"][0]["symbol"] == "TESTSYM"
+        # Read back from disk
+        stored = json_manager.get_daily_analysis_info()
+        assert stored["status"] == "COMPLETED"
+        assert stored["finalized_trades"][0]["symbol"] == "TESTSYM"
+    finally:
+        # Restore original state so real market analysis data is not clobbered
+        if info_before:
+            json_manager.write_json_file(json_manager.DAILY_ANALYSIS_FILE, info_before)
 
 
 # ------------------------------------------------------------------------------

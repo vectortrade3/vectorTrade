@@ -6,9 +6,9 @@
   "current_index": 207,
   "total_stocks": 207,
   "percentage": 100.0,
-  "message": "Analyzed 207 stocks. Finalized 174 high-conviction trade setups across Market In Session (< 3:30 PM IST) | Using Previous Closed Session (2026-11-02) in 13.2s.",
-  "elapsed_seconds": 13.2,
+  "message": "Analyzed 207 stocks. Finalized 174 high-conviction trade setups across Market In Session (< 3:30 PM IST) | Using Previous Closed Session (2026-11-02) in 21.4s.",
+  "elapsed_seconds": 21.4,
   "finalized_count": 174,
   "error": null,
-  "updated_at": "2026-11-03T14:37:53.868211+05:30"
+  "updated_at": "2026-11-03T14:54:28.689596+05:30"
 }

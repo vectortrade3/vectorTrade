@@ -674,8 +674,10 @@
                             <span id="dashBadge-analysis-market" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-mono">
                                 <span class="w-2 h-2 rounded-full {% if market_schedule and market_schedule.is_open %}bg-emerald-400 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
                                 <span id="dashScheduleStatusText">
-                                    {% if market_schedule %}
-                                        {{ market_schedule.status }} &bull; Target: {{ market_schedule.target_date }}
+                                    {% if market_schedule and market_schedule.market_status %}
+                                        {{ market_schedule.market_status }}
+                                    {% elif market_schedule and market_schedule.target_date %}
+                                        Target: {{ market_schedule.target_date }} (Closed Session)
                                     {% else %}
                                         Target: 2026-11-02 (Closed Session)
                                     {% endif %}
@@ -2326,8 +2328,10 @@
                             <span id="analysisPageMarketBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-mono">
                                 <span class="w-2 h-2 rounded-full {% if market_schedule and market_schedule.is_open %}bg-emerald-400 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
                                 <span id="analysisPageScheduleText">
-                                    {% if market_schedule %}
-                                        {{ market_schedule.status }} &bull; Target: {{ market_schedule.target_date }}
+                                    {% if market_schedule and market_schedule.market_status %}
+                                        {{ market_schedule.market_status }}
+                                    {% elif market_schedule and market_schedule.target_date %}
+                                        Target: {{ market_schedule.target_date }} (Closed Session)
                                     {% else %}
                                         Target: 2026-11-02 (Closed Session)
                                     {% endif %}
@@ -2361,7 +2365,7 @@
                             </span>
                             <span class="text-white/20">&bull;</span>
                             <span class="text-[11px] text-apple-textTertiary" id="analysisScheduleReasonNote">
-                                {% if market_schedule %}{{ market_schedule.reason }}{% endif %}
+                                {% if market_schedule and market_schedule.reason %}{{ market_schedule.reason }}{% else %}Confirmed Closed Session Analyzed{% endif %}
                             </span>
                         </div>
                     </div>
@@ -5455,6 +5459,51 @@
         let isAnalysisRunning = false;
         let analysisPollInterval = null;
 
+        // Unified badge state updater
+        function updateAnalysisBadge(status) {
+            const badgeDash = document.getElementById('dashBadge-analysis');
+            const badgePage = document.getElementById('analysisPageStatusBadge');
+
+            const s = (status || '').toUpperCase();
+            if (s === 'RUNNING') {
+                [badgeDash, badgePage].forEach(b => {
+                    if (b) {
+                        b.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse mr-1.5"></span>RUNNING`;
+                        b.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center";
+                    }
+                });
+            } else if (s === 'COMPLETED' || s === 'DONE' || s === 'READY') {
+                [badgeDash, badgePage].forEach(b => {
+                    if (b) {
+                        b.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mr-1 inline"></i>READY`;
+                        b.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center";
+                    }
+                });
+            } else if (s === 'ERROR') {
+                [badgeDash, badgePage].forEach(b => {
+                    if (b) {
+                        b.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-400 mr-1 inline"></i>ERROR`;
+                        b.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/25 flex items-center";
+                    }
+                });
+            } else {
+                [badgeDash, badgePage].forEach(b => {
+                    if (b) {
+                        b.innerText = 'IDLE';
+                        b.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10";
+                    }
+                });
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function hideDailyAnalysisProgress() {
+            const dashProg = document.getElementById('dashProgressDailyAnalysis');
+            const pageProg = document.getElementById('analysisProgressBox');
+            if (dashProg) dashProg.classList.add('hidden');
+            if (pageProg) pageProg.classList.add('hidden');
+        }
+
         function triggerDailyAnalysis(forceDownload = false) {
             if (isAnalysisRunning) return;
             isAnalysisRunning = true;
@@ -5471,31 +5520,51 @@
             });
             if (btnForce) btnForce.disabled = true;
 
+            // Immediately set badge to RUNNING
+            updateAnalysisBadge('RUNNING');
+
+            // Show and reset progress bars
             const dashProg = document.getElementById('dashProgressDailyAnalysis');
             const pageProg = document.getElementById('analysisProgressBox');
             if (dashProg) dashProg.classList.remove('hidden');
             if (pageProg) pageProg.classList.remove('hidden');
 
-            lucide.createIcons();
+            renderDailyAnalysisProgress({
+                status: 'RUNNING',
+                phase: 'Scanning Schedule',
+                current_stock: 'Evaluating Market',
+                percentage: 5.0,
+                elapsed_seconds: 0.1,
+                current_index: 0,
+                total_stocks: 207,
+                message: 'Verifying market hours and schedule...'
+            });
+
+            if (window.lucide) lucide.createIcons();
 
             fetch('/api/analysis/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ force_download: forceDownload })
             })
-            .then(r => r.json())
+            .then(async r => {
+                if (!r.ok) {
+                    const errText = await r.text();
+                    throw new Error(`Server returned status ${r.status}: ${errText.slice(0, 100)}`);
+                }
+                return r.json();
+            })
             .then(data => {
                 console.log("[Analysis] Start response:", data);
-                if (data.status === 'RUNNING') {
-                    startAnalysisPolling();
-                } else if (data.status === 'ERROR') {
-                    alert("Analysis error: " + (data.message || "Failed to start."));
-                    resetAnalysisButtons();
-                }
+                // Attach polling immediately whether newly STARTED or already RUNNING
+                startAnalysisPolling();
             })
             .catch(err => {
                 console.error("[Analysis] Start failed:", err);
+                alert("Failed to start analysis: " + err.message + "\n\nPlease make sure your server is running in terminal: python .\\offline\\app.py");
                 resetAnalysisButtons();
+                hideDailyAnalysisProgress();
+                updateAnalysisBadge('ERROR');
             });
         }
 
@@ -5503,20 +5572,38 @@
             if (analysisPollInterval) clearInterval(analysisPollInterval);
             analysisPollInterval = setInterval(() => {
                 fetch('/api/analysis/progress')
-                    .then(r => r.json())
+                    .then(r => {
+                        if (!r.ok) throw new Error("Progress endpoint returned " + r.status);
+                        return r.json();
+                    })
                     .then(prog => {
                         renderDailyAnalysisProgress(prog);
-                        if (prog.status === 'COMPLETED' || prog.status === 'ERROR' || prog.status === 'IDLE') {
+                        if (prog.status === 'COMPLETED') {
                             clearInterval(analysisPollInterval);
                             analysisPollInterval = null;
-                            if (prog.status === 'COMPLETED') {
-                                loadFinalizedTradesData();
-                            }
-                            setTimeout(resetAnalysisButtons, 1200);
+                            updateAnalysisBadge('READY');
+                            resetAnalysisButtons();
+                            loadFinalizedTradesData();
+                            setTimeout(hideDailyAnalysisProgress, 2500);
+                        } else if (prog.status === 'ERROR') {
+                            clearInterval(analysisPollInterval);
+                            analysisPollInterval = null;
+                            updateAnalysisBadge('ERROR');
+                            resetAnalysisButtons();
+                            alert("Analysis failed: " + (prog.error || prog.message || "Unknown pipeline error"));
+                            setTimeout(hideDailyAnalysisProgress, 3500);
+                        } else if (prog.status === 'IDLE' && !isAnalysisRunning) {
+                            clearInterval(analysisPollInterval);
+                            analysisPollInterval = null;
+                            updateAnalysisBadge('IDLE');
+                            resetAnalysisButtons();
+                            hideDailyAnalysisProgress();
                         }
                     })
-                    .catch(() => {});
-            }, 800);
+                    .catch(err => {
+                        console.warn("[Analysis] Polling issue:", err);
+                    });
+            }, 600);
         }
 
         function renderDailyAnalysisProgress(prog) {
@@ -5549,6 +5636,7 @@
             if (prog.status === 'RUNNING') {
                 if (dashProg) dashProg.classList.remove('hidden');
                 if (pageProg) pageProg.classList.remove('hidden');
+                updateAnalysisBadge('RUNNING');
             }
 
             if (dashFill) dashFill.style.width = pctStr;
@@ -5568,13 +5656,6 @@
             const countStr = `${prog.current_index || 0} / ${prog.total_stocks || 207} Stocks`;
             if (dashCounter) dashCounter.innerText = countStr;
             if (pageCounter) pageCounter.innerText = countStr;
-
-            if (prog.status === 'COMPLETED') {
-                setTimeout(() => {
-                    if (dashProg) dashProg.classList.add('hidden');
-                    if (pageProg) pageProg.classList.add('hidden');
-                }, 2000);
-            }
         }
 
         function resetAnalysisButtons() {
@@ -5593,20 +5674,20 @@
             }
             if (btnForce) btnForce.disabled = false;
 
-            lucide.createIcons();
+            if (window.lucide) lucide.createIcons();
         }
 
         function renderDailyAnalysisInfo(info) {
             if (!info) return;
 
-            const count = info.finalized_trades ? info.finalized_trades.length : 0;
+            const count = info.finalized_trades ? info.finalized_trades.length : (info.finalized_trades_count || 0);
             const countEl = document.getElementById('dashCount-analysis');
             if (countEl) countEl.innerText = count;
 
             const kpiCountEl = document.getElementById('kpiAnalysisFinalizedCount');
             if (kpiCountEl) kpiCountEl.innerText = count;
 
-            const ts = info.last_run_timestamp ? info.last_run_timestamp.slice(0, 19).replace('T', ' ') : '--';
+            const ts = info.last_run_timestamp ? info.last_run_timestamp.slice(0, 19).replace('T', ' ') : (info.updated_at ? info.updated_at.slice(0, 19).replace('T', ' ') : '--');
             const dashTs = document.getElementById('dashCompleted-analysis');
             if (dashTs) dashTs.innerText = ts;
             const pageTs = document.getElementById('analysisCompletedTimestamp');
@@ -5629,25 +5710,15 @@
             const allPill = document.getElementById('countPill-ALL');
             if (allPill) allPill.innerText = count;
 
-            const badgeDash = document.getElementById('dashBadge-analysis');
-            if (badgeDash) {
-                badgeDash.innerText = info.status === 'COMPLETED' ? 'READY' : 'IDLE';
-                if (info.status === 'COMPLETED') {
-                    badgeDash.className = "text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25";
-                }
-            }
-            const badgePage = document.getElementById('analysisPageStatusBadge');
-            if (badgePage) {
-                badgePage.innerText = info.status === 'COMPLETED' ? 'READY' : 'IDLE';
-                if (info.status === 'COMPLETED') {
-                    badgePage.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25";
-                }
-            }
+            updateAnalysisBadge(info.status);
         }
 
         function loadFinalizedTradesData() {
             fetch('/api/analysis/results')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error("HTTP " + r.status);
+                    return r.json();
+                })
                 .then(res => {
                     if (res && res.data) {
                         const info = res.data;
@@ -5892,10 +5963,22 @@
                 }
             }
 
-            lucide.createIcons();
+            if (window.lucide) lucide.createIcons();
         }
 
-        // Auto-load Analysis data on page initialization
+        // Pre-populate directly from server render for instant 0ms display
+        try {
+            const preEmbeddedTrades = {{ daily_analysis_info.finalized_trades|tojson if daily_analysis_info and daily_analysis_info.finalized_trades else '[]' }};
+            if (preEmbeddedTrades && preEmbeddedTrades.length > 0) {
+                allFinalizedTrades = preEmbeddedTrades;
+                applyAnalysisFilters();
+                updateAnalysisBadge('READY');
+            }
+        } catch (e) {
+            console.warn("[Analysis] Pre-embed read error:", e);
+        }
+
+        // Fetch fresh trades asynchronously
         loadFinalizedTradesData();
     
     </script>

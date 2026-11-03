@@ -908,9 +908,10 @@ def start_daily_analysis():
     with _analysis_lock:
         if _analysis_thread and _analysis_thread.is_alive():
             return jsonify({
-                "status": "BUSY",
-                "message": "Daily market analysis is already running."
-            }), 409
+                "status": "RUNNING",
+                "message": "Daily market analysis is already running.",
+                "progress": json_manager.get_daily_analysis_progress()
+            }), 200
 
         force_download = False
         try:
@@ -944,7 +945,8 @@ def start_daily_analysis():
         _analysis_thread.start()
 
         return jsonify({
-            "status": "STARTED",
+            "status": "RUNNING",
+            "action": "STARTED",
             "message": "Daily market analysis and AI trade finalizer started in background.",
             "force_download": force_download
         })

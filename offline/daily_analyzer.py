@@ -101,11 +101,14 @@ def get_market_schedule_info(ref_dt: Optional[datetime] = None) -> Dict[str, Any
         # Weekend: market closed, last session was Friday
         days_back = 1 if weekday == 5 else 2
         target_date = curr_date - timedelta(days=days_back)
+        m_status = f"Weekend Closed | Using Last Trading Session ({target_date})"
         return {
+            "status": m_status,
+            "market_status": m_status,
+            "reason": f"Weekend Session (NSE Closed) - Analyzed previous Friday ({target_date})",
             "is_market_closed": True,
             "target_date": str(target_date),
             "session_type": "WEEKEND",
-            "market_status": f"Weekend Closed | Using Last Trading Session ({target_date})",
             "allow_today_download": False,
             "evaluated_at": ref_dt.strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -117,11 +120,14 @@ def get_market_schedule_info(ref_dt: Optional[datetime] = None) -> Dict[str, Any
         while cand.weekday() in [5, 6] or str(cand) in NSE_HOLIDAYS_KNOWN:
             step += 1
             cand = curr_date - timedelta(days=step)
+        m_status = f"Exchange Holiday ({curr_date_str}) | Using Last Trading Session ({cand})"
         return {
+            "status": m_status,
+            "market_status": m_status,
+            "reason": f"NSE Exchange Holiday ({curr_date_str}) - Analyzed last confirmed session ({cand})",
             "is_market_closed": True,
             "target_date": str(cand),
             "session_type": "HOLIDAY",
-            "market_status": f"Exchange Holiday ({curr_date_str}) | Using Last Trading Session ({cand})",
             "allow_today_download": False,
             "evaluated_at": ref_dt.strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -131,11 +137,14 @@ def get_market_schedule_info(ref_dt: Optional[datetime] = None) -> Dict[str, Any
 
     if is_post_close:
         # Market closed for today, full EOD available
+        m_status = f"Market Closed (Past 3:30 PM IST) | Today's EOD Finalized ({curr_date_str})"
         return {
+            "status": m_status,
+            "market_status": m_status,
+            "reason": f"Past 3:30 PM Cutoff - Today's complete EOD data analyzed ({curr_date_str})",
             "is_market_closed": True,
             "target_date": curr_date_str,
             "session_type": "POST_CLOSE",
-            "market_status": f"Market Closed (Past 3:30 PM IST) | Today's EOD Finalized ({curr_date_str})",
             "allow_today_download": True,
             "evaluated_at": ref_dt.strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -143,11 +152,14 @@ def get_market_schedule_info(ref_dt: Optional[datetime] = None) -> Dict[str, Any
         # Market still in session (< 3:30 PM), use previous trading session
         days_back = 3 if weekday == 0 else 1
         target_date = curr_date - timedelta(days=days_back)
+        m_status = f"Market In Session (< 3:30 PM IST) | Using Previous Closed Session ({target_date})"
         return {
+            "status": m_status,
+            "market_status": m_status,
+            "reason": f"Market Active (< 3:30 PM) - Incomplete intraday bars blocked, using confirmed closed session ({target_date})",
             "is_market_closed": False,
             "target_date": str(target_date),
             "session_type": "IN_SESSION",
-            "market_status": f"Market In Session (< 3:30 PM IST) | Using Previous Closed Session ({target_date})",
             "allow_today_download": False,
             "evaluated_at": ref_dt.strftime("%Y-%m-%d %H:%M:%S")
         }
