@@ -31,6 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from offline import json_manager
+from strategies.manager import StrategyManager
 
 MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -168,12 +169,8 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df['date'] = pd.to_datetime(df['date'])
 
-    df_signals = df[df['base_signal'] == True].copy()
-    df_signals = df_signals[~df_signals['outcome'].isin(['No_Trigger', 'Pending', 'Timeout', np.nan])]
-    df_signals = df_signals[df_signals['risk'] > 0]
-    df_signals['max_r_achieved'] = df_signals['mfe'] / df_signals['risk']
-    df_signals = df_signals.dropna(subset=['max_r_achieved'])
-    df_signals = df_signals.sort_values('date').reset_index(drop=True)
+    # Strict 50MA Setup filtering via StrategyManager: isolates only 50MA setup trades for evaluation
+    df_signals = StrategyManager.filter_dataset("ma50_setup", df)
 
     n_samples = len(df_signals)
     if n_samples < 50:

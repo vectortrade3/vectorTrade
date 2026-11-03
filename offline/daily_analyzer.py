@@ -43,6 +43,7 @@ import pandas as pd
 import joblib
 
 from offline import json_manager
+from strategies.manager import StrategyManager
 
 logger = logging.getLogger("VectorTrade.DailyAnalyzer")
 logger.setLevel(logging.INFO)

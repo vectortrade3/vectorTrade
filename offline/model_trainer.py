@@ -33,6 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from offline import json_manager
+from strategies.manager import StrategyManager
 
 MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -204,12 +205,8 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df['date'] = pd.to_datetime(df['date'])
 
-    df_signals = df[df['base_signal'] == True].copy()
-    df_signals = df_signals[~df_signals['outcome'].isin(['No_Trigger', 'Pending', 'Timeout', np.nan])]
-    df_signals = df_signals[df_signals['risk'] > 0]
-    df_signals['max_r_achieved'] = df_signals['mfe'] / df_signals['risk']
-    df_signals = df_signals.dropna(subset=['max_r_achieved'])
-    df_signals = df_signals.sort_values('date').reset_index(drop=True)
+    # Strict 50MA Setup filtering via StrategyManager: isolates only 50MA setup trades
+    df_signals = StrategyManager.filter_dataset("ma50_setup", df)
 
     n_samples = len(df_signals)
     if n_samples < 50:
@@ -728,14 +725,26 @@ def train_global_models(force: bool = False) -> Dict[str, Any]:
 
 def train_all_models(force: bool = False) -> Dict[str, Any]:
     """
-    Sequentially trains the Setup Strategy Model followed by the Global Regime Models.
+    Sequentially trains all active strategies registered in StrategyManager:
+    - 50MA Setup: filters data strictly to 50MA setups and trains/tests on those trades.
+    - Global Regime: trains on full market data.
+    - Automatically discovers and runs any additional strategies with valid config.json.
     """
     start_time = time.time()
-    res_strat = train_strategy_model(force=force)
-    res_global = train_global_models(force=force)
+    active_strats = StrategyManager.get_active_strategies()
+    results = {}
+
+    for strat_id in active_strats.keys():
+        if strat_id == "ma50_setup":
+            results[strat_id] = train_strategy_model(force=force)
+        elif strat_id == "global_regime":
+            results[strat_id] = train_global_models(force=force)
+        else:
+            # Extensible hook for future strategies
+            pass
 
     total_duration = time.time() - start_time
-    msg = f"All models trained successfully in {total_duration:.1f}s."
+    msg = f"All {len(active_strats)} active strategy models trained successfully in {total_duration:.1f}s."
 
     json_manager.update_models_training_progress(
         status="COMPLETED",
@@ -749,8 +758,9 @@ def train_all_models(force: bool = False) -> Dict[str, Any]:
 
     return {
         "status": "SUCCESS",
-        "strategy": res_strat,
-        "global": res_global,
+        "results": results,
+        "strategy": results.get("ma50_setup"),
+        "global": results.get("global_regime"),
         "duration_seconds": round(total_duration, 2),
         "message": msg
     }

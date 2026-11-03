@@ -1,0 +1,89 @@
+{
+  "strategy_id": "ma50_setup",
+  "name": "50 MA Setup Strategy",
+  "display_name": "50 MA Bollinger Pullback Setup",
+  "enabled": true,
+  "type": "setup_filter",
+  "version": "1.0.0",
+  "description": "Filters trades strictly matching the 50MA base setup: 50MA 7D trend up, lower BB near candle low (-10 to 20), green candle, subclassified into Setups 1, 2, and 3 with strict 1:2.00 Risk:Reward bracket geometry.",
+  "triggers": {
+    "ma50_trend_7d_up": {
+      "required": true,
+      "min_days": 7,
+      "rule": "ma50[t] > ma50[t-7] and ma50[t] > ma50[t-1]"
+    },
+    "bb_lower_near_low": {
+      "required": true,
+      "min_diff": -10.0,
+      "max_diff": 20.0,
+      "rule": "-10.0 <= low - bb_lower <= 20.0"
+    },
+    "candle_green": {
+      "required": true,
+      "rule": "close > open"
+    },
+    "setups": {
+      "setup_1": {
+        "id": 1,
+        "name": "50MA Setup 1 (Confluence Zone)",
+        "min_dist_low_ma50": -10.0,
+        "max_dist_low_ma50": 30.0,
+        "rule": "-10.0 <= low - ma50 <= 30.0"
+      },
+      "setup_2": {
+        "id": 2,
+        "name": "50MA Setup 2 (Extended Trend)",
+        "min_dist_low_ma50": 30.0,
+        "rule": "low - ma50 > 30.0"
+      },
+      "setup_3": {
+        "id": 3,
+        "name": "50MA Setup 3 (Mean-Reverting)",
+        "max_dist_low_ma50": -10.0,
+        "rule": "low - ma50 < -10.0"
+      }
+    },
+    "bracket_geometry": {
+      "buy_trigger": "high + 1.0",
+      "stop_loss": "low - 1.0",
+      "risk": "buy_trigger - stop_loss",
+      "target": "buy_trigger + (2.0 * risk)",
+      "risk_reward_ratio": 2.0
+    }
+  },
+  "training": {
+    "filter_strategy_data": true,
+    "filter_condition": "base_signal == True and outcome in ['Target', 'SL', 'Target_1_2', 'SL_Hit'] and risk > 0",
+    "target_column": "max_r_achieved",
+    "train_test_split_ratio": 0.80,
+    "chronological_split": true,
+    "leakage_columns": [
+      "base_signal", "signal_strength", "entry_price", "stop_loss", "risk", "target_1_2",
+      "target_hit", "sl_hit", "timeout", "outcome", "days_to_outcome",
+      "return_7d_after_signal", "max_gain_7d", "max_loss_7d", "mfe", "mae", "Trade_Triggered",
+      "max_r_achieved", "date", "symbol", "sector", "Stock Symbol", "Sector", "Trading_Day_Of_Week"
+    ],
+    "param_grid": {
+      "n_estimators": [100, 200],
+      "max_depth": [3, 4, 5],
+      "learning_rate": [0.01, 0.05, 0.1],
+      "subsample": [0.8, 1.0]
+    },
+    "correlation_prune_threshold": 0.90
+  },
+  "inference": {
+    "success_threshold_r": 1.0,
+    "strong_buy_threshold_r": 1.15,
+    "min_eval_r": 0.70
+  },
+  "artifacts": {
+    "base_model": "models/strategy_base_model.pkl",
+    "base_scaler": "models/strategy_base_scaler.pkl",
+    "base_imputer": "models/strategy_base_imputer.pkl",
+    "base_features": "base_features.txt",
+    "refined_model": "models/5_year_xgboost_model.pkl",
+    "refined_scaler": "models/5_year_scaler.pkl",
+    "refined_imputer": "models/5_year_imputer.pkl",
+    "refined_features": "final_features.txt"
+  }
+}
