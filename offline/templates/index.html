@@ -158,6 +158,12 @@
                     <span>Analysis</span>
                 </button>
 
+                <!-- 7. 50MA Strategy Data & Trades Visualizer -->
+                <button id="nav-ma50" onclick="switchTab('ma50')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
+                    <i data-lucide="candlestick-chart" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span>50MA Trades</span>
+                </button>
+
                 <!-- 7. Logs -->
                 <button id="nav-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     <span>Task Logs</span>
@@ -470,7 +476,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 shrink-0 self-end md:self-center">
+                        <div class="flex flex-wrap items-center gap-2.5 shrink-0 self-end md:self-center">
+                            <button id="btnDash50MATrades" onclick="switchTab('ma50')" class="px-4 py-2.5 rounded-xl text-xs font-medium text-white bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 flex items-center gap-2 transition-all shadow-md shadow-purple-500/10">
+                                <i data-lucide="candlestick-chart" class="w-4 h-4 text-purple-400"></i>
+                                <span>50MA Strategy Trades</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/30 text-purple-200">8,667</span>
+                            </button>
                             <button id="btnDashDataClean" onclick="triggerDataClean()" class="btn-apple-primary px-5 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-teal-500/20">
                                 <i data-lucide="play" class="w-4 h-4"></i>
                                 <span>Clean &amp; Consolidate</span>
@@ -1114,7 +1125,12 @@
                     </div>
 
                     <!-- Action Button -->
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="switchTab('ma50')" class="apple-btn px-5 py-3.5 rounded-2xl bg-purple-600/25 hover:bg-purple-600/40 text-white text-sm font-semibold flex items-center justify-center gap-2.5 border border-purple-500/30 transition-all shadow-lg shadow-purple-500/15">
+                            <i data-lucide="candlestick-chart" class="w-4 h-4 text-purple-300"></i>
+                            <span>View 50MA Strategy Data</span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-purple-500/30 text-purple-200">8,667 Setups</span>
+                        </button>
                         <button id="btnDataClean" onclick="triggerDataClean()" class="apple-btn px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-40 disabled:pointer-events-none transition-all">
                             <i data-lucide="filter" class="w-4 h-4"></i>
                             <span>Clean & Combine Data</span>
@@ -2582,6 +2598,248 @@
 
         </section>
 
+
+        <!-- ============================================================= -->
+        <!-- TAB 6.5: 50MA STRATEGY TRADE LEDGER & INTERACTIVE VISUALIZER -->
+        <!-- ============================================================= -->
+        <section id="tab-ma50-view" class="hidden space-y-6">
+
+            <!-- Hero Banner -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-2xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium">
+                            <i data-lucide="line-chart" class="w-3.5 h-3.5"></i>
+                            Algorithmic Strategy Engine &bull; 50MA Bollinger Pullback
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                            50MA Strategy Trade Ledger &amp; Chart Visualizer
+                        </h1>
+                        <p class="text-sm text-apple-textSecondary leading-relaxed">
+                            Exhaustive trade execution ledger for all 207 Nifty constituents. Features 7-day 50MA uptrend validation, Bollinger lower-band proximity, Day 1 entry trigger gate, and 30-day forward bracket execution with strict 1:2.00 Risk-Reward coordinates.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="refresh50MALedger()" class="apple-btn px-5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 border border-white/10 transition-all">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 text-purple-400"></i>
+                            <span>Refresh Ledger</span>
+                        </button>
+                        <button onclick="triggerDataClean()" class="apple-btn px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all">
+                            <i data-lucide="filter" class="w-4 h-4"></i>
+                            <span>Re-clean Dataset</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Executive KPIs Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mt-8 pt-6 border-t border-white/5">
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary uppercase tracking-wider">Total Setups</div>
+                        <div id="stat50MATotalTrades" class="text-xl font-bold text-white mt-1 font-mono">--</div>
+                        <div id="stat50MAOutcomes" class="text-[10px] text-apple-textSecondary mt-0.5">-- Won &bull; -- Lost</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-purple-500/[0.04] border border-purple-500/20">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-medium text-purple-300 uppercase tracking-wider">Last 1 Year Win%</span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-500/20 text-purple-200">1Y Test</span>
+                        </div>
+                        <div id="stat50MAWinRate1Y" class="text-xl font-bold text-purple-400 mt-1 font-mono">--%</div>
+                        <div id="stat50MATrades1Y" class="text-[10px] text-purple-300/70 mt-0.5">-- / -- Setups</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20">
+                        <div class="text-[11px] font-medium text-emerald-400 uppercase tracking-wider">5-Year Win Rate</div>
+                        <div id="stat50MAWinRate5Y" class="text-xl font-bold text-emerald-400 mt-1 font-mono">--%</div>
+                        <div id="stat50MAEdgeR" class="text-[10px] text-emerald-300/70 mt-0.5">+-- R Net Edge</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary uppercase tracking-wider">Payoff Ratio</div>
+                        <div class="text-xl font-bold text-amber-400 mt-1 font-mono">1 : 2.00</div>
+                        <div class="text-[10px] text-apple-textSecondary mt-0.5">Strict Target Geometry</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary uppercase tracking-wider">Avg Holding</div>
+                        <div id="stat50MAAvgDays" class="text-xl font-bold text-white mt-1 font-mono">-- Days</div>
+                        <div id="stat50MAHoldingBreakdown" class="text-[10px] text-apple-textSecondary mt-0.5">Win: --d &bull; Loss: --d</div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                        <div class="text-[11px] font-medium text-apple-textSecondary uppercase tracking-wider">Avg P&amp;L% / Trade</div>
+                        <div id="stat50MAAvgPnL" class="text-xl font-bold text-emerald-400 mt-1 font-mono">+--%</div>
+                        <div class="text-[10px] text-apple-textSecondary mt-0.5">Per-Trade Return</div>
+                    </div>
+                </div>
+
+                <!-- Subclassification Performance Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+                    <div class="p-3.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-white">Setup 1 &bull; Confluence Zone</span>
+                            <div class="text-[11px] text-apple-textSecondary mt-0.5">-10 to +30 MA50 Proximity</div>
+                        </div>
+                        <div class="text-right">
+                            <span id="stat50MASetup1Win" class="text-xs font-mono font-semibold text-emerald-400">--% Win</span>
+                            <div id="stat50MASetup1Trades" class="text-[10px] text-apple-textSecondary font-mono">-- Setups</div>
+                        </div>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-white">Setup 2 &bull; Extended Trend</span>
+                            <div class="text-[11px] text-apple-textSecondary mt-0.5">&gt; 30 MA50 Proximity</div>
+                        </div>
+                        <div class="text-right">
+                            <span id="stat50MASetup2Win" class="text-xs font-mono font-semibold text-emerald-400">--% Win</span>
+                            <div id="stat50MASetup2Trades" class="text-[10px] text-apple-textSecondary font-mono">-- Setups</div>
+                        </div>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-white">Setup 3 &bull; Mean-Reverting</span>
+                            <div class="text-[11px] text-apple-textSecondary mt-0.5">&lt; -10 MA50 Proximity</div>
+                        </div>
+                        <div class="text-right">
+                            <span id="stat50MASetup3Win" class="text-xs font-mono font-semibold text-emerald-400">--% Win</span>
+                            <div id="stat50MASetup3Trades" class="text-[10px] text-apple-textSecondary font-mono">-- Setups</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter & Controls Toolbar -->
+            <div class="glass-panel rounded-2xl p-4 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <!-- Left Filter Controls -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Split Filter -->
+                        <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
+                            <button id="pill50MASplit-ALL" onclick="set50MASplit('ALL')" class="px-3 py-1 rounded-lg font-medium text-white bg-white/15 transition-all">All (5Y)</button>
+                            <button id="pill50MASplit-TRAIN" onclick="set50MASplit('TRAIN')" class="px-3 py-1 rounded-lg font-medium text-apple-textSecondary hover:text-white transition-all">Train (4Y)</button>
+                            <button id="pill50MASplit-TEST_1Y" onclick="set50MASplit('TEST_1Y')" class="px-3 py-1 rounded-lg font-medium text-purple-300 hover:text-white flex items-center gap-1 transition-all">
+                                <span>Last 1 Year</span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                            </button>
+                        </div>
+
+                        <!-- Outcome Filter -->
+                        <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
+                            <button id="pill50MAOutcome-ALL" onclick="set50MAOutcome('ALL')" class="px-2.5 py-1 rounded-lg font-medium text-white bg-white/15 transition-all">All</button>
+                            <button id="pill50MAOutcome-SUCCESS" onclick="set50MAOutcome('SUCCESS')" class="px-2.5 py-1 rounded-lg font-medium text-emerald-400 hover:text-emerald-300 transition-all">Success</button>
+                            <button id="pill50MAOutcome-LOSS" onclick="set50MAOutcome('LOSS')" class="px-2.5 py-1 rounded-lg font-medium text-rose-400 hover:text-rose-300 transition-all">Loss</button>
+                            <button id="pill50MAOutcome-NEUTRAL" onclick="set50MAOutcome('NEUTRAL')" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-300 transition-all">Neutral</button>
+                        </div>
+
+                        <!-- Setup Subclass Filter -->
+                        <select id="select50MASetup" onchange="handle50MASetupChange(this.value)" class="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                            <option value="ALL">All Subclasses</option>
+                            <option value="1">Setup 1 (Confluence)</option>
+                            <option value="2">Setup 2 (Extended)</option>
+                            <option value="3">Setup 3 (Mean-Reverting)</option>
+                        </select>
+
+                        <!-- Sector Filter -->
+                        <select id="select50MASector" onchange="handle50MASectorChange(this.value)" class="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 max-w-[160px]">
+                            <option value="">All Sectors</option>
+                        </select>
+                    </div>
+
+                    <!-- Right Search & Sorting Controls -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Symbol Search -->
+                        <div class="relative">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-apple-textSecondary absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input id="input50MASearch" type="text" placeholder="Search Symbol..." oninput="handle50MASearch(this.value)" class="bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-apple-textSecondary focus:outline-none focus:border-purple-500 w-36 sm:w-44 font-mono uppercase">
+                        </div>
+
+                        <!-- Sort By Selector -->
+                        <select id="select50MASort" onchange="handle50MASortChange(this.value)" class="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                            <option value="setup_date:desc">Newest Setups</option>
+                            <option value="setup_date:asc">Oldest Setups</option>
+                            <option value="realized_r:desc">Highest R First</option>
+                            <option value="realized_r:asc">Lowest R First</option>
+                            <option value="realized_pnl_pct:desc">Highest P&amp;L% First</option>
+                            <option value="days_held:asc">Fastest Resolution</option>
+                        </select>
+
+                        <button onclick="reset50MAFilters()" class="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-apple-textSecondary hover:text-white border border-white/5 transition-all" title="Reset Filters">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Filter Tags & Count Bar -->
+                <div class="flex items-center justify-between text-xs text-apple-textSecondary pt-2 border-t border-white/5">
+                    <div class="flex items-center gap-2">
+                        <span>Showing <strong id="lbl50MACurrentCount" class="text-white font-mono">0</strong> matching setups</span>
+                        <span class="text-white/20">&bull;</span>
+                        <span id="lbl50MAWinRateFiltered" class="text-emerald-400 font-mono">Win Rate: --%</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="lbl50MAPageRange" class="font-mono text-[11px]">1 - 50 of --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trades Table Container -->
+            <div class="glass-panel rounded-2xl overflow-hidden border border-white/5">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-white/[0.02] border-b border-white/5 text-[11px] font-mono uppercase text-apple-textSecondary">
+                            <tr>
+                                <th class="py-3 px-4">Symbol / Sector</th>
+                                <th class="py-3 px-3">Setup Date</th>
+                                <th class="py-3 px-3">Split</th>
+                                <th class="py-3 px-3">Subclass</th>
+                                <th class="py-3 px-3 text-right">Entry</th>
+                                <th class="py-3 px-3 text-right">Stop Loss</th>
+                                <th class="py-3 px-3 text-right">Target (1:2)</th>
+                                <th class="py-3 px-3 text-center">Outcome</th>
+                                <th class="py-3 px-3 text-right">Holding</th>
+                                <th class="py-3 px-3 text-right">Exit</th>
+                                <th class="py-3 px-3 text-right">Realized P&amp;L</th>
+                                <th class="py-3 px-3 text-right">Net R</th>
+                                <th class="py-3 px-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table50MABody" class="divide-y divide-white/[0.03]">
+                            <tr>
+                                <td colspan="13" class="py-12 text-center text-apple-textSecondary">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-purple-400"></i>
+                                        <span>Loading 50MA Trade Ledger...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div class="p-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="text-apple-textSecondary">Rows per page:</span>
+                        <select id="select50MAPageSize" onchange="handle50MAPageSizeChange(this.value)" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button id="btn50MAPrevPage" onclick="change50MAPage(-1)" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1">
+                            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                            <span>Previous</span>
+                        </button>
+                        <span id="lbl50MAPageIndicator" class="px-3 text-xs text-white font-mono font-medium">Page 1 / 1</span>
+                        <button id="btn50MANextPage" onclick="change50MAPage(1)" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1">
+                            <span>Next</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+
         <!-- ============================================================= -->
         <!-- TAB 7: TASK LOGS LEDGER -->
         <!-- ============================================================= -->
@@ -2600,6 +2858,130 @@
                 </div>
             </div>
         </section>
+
+
+    <!-- ============================================================= -->
+    <!-- CUSTOM TRADINGVIEW-STYLE CANDLESTICK CHART MODAL -->
+    <!-- ============================================================= -->
+    <div id="modal50MAChart" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-5 transition-all duration-300">
+        <div class="glass-panel rounded-3xl w-full max-w-6xl max-h-[95vh] flex flex-col border border-white/10 shadow-2xl overflow-hidden bg-[#0a0e17]">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 bg-white/[0.02]">
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <h2 id="modalChartSymbol" class="text-xl sm:text-2xl font-bold text-white font-mono tracking-tight">--</h2>
+                        <span id="modalChartSector" class="px-2.5 py-0.5 rounded-md text-[11px] font-mono bg-white/10 text-apple-textSecondary">--</span>
+                    </div>
+                    <span id="modalChartSetupName" class="px-2.5 py-0.5 rounded-md text-[11px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">Setup 1</span>
+                    <span id="modalChartSplitBadge" class="px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/5 text-slate-300 border border-white/10">TRAIN</span>
+                    <span id="modalChartOutcome" class="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold">SUCCESS</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="close50MAChartModal()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-apple-textSecondary hover:text-white flex items-center justify-center transition-all">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Execution Coordinates Strip -->
+            <div class="px-5 py-2.5 bg-black/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"></span>
+                        <span class="text-apple-textSecondary">Entry:</span>
+                        <strong id="modalCoordEntry" class="text-amber-300">₹--</strong>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span>
+                        <span class="text-apple-textSecondary">SL:</span>
+                        <strong id="modalCoordSL" class="text-rose-400">₹--</strong>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block"></span>
+                        <span class="text-apple-textSecondary">Target (1:2):</span>
+                        <strong id="modalCoordTarget" class="text-emerald-400">₹--</strong>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-apple-textSecondary">Risk:</span>
+                        <span id="modalCoordRisk" class="text-white">₹--</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-apple-textSecondary">Exit:</span>
+                        <strong id="modalCoordExit" class="text-white">₹--</strong>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-apple-textSecondary">Held:</span>
+                        <span id="modalCoordDays" class="text-white">--d</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-apple-textSecondary">P&amp;L:</span>
+                        <strong id="modalCoordPnL" class="text-emerald-400">+--%</strong>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-apple-textSecondary">Net R:</span>
+                        <strong id="modalCoordR" class="text-emerald-400">+-- R</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Crosshair & Candlestick Inspector Banner -->
+            <div id="modalChartInspector" class="px-5 py-2 bg-[#050811] border-b border-white/5 flex flex-wrap items-center justify-between text-[11px] font-mono text-apple-textSecondary min-h-[32px]">
+                <div id="modalInspectorLeft" class="flex flex-wrap items-center gap-3">
+                    <span id="modalInspDate" class="text-white font-medium">Hover over any candle to inspect coordinates</span>
+                </div>
+                <div id="modalInspectorRight" class="flex flex-wrap items-center gap-3 text-right">
+                    <span id="modalInspMA50" class="text-purple-400">MA50: --</span>
+                    <span id="modalInspBBLower" class="text-sky-400">BB Lower: --</span>
+                </div>
+            </div>
+
+            <!-- Chart Canvas Container -->
+            <div class="relative flex-1 min-h-[460px] p-2 sm:p-4 bg-[#050811] flex flex-col justify-center">
+                <canvas id="canvas50MAChart" class="w-full h-full block rounded-xl cursor-crosshair"></canvas>
+            </div>
+
+            <!-- Chart Legend & Instructions Bar -->
+            <div class="px-5 py-2.5 bg-black/60 border-t border-white/5 flex flex-wrap items-center justify-between text-[11px] text-apple-textSecondary">
+                <div class="flex flex-wrap items-center gap-4 font-mono">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 ring-2 ring-cyan-400/30 inline-block"></span>
+                        <span class="text-white">Setup Day Bar</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 bg-purple-500 inline-block"></span>
+                        <span class="text-purple-300">50 MA (Past 7d)</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 bg-sky-400 border-t border-dashed border-sky-400 inline-block"></span>
+                        <span class="text-sky-300">Lower BB (Past 7d)</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 bg-amber-400 inline-block"></span>
+                        <span class="text-amber-300">Entry Line</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 bg-emerald-400 inline-block"></span>
+                        <span class="text-emerald-300">Target Line</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 bg-rose-500 inline-block"></span>
+                        <span class="text-rose-300">Stop Loss Line</span>
+                    </span>
+                </div>
+
+                <div class="text-[10px] text-apple-textTertiary font-mono">
+                    38-Bar Forward Trajectory &bull; Press ESC or click &times; to exit
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 
     </main>
 
@@ -2629,7 +3011,7 @@
 
         function switchTab(tab) {
             activeTabId = tab;
-            const tabs = ['dashboard', 'download', 'features', 'cleaning', 'training', 'inference', 'analysis', 'logs'];
+            const tabs = ['dashboard', 'download', 'features', 'cleaning', 'training', 'inference', 'analysis', 'ma50', 'logs'];
             tabs.forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
                 const view = document.getElementById(`tab-${t}-view`);
@@ -2658,6 +3040,9 @@
                 loadTradeLedgerData();
             } else if (tab === 'analysis') {
                 loadFinalizedTradesData();
+            } else if (tab === 'ma50') {
+                load50MASummary();
+                load50MATrades();
             }
         }
 
@@ -6110,6 +6495,1000 @@
         // Fetch fresh trades asynchronously
         loadFinalizedTradesData();
     
+
+        // =====================================================================
+        // 50MA STRATEGY TRADE LEDGER & CUSTOM TRADINGVIEW-STYLE CHART ENGINE
+        // =====================================================================
+        let ma50CurrentSplit = 'ALL';
+        let ma50CurrentOutcome = 'ALL';
+        let ma50CurrentSetup = 'ALL';
+        let ma50CurrentSector = '';
+        let ma50CurrentSearch = '';
+        let ma50CurrentSort = 'setup_date';
+        let ma50CurrentOrder = 'desc';
+        let ma50CurrentPage = 1;
+        let ma50PageLimit = 50;
+        let ma50TotalTrades = 0;
+        let ma50TotalPages = 1;
+        let ma50SearchTimeout = null;
+        let ma50ActiveChartData = null;
+        let ma50HoveredBarIndex = -1;
+        let ma50HoverMouseY = -1;
+
+        async function load50MASummary() {
+            try {
+                const res = await fetch('/api/strategy/50ma/summary');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status !== 'SUCCESS') return;
+
+                const overall = data.overall || {};
+                const l1y = data.last_1_year || {};
+                const setups = data.setups || {};
+
+                // Overall Stats
+                const elTotal = document.getElementById('stat50MATotalTrades');
+                if (elTotal) elTotal.innerText = Number(overall.total_trades || 0).toLocaleString();
+
+                const elOutcomes = document.getElementById('stat50MAOutcomes');
+                if (elOutcomes) {
+                    elOutcomes.innerText = `${Number(overall.success_count || 0).toLocaleString()} Won • ${Number(overall.loss_count || 0).toLocaleString()} Lost • ${Number(overall.neutral_count || 0).toLocaleString()} Neut`;
+                }
+
+                // Last 1 Year Stats
+                const elWin1Y = document.getElementById('stat50MAWinRate1Y');
+                if (elWin1Y) elWin1Y.innerText = `${l1y.win_rate !== undefined ? l1y.win_rate.toFixed(1) : '--'}%`;
+
+                const elTrades1Y = document.getElementById('stat50MATrades1Y');
+                if (elTrades1Y) {
+                    elTrades1Y.innerText = `${Number(l1y.success_count || 0).toLocaleString()} / ${Number(l1y.total_trades || 0).toLocaleString()} Setups (${l1y.start_date || ''} to ${l1y.end_date || ''})`;
+                }
+
+                // 5-Year Win Rate & Edge
+                const elWin5Y = document.getElementById('stat50MAWinRate5Y');
+                if (elWin5Y) elWin5Y.innerText = `${overall.win_rate !== undefined ? overall.win_rate.toFixed(1) : '--'}%`;
+
+                const elEdge = document.getElementById('stat50MAEdgeR');
+                if (elEdge) {
+                    const rVal = overall.total_realized_r || 0;
+                    elEdge.innerText = `${rVal >= 0 ? '+' : ''}${rVal.toFixed(1)} R Net Edge`;
+                }
+
+                // Holding Days
+                const elDays = document.getElementById('stat50MAAvgDays');
+                if (elDays) elDays.innerText = `${overall.avg_holding_days || 0} Days`;
+
+                const elHoldBreakdown = document.getElementById('stat50MAHoldingBreakdown');
+                if (elHoldBreakdown) {
+                    elHoldBreakdown.innerText = `Win: ${overall.avg_holding_days_win || 0}d • Loss: ${overall.avg_holding_days_loss || 0}d`;
+                }
+
+                // Avg Realized PnL
+                const elAvgPnL = document.getElementById('stat50MAAvgPnL');
+                if (elAvgPnL) {
+                    const pnl = overall.avg_realized_pnl || 0;
+                    elAvgPnL.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+                }
+
+                // Setup Subclasses
+                const s1 = setups.setup_1 || {};
+                const s2 = setups.setup_2 || {};
+                const s3 = setups.setup_3 || {};
+
+                const elS1Win = document.getElementById('stat50MASetup1Win');
+                if (elS1Win) elS1Win.innerText = `${s1.win_rate || 0}% Win`;
+                const elS1Trades = document.getElementById('stat50MASetup1Trades');
+                if (elS1Trades) elS1Trades.innerText = `${Number(s1.total_trades || 0).toLocaleString()} Setups • +${(s1.total_realized_r || 0).toFixed(1)} R`;
+
+                const elS2Win = document.getElementById('stat50MASetup2Win');
+                if (elS2Win) elS2Win.innerText = `${s2.win_rate || 0}% Win`;
+                const elS2Trades = document.getElementById('stat50MASetup2Trades');
+                if (elS2Trades) elS2Trades.innerText = `${Number(s2.total_trades || 0).toLocaleString()} Setups • +${(s2.total_realized_r || 0).toFixed(1)} R`;
+
+                const elS3Win = document.getElementById('stat50MASetup3Win');
+                if (elS3Win) elS3Win.innerText = `${s3.win_rate || 0}% Win`;
+                const elS3Trades = document.getElementById('stat50MASetup3Trades');
+                if (elS3Trades) elS3Trades.innerText = `${Number(s3.total_trades || 0).toLocaleString()} Setups • +${(s3.total_realized_r || 0).toFixed(1)} R`;
+
+                // Populate Sectors Dropdown if empty
+                const selectSec = document.getElementById('select50MASector');
+                if (selectSec && selectSec.options.length <= 1 && Array.isArray(data.top_sectors)) {
+                    data.top_sectors.forEach(secObj => {
+                        const opt = document.createElement('option');
+                        opt.value = secObj.sector;
+                        opt.innerText = `${secObj.sector} (${secObj.trades})`;
+                        selectSec.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load 50MA summary:", err);
+            }
+        }
+
+        async function load50MATrades() {
+            const tableBody = document.getElementById('table50MABody');
+            if (!tableBody) return;
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="13" class="py-12 text-center text-apple-textSecondary">
+                        <div class="flex flex-col items-center justify-center gap-2">
+                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-purple-400"></i>
+                            <span>Fetching 50MA trade executions...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            lucide.createIcons();
+
+            try {
+                const params = new URLSearchParams({
+                    split: ma50CurrentSplit,
+                    outcome: ma50CurrentOutcome,
+                    setup: ma50CurrentSetup,
+                    sector: ma50CurrentSector,
+                    symbol: ma50CurrentSearch,
+                    sort_by: ma50CurrentSort,
+                    order: ma50CurrentOrder,
+                    page: ma50CurrentPage,
+                    limit: ma50PageLimit
+                });
+
+                const res = await fetch(`/api/strategy/50ma/trades?${params.toString()}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                ma50TotalTrades = data.total_trades || 0;
+                ma50TotalPages = data.total_pages || 1;
+                const trades = data.trades || [];
+
+                // Update filter stats
+                const elCount = document.getElementById('lbl50MACurrentCount');
+                if (elCount) elCount.innerText = Number(ma50TotalTrades).toLocaleString();
+
+                const elWinFilt = document.getElementById('lbl50MAWinRateFiltered');
+                if (elWinFilt) {
+                    const sm = data.summary || {};
+                    elWinFilt.innerText = `Win Rate: ${sm.win_rate !== undefined ? sm.win_rate.toFixed(1) : '--'}% • Net R: ${(sm.total_realized_r || 0).toFixed(1)} R`;
+                }
+
+                const elRange = document.getElementById('lbl50MAPageRange');
+                if (elRange) {
+                    const startIdx = ma50TotalTrades > 0 ? (ma50CurrentPage - 1) * ma50PageLimit + 1 : 0;
+                    const endIdx = Math.min(ma50CurrentPage * ma50PageLimit, ma50TotalTrades);
+                    elRange.innerText = `${startIdx.toLocaleString()} - ${endIdx.toLocaleString()} of ${Number(ma50TotalTrades).toLocaleString()}`;
+                }
+
+                // Update Pagination controls
+                const elIndicator = document.getElementById('lbl50MAPageIndicator');
+                if (elIndicator) elIndicator.innerText = `Page ${ma50CurrentPage} / ${ma50TotalPages}`;
+
+                const btnPrev = document.getElementById('btn50MAPrevPage');
+                if (btnPrev) btnPrev.disabled = ma50CurrentPage <= 1;
+
+                const btnNext = document.getElementById('btn50MANextPage');
+                if (btnNext) btnNext.disabled = ma50CurrentPage >= ma50TotalPages;
+
+                if (trades.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="13" class="py-12 text-center text-apple-textSecondary">
+                                <div class="flex flex-col items-center justify-center gap-1.5">
+                                    <i data-lucide="inbox" class="w-6 h-6 text-apple-textTertiary"></i>
+                                    <span class="text-sm font-medium text-white">No Matching 50MA Setups</span>
+                                    <span class="text-xs text-apple-textSecondary">Try loosening your search or filter criteria.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                let htmlRows = '';
+                trades.forEach(t => {
+                    // Outcome Pill
+                    let outcomeBadge = '';
+                    if (t.outcome === 'SUCCESS') {
+                        outcomeBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">SUCCESS</span>';
+                    } else if (t.outcome === 'LOSS') {
+                        outcomeBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">LOSS</span>';
+                    } else if (t.outcome === 'NEUTRAL') {
+                        outcomeBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-500/15 text-slate-300 border border-slate-500/30">NEUTRAL</span>';
+                    } else {
+                        outcomeBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">PENDING</span>';
+                    }
+
+                    // Split Pill
+                    const splitPill = t.split === 'TEST_1Y'
+                        ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">1Y TEST</span>'
+                        : '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-white/5 text-slate-400 border border-white/10">TRAIN</span>';
+
+                    // Subclass Badge
+                    let subBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/15 text-purple-300">Setup ${t.setup_num || 1}</span>`;
+
+                    // Realized values formatting
+                    const pnlVal = t.realized_pnl_pct || 0;
+                    const pnlColor = pnlVal > 0 ? 'text-emerald-400 font-semibold' : (pnlVal < 0 ? 'text-rose-400 font-semibold' : 'text-slate-400');
+                    const pnlStr = (pnlVal > 0 ? '+' : '') + pnlVal.toFixed(2) + '%';
+
+                    const rVal = t.realized_r || 0;
+                    const rColor = rVal > 0 ? 'text-emerald-400 font-bold' : (rVal < 0 ? 'text-rose-400 font-bold' : 'text-slate-400');
+                    const rStr = (rVal > 0 ? '+' : '') + rVal.toFixed(2) + ' R';
+
+                    htmlRows += `
+                        <tr class="hover:bg-white/[0.02] transition-colors group">
+                            <td class="py-3 px-4 font-mono font-semibold text-white">
+                                <div class="flex items-center gap-2">
+                                    <span>${t.symbol}</span>
+                                    <span class="text-[10px] font-sans px-1.5 py-0.2 rounded bg-white/5 text-apple-textSecondary">${t.sector || 'Nifty'}</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-apple-textSecondary text-[11px] whitespace-nowrap">
+                                ${t.setup_date || '--'}
+                            </td>
+                            <td class="py-3 px-3 whitespace-nowrap">
+                                ${splitPill}
+                            </td>
+                            <td class="py-3 px-3 whitespace-nowrap">
+                                ${subBadge}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right text-amber-300 font-medium">
+                                ₹${Number(t.entry_price || 0).toFixed(2)}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right text-rose-400 font-medium">
+                                ₹${Number(t.sl_price || 0).toFixed(2)}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right text-emerald-400 font-medium">
+                                ₹${Number(t.target_price || 0).toFixed(2)}
+                            </td>
+                            <td class="py-3 px-3 text-center whitespace-nowrap">
+                                ${outcomeBadge}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right text-white">
+                                ${t.days_held !== undefined && t.days_held !== null ? t.days_held + 'd' : '--'}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right text-apple-textSecondary">
+                                ₹${Number(t.exit_price || 0).toFixed(2)}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right ${pnlColor}">
+                                ${pnlStr}
+                            </td>
+                            <td class="py-3 px-3 font-mono text-right ${rColor}">
+                                ${rStr}
+                            </td>
+                            <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <button onclick="open50MAChartModal('${t.trade_id}')" class="px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 hover:text-white border border-purple-500/30 transition-all flex items-center gap-1 font-mono text-[11px] mx-auto shadow-sm shadow-purple-500/10">
+                                    <i data-lucide="candlestick-chart" class="w-3.5 h-3.5"></i>
+                                    <span>Chart</span>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableBody.innerHTML = htmlRows;
+                lucide.createIcons();
+            } catch (err) {
+                console.error("Failed to load 50MA trades:", err);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="py-10 text-center text-rose-400 font-mono text-xs">
+                            Error loading trade ledger: ${err.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function set50MASplit(split) {
+            ma50CurrentSplit = split;
+            ['ALL', 'TRAIN', 'TEST_1Y'].forEach(s => {
+                const el = document.getElementById(`pill50MASplit-${s}`);
+                if (el) {
+                    if (s === split) {
+                        el.classList.add('bg-white/15', 'text-white');
+                        el.classList.remove('text-apple-textSecondary', 'text-purple-300');
+                    } else {
+                        el.classList.remove('bg-white/15', 'text-white');
+                        el.classList.add(s === 'TEST_1Y' ? 'text-purple-300' : 'text-apple-textSecondary');
+                    }
+                }
+            });
+            ma50CurrentPage = 1;
+            load50MATrades();
+        }
+
+        function set50MAOutcome(outcome) {
+            ma50CurrentOutcome = outcome;
+            ['ALL', 'SUCCESS', 'LOSS', 'NEUTRAL'].forEach(o => {
+                const el = document.getElementById(`pill50MAOutcome-${o}`);
+                if (el) {
+                    if (o === outcome) {
+                        el.classList.add('bg-white/15', 'text-white');
+                        el.classList.remove('text-emerald-400', 'text-rose-400', 'text-slate-400');
+                    } else {
+                        el.classList.remove('bg-white/15', 'text-white');
+                        if (o === 'SUCCESS') el.classList.add('text-emerald-400');
+                        else if (o === 'LOSS') el.classList.add('text-rose-400');
+                        else if (o === 'NEUTRAL') el.classList.add('text-slate-400');
+                        else el.classList.add('text-apple-textSecondary');
+                    }
+                }
+            });
+            ma50CurrentPage = 1;
+            load50MATrades();
+        }
+
+        function handle50MASetupChange(val) {
+            ma50CurrentSetup = val;
+            ma50CurrentPage = 1;
+            load50MATrades();
+        }
+
+        function handle50MASectorChange(val) {
+            ma50CurrentSector = val;
+            ma50CurrentPage = 1;
+            load50MATrades();
+        }
+
+        function handle50MASearch(val) {
+            if (ma50SearchTimeout) clearTimeout(ma50SearchTimeout);
+            ma50SearchTimeout = setTimeout(() => {
+                ma50CurrentSearch = val.trim().toUpperCase();
+                ma50CurrentPage = 1;
+                load50MATrades();
+            }, 300);
+        }
+
+        function handle50MASortChange(val) {
+            const parts = val.split(':');
+            ma50CurrentSort = parts[0];
+            ma50CurrentOrder = parts[1] || 'desc';
+            load50MATrades();
+        }
+
+        function handle50MAPageSizeChange(val) {
+            ma50PageLimit = parseInt(val) || 50;
+            ma50CurrentPage = 1;
+            load50MATrades();
+        }
+
+        function change50MAPage(delta) {
+            const next = ma50CurrentPage + delta;
+            if (next >= 1 && next <= ma50TotalPages) {
+                ma50CurrentPage = next;
+                load50MATrades();
+            }
+        }
+
+        function reset50MAFilters() {
+            ma50CurrentSplit = 'ALL';
+            ma50CurrentOutcome = 'ALL';
+            ma50CurrentSetup = 'ALL';
+            ma50CurrentSector = '';
+            ma50CurrentSearch = '';
+            ma50CurrentSort = 'setup_date';
+            ma50CurrentOrder = 'desc';
+            ma50CurrentPage = 1;
+
+            const inputSearch = document.getElementById('input50MASearch');
+            if (inputSearch) inputSearch.value = '';
+
+            const selectSetup = document.getElementById('select50MASetup');
+            if (selectSetup) selectSetup.value = 'ALL';
+
+            const selectSec = document.getElementById('select50MASector');
+            if (selectSec) selectSec.value = '';
+
+            const selectSort = document.getElementById('select50MASort');
+            if (selectSort) selectSort.value = 'setup_date:desc';
+
+            set50MASplit('ALL');
+            set50MAOutcome('ALL');
+        }
+
+        function refresh50MALedger() {
+            load50MASummary();
+            load50MATrades();
+        }
+
+        // =====================================================================
+        // CUSTOM TRADINGVIEW-STYLE HTML5 CANVAS CANDLESTICK ENGINE
+        // =====================================================================
+
+        async function open50MAChartModal(tradeId) {
+            const modal = document.getElementById('modal50MAChart');
+            if (!modal) return;
+
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Reset inspect banner
+            const elInspLeft = document.getElementById('modalInspDate');
+            if (elInspLeft) elInspLeft.innerText = `Loading chart data for ${tradeId}...`;
+
+            try {
+                const res = await fetch(`/api/strategy/50ma/trade/${tradeId}/chart`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.status !== 'SUCCESS') throw new Error(data.message || 'Error');
+
+                ma50ActiveChartData = data;
+                const trade = data.trade || {};
+                const coords = data.coordinates || {};
+
+                // Header details
+                document.getElementById('modalChartSymbol').innerText = trade.symbol || '--';
+                document.getElementById('modalChartSector').innerText = trade.sector || 'Nifty';
+                document.getElementById('modalChartSetupName').innerText = trade.setup_name || `Setup ${trade.setup_num || 1}`;
+
+                const splitBadge = document.getElementById('modalChartSplitBadge');
+                if (splitBadge) {
+                    splitBadge.innerText = trade.split === 'TEST_1Y' ? 'LAST 1 YEAR TEST' : 'HISTORICAL TRAIN';
+                    splitBadge.className = trade.split === 'TEST_1Y'
+                        ? 'px-2 py-0.5 rounded-md text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : 'px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/5 text-slate-300 border border-white/10';
+                }
+
+                const outcomeBadge = document.getElementById('modalChartOutcome');
+                if (outcomeBadge) {
+                    outcomeBadge.innerText = trade.outcome || 'PENDING';
+                    if (trade.outcome === 'SUCCESS') {
+                        outcomeBadge.className = 'px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                    } else if (trade.outcome === 'LOSS') {
+                        outcomeBadge.className = 'px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                    } else {
+                        outcomeBadge.className = 'px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-slate-500/20 text-slate-300 border border-slate-500/30';
+                    }
+                }
+
+                // Coordinates strip
+                document.getElementById('modalCoordEntry').innerText = `₹${Number(coords.entry_price || 0).toFixed(2)}`;
+                document.getElementById('modalCoordSL').innerText = `₹${Number(coords.sl_price || 0).toFixed(2)}`;
+                document.getElementById('modalCoordTarget').innerText = `₹${Number(coords.target_price || 0).toFixed(2)}`;
+                document.getElementById('modalCoordRisk').innerText = `₹${Number(coords.risk || 0).toFixed(2)} (${trade.loss_pct || 0}%)`;
+                document.getElementById('modalCoordExit').innerText = `₹${Number(coords.exit_price || 0).toFixed(2)}`;
+                document.getElementById('modalCoordDays').innerText = `${coords.days_held !== undefined ? coords.days_held + 'd' : '--'}`;
+
+                const pnlEl = document.getElementById('modalCoordPnL');
+                const pnl = trade.realized_pnl_pct || 0;
+                pnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+                pnlEl.className = pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+
+                const rEl = document.getElementById('modalCoordR');
+                const r = trade.realized_r || 0;
+                rEl.innerText = `${r >= 0 ? '+' : ''}${r.toFixed(2)} R`;
+                rEl.className = r >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+
+                // Initial inspector state
+                if (elInspLeft) {
+                    elInspLeft.innerText = `Setup Date: ${trade.setup_date} • 38-Bar Trajectory View • Hover over candles to inspect OHLC coordinates`;
+                }
+
+                lucide.createIcons();
+
+                // Draw chart on canvas
+                requestAnimationFrame(() => {
+                    init50MACanvasListeners();
+                    draw50MACandlestickChart();
+                });
+            } catch (err) {
+                console.error("Error opening 50MA chart modal:", err);
+                if (elInspLeft) elInspLeft.innerText = `Failed to load chart: ${err.message}`;
+            }
+        }
+
+        function close50MAChartModal() {
+            const modal = document.getElementById('modal50MAChart');
+            if (modal) modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            ma50ActiveChartData = null;
+            ma50HoveredBarIndex = -1;
+            ma50HoverMouseY = -1;
+        }
+
+        // Handle Escape Key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('modal50MAChart');
+                if (modal && !modal.classList.contains('hidden')) {
+                    close50MAChartModal();
+                }
+            }
+        });
+
+        function init50MACanvasListeners() {
+            const canvas = document.getElementById('canvas50MAChart');
+            if (!canvas || canvas._listenersAttached) return;
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!ma50ActiveChartData || !canvas._chartBounds) return;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const bounds = canvas._chartBounds;
+                if (mouseX >= bounds.left && mouseX <= bounds.right && mouseY >= bounds.top && mouseY <= bounds.bottom) {
+                    const relativeX = mouseX - bounds.left;
+                    const barIdx = Math.floor(relativeX / bounds.barStep);
+                    if (barIdx >= 0 && barIdx < bounds.totalBars) {
+                        ma50HoveredBarIndex = barIdx;
+                        ma50HoverMouseY = mouseY;
+                        draw50MACandlestickChart();
+                        updateChartInspector(barIdx, mouseY);
+                        return;
+                    }
+                }
+                if (ma50HoveredBarIndex !== -1 || ma50HoverMouseY !== -1) {
+                    ma50HoveredBarIndex = -1;
+                    ma50HoverMouseY = -1;
+                    draw50MACandlestickChart();
+                    resetChartInspector();
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                ma50HoveredBarIndex = -1;
+                ma50HoverMouseY = -1;
+                draw50MACandlestickChart();
+                resetChartInspector();
+            });
+
+            window.addEventListener('resize', () => {
+                if (ma50ActiveChartData && !document.getElementById('modal50MAChart').classList.contains('hidden')) {
+                    draw50MACandlestickChart();
+                }
+            });
+
+            canvas._listenersAttached = true;
+        }
+
+        function updateChartInspector(barIdx, mouseY) {
+            if (!ma50ActiveChartData || !ma50ActiveChartData.candles) return;
+            const c = ma50ActiveChartData.candles[barIdx];
+            if (!c) return;
+
+            const elLeft = document.getElementById('modalInspDate');
+            const elMA50 = document.getElementById('modalInspMA50');
+            const elBB = document.getElementById('modalInspBBLower');
+
+            let typeLabel = c.type === 'setup' ? '★ SETUP DAY' : (c.type === 'past' ? `Past (T${c.bar_index})` : `Forward (T+${c.bar_index})`);
+            const chgPct = c.open > 0 ? (((c.close - c.open) / c.open) * 100).toFixed(2) : '0.00';
+            const chgColor = c.close >= c.open ? 'text-emerald-400' : 'text-rose-400';
+
+            if (elLeft) {
+                elLeft.innerHTML = `
+                    <span class="text-white font-semibold">${typeLabel}</span>
+                    <span class="text-white/40">•</span>
+                    <span>Date: <strong class="text-white">${c.date}</strong></span>
+                    <span class="text-white/40">•</span>
+                    <span>O: <strong class="text-white">₹${c.open.toFixed(2)}</strong></span>
+                    <span>H: <strong class="text-white">₹${c.high.toFixed(2)}</strong></span>
+                    <span>L: <strong class="text-white">₹${c.low.toFixed(2)}</strong></span>
+                    <span>C: <strong class="${chgColor}">₹${c.close.toFixed(2)} (${chgPct >= 0 ? '+' : ''}${chgPct}%)</strong></span>
+                    <span class="text-white/40">•</span>
+                    <span>Vol: <strong class="text-white">${Number(c.volume || 0).toLocaleString()}</strong></span>
+                `;
+            }
+
+            if (elMA50) {
+                elMA50.innerText = c.ma50 !== undefined && c.ma50 !== null ? `MA50: ₹${c.ma50.toFixed(2)}` : 'MA50: --';
+            }
+            if (elBB) {
+                elBB.innerText = c.bb_lower !== undefined && c.bb_lower !== null ? `BB Lower: ₹${c.bb_lower.toFixed(2)}` : 'BB Lower: --';
+            }
+        }
+
+        function resetChartInspector() {
+            if (!ma50ActiveChartData) return;
+            const trade = ma50ActiveChartData.trade || {};
+            const elLeft = document.getElementById('modalInspDate');
+            const elMA50 = document.getElementById('modalInspMA50');
+            const elBB = document.getElementById('modalInspBBLower');
+
+            if (elLeft) {
+                elLeft.innerText = `Setup Date: ${trade.setup_date || '--'} • 38-Bar Trajectory View • Hover over candles to inspect OHLC coordinates`;
+            }
+            if (elMA50) elMA50.innerText = 'MA50: --';
+            if (elBB) elBB.innerText = 'BB Lower: --';
+        }
+
+        function draw50MACandlestickChart() {
+            const canvas = document.getElementById('canvas50MAChart');
+            if (!canvas || !ma50ActiveChartData) return;
+
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+
+            // Dimensions
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            if (width <= 0 || height <= 0) return;
+
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            // Chart area padding
+            const chartPadding = {
+                left: 15,
+                top: 25,
+                right: 85, // Right axis price labels
+                bottom: 30 // Bottom date labels
+            };
+
+            const chartWidth = width - chartPadding.left - chartPadding.right;
+            const chartHeight = height - chartPadding.top - chartPadding.bottom;
+
+            const candles = ma50ActiveChartData.candles || [];
+            const coords = ma50ActiveChartData.coordinates || {};
+            const trade = ma50ActiveChartData.trade || {};
+
+            if (candles.length === 0) return;
+
+            // 1. Compute Price Extremes (Include Highs, Lows, Entry, Target, SL)
+            let minPrice = Infinity;
+            let maxPrice = -Infinity;
+
+            candles.forEach(c => {
+                if (c.low < minPrice) minPrice = c.low;
+                if (c.high > maxPrice) maxPrice = c.high;
+                if (c.ma50 && c.ma50 < minPrice) minPrice = c.ma50;
+                if (c.ma50 && c.ma50 > maxPrice) maxPrice = c.ma50;
+                if (c.bb_lower && c.bb_lower < minPrice) minPrice = c.bb_lower;
+                if (c.bb_lower && c.bb_lower > maxPrice) maxPrice = c.bb_lower;
+            });
+
+            if (coords.entry_price) {
+                minPrice = Math.min(minPrice, coords.entry_price);
+                maxPrice = Math.max(maxPrice, coords.entry_price);
+            }
+            if (coords.sl_price) {
+                minPrice = Math.min(minPrice, coords.sl_price);
+                maxPrice = Math.max(maxPrice, coords.sl_price);
+            }
+            if (coords.target_price) {
+                minPrice = Math.min(minPrice, coords.target_price);
+                maxPrice = Math.max(maxPrice, coords.target_price);
+            }
+
+            // Margin pad 4%
+            const pricePadding = (maxPrice - minPrice) * 0.04 || 1.0;
+            minPrice -= pricePadding;
+            maxPrice += pricePadding;
+            const priceRange = maxPrice - minPrice;
+
+            function getY(val) {
+                return chartPadding.top + chartHeight - ((val - minPrice) / priceRange) * chartHeight;
+            }
+
+            function getPriceAtY(y) {
+                return maxPrice - ((y - chartPadding.top) / chartHeight) * priceRange;
+            }
+
+            const totalBars = candles.length;
+            const barStep = chartWidth / totalBars;
+            const candleBodyWidth = Math.max(3, Math.min(18, barStep * 0.70));
+
+            canvas._chartBounds = {
+                left: chartPadding.left,
+                right: chartPadding.left + chartWidth,
+                top: chartPadding.top,
+                bottom: chartPadding.top + chartHeight,
+                barStep: barStep,
+                totalBars: totalBars
+            };
+
+            // Background Fill
+            ctx.fillStyle = '#050811';
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. Horizontal Gridlines & Price Labels
+            const gridCount = 6;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            ctx.font = '10px "SF Mono", Menlo, Monaco, monospace';
+            ctx.fillStyle = '#86868B';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i <= gridCount; i++) {
+                const gridPrice = minPrice + (priceRange / gridCount) * i;
+                const gridY = getY(gridPrice);
+
+                ctx.beginPath();
+                ctx.moveTo(chartPadding.left, gridY);
+                ctx.lineTo(chartPadding.left + chartWidth, gridY);
+                ctx.stroke();
+
+                // Axis label
+                ctx.fillText(`₹${gridPrice.toFixed(2)}`, chartPadding.left + chartWidth + 6, gridY);
+            }
+
+            // 3. Highlight Bands
+            // Setup bar index
+            let setupBarIdx = -1;
+            let exitBarIdx = -1;
+            candles.forEach((c, idx) => {
+                if (c.type === 'setup') setupBarIdx = idx;
+                if (trade.days_held !== undefined && c.type === 'future' && c.bar_index === trade.days_held) {
+                    exitBarIdx = idx;
+                }
+            });
+
+            // If day 1 exit, exitBarIdx is setupBarIdx + trade.days_held
+            if (exitBarIdx === -1 && trade.days_held !== undefined && setupBarIdx !== -1) {
+                const candidate = setupBarIdx + trade.days_held;
+                if (candidate < totalBars) exitBarIdx = candidate;
+            }
+
+            // 4. Draw Indicators (50MA and Lower BB - strictly past bars up to setup candle)
+            // 50MA Line (Purple)
+            ctx.beginPath();
+            let maStarted = false;
+            for (let i = 0; i < totalBars; i++) {
+                const c = candles[i];
+                if (c.ma50 !== undefined && c.ma50 !== null && i <= setupBarIdx) {
+                    const cx = chartPadding.left + i * barStep + barStep / 2;
+                    const cy = getY(c.ma50);
+                    if (!maStarted) {
+                        ctx.moveTo(cx, cy);
+                        maStarted = true;
+                    } else {
+                        ctx.lineTo(cx, cy);
+                    }
+                }
+            }
+            if (maStarted) {
+                ctx.strokeStyle = '#a855f7';
+                ctx.lineWidth = 2.2;
+                ctx.shadowColor = 'rgba(168, 85, 247, 0.4)';
+                ctx.shadowBlur = 4;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // Lower BB Line (Sky Blue Dashed)
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            let bbStarted = false;
+            for (let i = 0; i < totalBars; i++) {
+                const c = candles[i];
+                if (c.bb_lower !== undefined && c.bb_lower !== null && i <= setupBarIdx) {
+                    const cx = chartPadding.left + i * barStep + barStep / 2;
+                    const cy = getY(c.bb_lower);
+                    if (!bbStarted) {
+                        ctx.moveTo(cx, cy);
+                        bbStarted = true;
+                    } else {
+                        ctx.lineTo(cx, cy);
+                    }
+                }
+            }
+            if (bbStarted) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // Reset line dash
+
+            // 5. Draw Candlesticks
+            candles.forEach((c, i) => {
+                const barCenter = chartPadding.left + i * barStep + barStep / 2;
+                const isBullish = c.close >= c.open;
+                const candleColor = isBullish ? '#10b981' : '#ef4444';
+
+                const openY = getY(c.open);
+                const closeY = getY(c.close);
+                const highY = getY(c.high);
+                const lowY = getY(c.low);
+
+                const bodyTop = Math.min(openY, closeY);
+                const bodyHeight = Math.max(2, Math.abs(openY - closeY));
+
+                // Hovered Bar Column Highlight
+                if (i === ma50HoveredBarIndex) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.fillRect(barCenter - barStep / 2, chartPadding.top, barStep, chartHeight);
+                }
+
+                // Setup Day Bar Highlight Background Halo
+                if (i === setupBarIdx) {
+                    ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+                    ctx.fillRect(barCenter - barStep / 2, chartPadding.top, barStep, chartHeight);
+
+                    // Setup badge above high
+                    ctx.fillStyle = '#06b6d4';
+                    ctx.font = 'bold 9px "SF Mono", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('SETUP', barCenter, highY - 14);
+
+                    // Downward indicator arrow
+                    ctx.beginPath();
+                    ctx.moveTo(barCenter, highY - 4);
+                    ctx.lineTo(barCenter - 3.5, highY - 9);
+                    ctx.lineTo(barCenter + 3.5, highY - 9);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Wick Line
+                ctx.strokeStyle = candleColor;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(barCenter, highY);
+                ctx.lineTo(barCenter, lowY);
+                ctx.stroke();
+
+                // Candle Body
+                ctx.fillStyle = candleColor;
+                ctx.fillRect(barCenter - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
+
+                // Setup day candle glowing border
+                if (i === setupBarIdx) {
+                    ctx.strokeStyle = '#22d3ee';
+                    ctx.lineWidth = 1.8;
+                    ctx.strokeRect(barCenter - candleBodyWidth / 2 - 1, bodyTop - 1, candleBodyWidth + 2, bodyHeight + 2);
+                }
+
+                // Exit day marker
+                if (i === exitBarIdx && exitBarIdx > setupBarIdx) {
+                    const exitColor = trade.outcome === 'SUCCESS' ? '#10b981' : (trade.outcome === 'LOSS' ? '#ef4444' : '#94a3b8');
+                    const exitText = trade.outcome === 'SUCCESS' ? 'TARGET' : (trade.outcome === 'LOSS' ? 'SL HIT' : 'TIMEOUT');
+
+                    ctx.fillStyle = exitColor;
+                    ctx.font = 'bold 8px "SF Mono", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(exitText, barCenter, lowY + 14);
+                }
+
+                // Bottom Date Axis (every 4-5 bars)
+                if (i % 4 === 0 || i === setupBarIdx || i === exitBarIdx) {
+                    ctx.fillStyle = (i === setupBarIdx) ? '#22d3ee' : '#64748b';
+                    ctx.font = '9px "SF Mono", monospace';
+                    ctx.textAlign = 'center';
+                    const dtStr = c.date ? c.date.slice(5) : ''; // MM-DD
+                    ctx.fillText(dtStr, barCenter, chartPadding.top + chartHeight + 15);
+                }
+            });
+
+            // 6. Draw Horizontal Price Markers (Entry, Target, Stop Loss)
+            const forwardStartX = setupBarIdx !== -1 ? (chartPadding.left + setupBarIdx * barStep + barStep / 2) : chartPadding.left;
+            const lineEndX = chartPadding.left + chartWidth;
+
+            // Coordinates
+            const yEntry = getY(coords.entry_price || 0);
+            const yTarget = getY(coords.target_price || 0);
+            const ySL = getY(coords.sl_price || 0);
+
+            // A. Entry Line (Solid Golden Amber)
+            ctx.beginPath();
+            ctx.moveTo(forwardStartX, yEntry);
+            ctx.lineTo(lineEndX, yEntry);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.4)';
+            ctx.shadowBlur = 4;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // B. Target Line (Dashed Emerald Green)
+            ctx.beginPath();
+            ctx.setLineDash([5, 4]);
+            ctx.moveTo(forwardStartX, yTarget);
+            ctx.lineTo(lineEndX, yTarget);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            // C. Stop Loss Line (Dashed Rose Red)
+            ctx.beginPath();
+            ctx.moveTo(forwardStartX, ySL);
+            ctx.lineTo(lineEndX, ySL);
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // 7. Right-Side Price Badges with Collision Avoidance
+            // We have 3 levels: Target (top), Entry (middle), SL (bottom)
+            const badgeX = lineEndX + 2;
+            const badgeWidth = 78;
+            const badgeHeight = 16;
+
+            const badges = [
+                { id: 'target', label: `TGT: ₹${coords.target_price.toFixed(1)}`, y: yTarget, bg: '#10b981', text: '#000000', priority: 2 },
+                { id: 'entry', label: `ENT: ₹${coords.entry_price.toFixed(1)}`, y: yEntry, bg: '#f59e0b', text: '#000000', priority: 1 },
+                { id: 'sl', label: `SL: ₹${coords.sl_price.toFixed(1)}`, y: ySL, bg: '#f43f5e', text: '#ffffff', priority: 2 }
+            ];
+
+            // Collision check: if |yTarget - yEntry| < 18 or |yEntry - ySL| < 18
+            const dTargetEntry = Math.abs(yTarget - yEntry);
+            const dEntrySL = Math.abs(yEntry - ySL);
+
+            let offsetTarget = 0;
+            let offsetEntry = 0;
+            let offsetSL = 0;
+            let hideEntryText = false;
+
+            if (dTargetEntry < 18) {
+                offsetTarget = -8;
+                offsetEntry = 8;
+            }
+            if (dEntrySL < 18) {
+                offsetEntry = (offsetEntry !== 0) ? 0 : -8;
+                offsetSL = 8;
+            }
+            if (dTargetEntry < 12 && dEntrySL < 12) {
+                // If extremely tight, hide entry text badge to guarantee 0% visual collision
+                // (horizontal line remains 100% visible across the chart!)
+                hideEntryText = true;
+            }
+
+            // Draw badges
+            badges.forEach(b => {
+                let finalY = b.y;
+                if (b.id === 'target') finalY += offsetTarget;
+                if (b.id === 'entry') finalY += offsetEntry;
+                if (b.id === 'sl') finalY += offsetSL;
+
+                if (b.id === 'entry' && hideEntryText) {
+                    // Draw a mini indicator pill instead of full text
+                    ctx.fillStyle = b.bg;
+                    ctx.fillRect(badgeX, b.y - 3, 6, 6);
+                    return;
+                }
+
+                ctx.fillStyle = b.bg;
+                ctx.beginPath();
+                ctx.roundRect(badgeX, finalY - badgeHeight / 2, badgeWidth, badgeHeight, 3);
+                ctx.fill();
+
+                ctx.fillStyle = b.text;
+                ctx.font = 'bold 9px "SF Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(b.label, badgeX + badgeWidth / 2, finalY);
+            });
+
+            // 8. Crosshair Cursor on Mouse Hover
+            if (ma50HoveredBarIndex >= 0 && ma50HoveredBarIndex < totalBars && ma50HoverMouseY >= 0) {
+                const hoverBarCenter = chartPadding.left + ma50HoveredBarIndex * barStep + barStep / 2;
+
+                // Vertical Crosshair
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(hoverBarCenter, chartPadding.top);
+                ctx.lineTo(hoverBarCenter, chartPadding.top + chartHeight);
+                ctx.stroke();
+
+                // Horizontal Crosshair
+                ctx.beginPath();
+                ctx.moveTo(chartPadding.left, ma50HoverMouseY);
+                ctx.lineTo(chartPadding.left + chartWidth, ma50HoverMouseY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Right-axis cursor price pill
+                const hoverPrice = getPriceAtY(ma50HoverMouseY);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.roundRect(badgeX, ma50HoverMouseY - 8, badgeWidth, 16, 3);
+                ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 9px "SF Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`₹${hoverPrice.toFixed(2)}`, badgeX + badgeWidth / 2, ma50HoverMouseY);
+            }
+        }
+
     </script>
 </body>
 </html>
