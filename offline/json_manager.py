@@ -38,6 +38,8 @@ INFERENCE_STATE_FILE = DATA_STORE_DIR / "inference_state.json"
 INFERENCE_PROGRESS_FILE = DATA_STORE_DIR / "inference_progress.json"
 INFERENCE_50MA_TRADES_FILE = DATA_STORE_DIR / "inference_50ma_trades.json"
 INFERENCE_GLOBAL_TRADES_FILE = DATA_STORE_DIR / "inference_global_trades.json"
+DAILY_ANALYSIS_FILE = DATA_STORE_DIR / "daily_analysis.json"
+DAILY_ANALYSIS_PROGRESS_FILE = DATA_STORE_DIR / "daily_analysis_progress.json"
 MODEL_PERFORMANCE_LOG_FILE = BASE_DIR / "models" / "model_performance_log.json"
 
 # Thread safety lock
@@ -1249,10 +1251,140 @@ def get_model_performance_log() -> Dict[str, Any]:
     return read_json_file(MODEL_PERFORMANCE_LOG_FILE, {})
 
 
+# ==============================================================================
+# 11. DAILY MARKET ANALYSIS & TRADE FINALIZER STATE MANAGER
+# ==============================================================================
+
+def initialize_daily_analysis_state() -> Dict[str, Any]:
+    """Ensures daily_analysis.json is initialized with structured trade recommendations."""
+    default_state = {
+        "status": "IDLE",
+        "market_session_date": "2026-10-06",
+        "market_status": "Market Closed",
+        "last_run_timestamp": datetime.now().astimezone().isoformat(),
+        "total_stocks_analyzed": 207,
+        "total_bullish_candidates": 0,
+        "finalized_trades_count": 0,
+        "strategies_breakdown": {
+            "50 MA Setup": 0,
+            "Global Regime": 0,
+            "50 MA + Global Regime": 0
+        },
+        "finalized_trades": [],
+        "message": "Ready to run daily market analysis and trade finalizer."
+    }
+    if not DAILY_ANALYSIS_FILE.exists():
+        write_json_file(DAILY_ANALYSIS_FILE, default_state)
+        return default_state
+    current = read_json_file(DAILY_ANALYSIS_FILE, default_state)
+    needs_save = False
+    if "finalized_trades" not in current:
+        current["finalized_trades"] = []
+        needs_save = True
+    if not current.get("last_run_timestamp"):
+        current["last_run_timestamp"] = datetime.now().astimezone().isoformat()
+        needs_save = True
+    if needs_save:
+        write_json_file(DAILY_ANALYSIS_FILE, current)
+    return current
+
+
+def get_daily_analysis_info() -> Dict[str, Any]:
+    """Retrieves current daily analysis metadata and finalized trades."""
+    return initialize_daily_analysis_state()
+
+
+def update_daily_analysis_info(
+    status: str = "COMPLETED",
+    market_session_date: str = "2026-10-06",
+    market_status: str = "Market Closed",
+    total_stocks_analyzed: int = 207,
+    finalized_trades: Optional[List[Dict[str, Any]]] = None,
+    strategies_breakdown: Optional[Dict[str, int]] = None,
+    message: str = "",
+    duration_seconds: float = 0.0
+) -> Dict[str, Any]:
+    """Atomically persists daily trade analysis results and notifies WebSocket listeners."""
+    now_dt = datetime.now().astimezone()
+    now_str = now_dt.isoformat()
+    trades = finalized_trades or []
+    breakdown = strategies_breakdown or {}
+
+    data = {
+        "status": status,
+        "market_session_date": market_session_date,
+        "market_status": market_status,
+        "last_run_timestamp": now_str,
+        "total_stocks_analyzed": total_stocks_analyzed,
+        "total_bullish_candidates": len(trades),
+        "finalized_trades_count": len(trades),
+        "strategies_breakdown": breakdown,
+        "finalized_trades": trades,
+        "duration_seconds": round(duration_seconds, 2),
+        "message": message,
+        "updated_at": now_str
+    }
+
+    write_json_file(DAILY_ANALYSIS_FILE, data)
+    notify_progress_listeners("DAILY_ANALYSIS_INFO", data)
+    return data
+
+
+def get_daily_analysis_progress() -> Dict[str, Any]:
+    """Retrieves transient live progress of daily market analysis."""
+    default_progress = {
+        "status": "IDLE",            # IDLE, SYNCING, COMPUTING, PREDICTING, FINALIZING, COMPLETED, ERROR
+        "heading": "Ready",
+        "phase": "Ready",
+        "current_stock": "",
+        "current_index": 0,
+        "total_stocks": 207,
+        "percentage": 0.0,
+        "message": "Ready to scan today's market for trade signals.",
+        "elapsed_seconds": 0.0,
+        "finalized_count": 0,
+        "error": None
+    }
+    return read_json_file(DAILY_ANALYSIS_PROGRESS_FILE, default_progress)
+
+
+def update_daily_analysis_progress(
+    status: str,
+    heading: str = "Analyzing Market",
+    phase: str = "Scanning",
+    current_stock: str = "",
+    current_index: int = 0,
+    total_stocks: int = 207,
+    percentage: float = 0.0,
+    message: str = "",
+    elapsed_seconds: float = 0.0,
+    finalized_count: int = 0,
+    error: Optional[str] = None
+) -> None:
+    """Updates transient live analysis progress and broadcasts to UI."""
+    data = {
+        "status": status,
+        "heading": heading,
+        "phase": phase,
+        "current_stock": current_stock,
+        "current_index": current_index,
+        "total_stocks": total_stocks,
+        "percentage": round(percentage, 1),
+        "message": message,
+        "elapsed_seconds": round(elapsed_seconds, 1),
+        "finalized_count": finalized_count,
+        "error": error,
+        "updated_at": datetime.now().astimezone().isoformat()
+    }
+    write_json_file(DAILY_ANALYSIS_PROGRESS_FILE, data)
+    notify_progress_listeners("DAILY_ANALYSIS_PROGRESS", data)
+
+
 # Auto-initialize state on import
 initialize_stocks_download_state()
 initialize_feature_gen_state()
 initialize_data_cleaning_state()
 initialize_models_state()
 initialize_inference_state()
+initialize_daily_analysis_state()
 

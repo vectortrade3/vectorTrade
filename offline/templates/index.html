@@ -152,7 +152,13 @@
                     <span>Inference</span>
                 </button>
 
-                <!-- 6. Logs -->
+                <!-- 6. Analysis (Daily Market Scanner & AI Trade Finalizer) -->
+                <button id="nav-analysis" onclick="switchTab('analysis')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
+                    <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span>Analysis</span>
+                </button>
+
+                <!-- 7. Logs -->
                 <button id="nav-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-medium text-apple-textSecondary hover:text-white flex items-center gap-1.5">
                     <span>Task Logs</span>
                 </button>
@@ -650,6 +656,126 @@
                 </div>
                 </div>
 
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- DASHBOARD SECTION: DAILY MARKET SCANNER & AI TRADE FINALIZER -->
+            <!-- ============================================================= -->
+            {% set is_analysis_done = (daily_analysis_info and daily_analysis_info.status == 'COMPLETED') %}
+            {% set setups_count = (daily_analysis_info.finalized_trades|length) if (daily_analysis_info and daily_analysis_info.finalized_trades) else 0 %}
+            <div id="dashCard-daily-analysis" class="glass-panel rounded-3xl p-7 relative overflow-hidden border border-emerald-500/25 bg-gradient-to-br from-emerald-950/20 via-slate-900/40 to-slate-950/80 shadow-2xl transition-all">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-2xl">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold uppercase tracking-wider">
+                                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                                Production Alpha Engine
+                            </span>
+                            <span id="dashBadge-analysis-market" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-mono">
+                                <span class="w-2 h-2 rounded-full {% if market_schedule and market_schedule.is_open %}bg-emerald-400 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                                <span id="dashScheduleStatusText">
+                                    {% if market_schedule %}
+                                        {{ market_schedule.status }} &bull; Target: {{ market_schedule.target_date }}
+                                    {% else %}
+                                        Target: 2026-11-02 (Closed Session)
+                                    {% endif %}
+                                </span>
+                            </span>
+                            <span id="dashBadge-analysis" class="text-[11px] font-mono px-2.5 py-0.5 rounded-full {% if is_analysis_done %}bg-emerald-500/15 text-emerald-400 border border-emerald-500/25{% else %}bg-white/5 text-apple-textSecondary border border-white/10{% endif %}">
+                                {% if is_analysis_done %}READY{% else %}IDLE{% endif %}
+                            </span>
+                        </div>
+                        <h2 class="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                            Daily Market Scanner &amp; AI Trade Finalizer
+                        </h2>
+                        <p class="text-xs md:text-sm text-apple-textSecondary leading-relaxed">
+                            End-to-end production pipeline across all 207 Nifty constituents. Auto-syncs latest closed candle data, computes 137 quantitative features, passes clean rows to calibrated XGBoost &amp; Global Regime models, and generates finalized high-conviction trades with precise Entry, Target, Stop Loss, and Risk-Reward.
+                        </p>
+                        <div class="flex flex-wrap items-center gap-3 pt-1 text-xs text-apple-textSecondary">
+                            <span class="inline-flex items-center gap-1 font-mono text-[11px] text-slate-300">
+                                <i data-lucide="clock" class="w-3 h-3 text-emerald-400"></i>
+                                <span>Last Executed:</span>
+                                <span id="dashCompleted-analysis" class="font-medium text-emerald-300 ml-1">
+                                    {% if daily_analysis_info and daily_analysis_info.last_run_timestamp %}
+                                        {{ daily_analysis_info.last_run_timestamp[:19].replace('T', ' ') }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </span>
+                            <span class="text-white/20">&bull;</span>
+                            <span class="font-mono text-slate-300">
+                                Finalized Setups: <strong id="dashCount-analysis" class="text-emerald-400">{{ setups_count }}</strong> stocks
+                            </span>
+                            <span class="text-white/20">&bull;</span>
+                            <span class="text-[11px] text-apple-textTertiary" id="dashScheduleReason">
+                                {% if market_schedule %}{{ market_schedule.reason }}{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                        <button id="btnDashRunAnalysis" onclick="triggerDailyAnalysis(false)" class="apple-btn px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs md:text-sm font-semibold flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:pointer-events-none transition-all">
+                            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                            <span>Run Daily Market Analysis</span>
+                        </button>
+                        <button onclick="switchTab('analysis')" class="px-5 py-2.5 rounded-xl text-xs font-medium text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 flex items-center gap-1.5 transition-all">
+                            <span>Open Analysis &amp; View Setups</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Progress Bar for Daily Market Scanner -->
+                <div id="dashProgressDailyAnalysis" class="hidden mt-6 pt-5 border-t border-white/10 space-y-3">
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span id="dashAnalysisPhase" class="font-medium text-white">Analyzing Market</span>
+                            <span class="text-white/20">&bull;</span>
+                            <span id="dashAnalysisStock" class="text-emerald-400 font-mono">Constituents</span>
+                        </div>
+                        <div class="flex items-center gap-3 font-mono">
+                            <span id="dashAnalysisPercent" class="text-white font-semibold">0%</span>
+                            <span id="dashAnalysisStopwatch" class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                        </div>
+                    </div>
+                    <div class="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div id="dashAnalysisBarFill" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                        <span id="dashAnalysisMessage">Initializing daily market pipeline...</span>
+                        <span id="dashAnalysisCounter" class="font-mono">0 / 207 Stocks</span>
+                    </div>
+                </div>
+
+                <!-- Strategy Setups Preview Mini-Strip -->
+                <div class="mt-6 pt-5 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                        <div class="text-[10px] text-apple-textSecondary uppercase tracking-wider">Dual Alpha (50MA + Global)</div>
+                        <div id="dashStatDualAlpha" class="text-base font-semibold text-emerald-400 font-mono mt-1">
+                            {{ daily_analysis_info.strategies_breakdown.get('50 MA + Global Regime', 0) if daily_analysis_info and daily_analysis_info.strategies_breakdown else 0 }} Setups
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                        <div class="text-[10px] text-apple-textSecondary uppercase tracking-wider">50 MA Setup Only</div>
+                        <div id="dashStat50MA" class="text-base font-semibold text-blue-400 font-mono mt-1">
+                            {{ daily_analysis_info.strategies_breakdown.get('50 MA Setup', 0) if daily_analysis_info and daily_analysis_info.strategies_breakdown else 0 }} Setups
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                        <div class="text-[10px] text-apple-textSecondary uppercase tracking-wider">Global Regime Only</div>
+                        <div id="dashStatGlobal" class="text-base font-semibold text-purple-400 font-mono mt-1">
+                            {{ daily_analysis_info.strategies_breakdown.get('Global Regime', 0) if daily_analysis_info and daily_analysis_info.strategies_breakdown else 0 }} Setups
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                        <div class="text-[10px] text-apple-textSecondary uppercase tracking-wider">Average Risk-Reward</div>
+                        <div id="dashStatAvgRR" class="text-base font-semibold text-cyan-400 font-mono mt-1">
+                            1 : 2.05
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </section>
@@ -2184,7 +2310,243 @@
         </section>
 
         <!-- ============================================================= -->
-        <!-- TAB 6: TASK LOGS LEDGER -->
+        <!-- TAB 6: ANALYSIS & TRADE FINALIZER (NEW) -->
+        <!-- ============================================================= -->
+        <section id="tab-analysis-view" class="hidden space-y-6">
+
+            <!-- Hero Section -->
+            <div class="glass-panel rounded-3xl p-8 relative overflow-hidden border border-emerald-500/20 bg-gradient-to-br from-emerald-950/20 via-slate-900/40 to-slate-950/80 shadow-2xl">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-3 max-w-2xl">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
+                                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                                Production Trade Finalizer
+                            </span>
+                            <span id="analysisPageMarketBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-mono">
+                                <span class="w-2 h-2 rounded-full {% if market_schedule and market_schedule.is_open %}bg-emerald-400 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                                <span id="analysisPageScheduleText">
+                                    {% if market_schedule %}
+                                        {{ market_schedule.status }} &bull; Target: {{ market_schedule.target_date }}
+                                    {% else %}
+                                        Target: 2026-11-02 (Closed Session)
+                                    {% endif %}
+                                </span>
+                            </span>
+                            <span id="analysisPageStatusBadge" class="text-xs font-mono px-3 py-0.5 rounded-full {% if daily_analysis_info and daily_analysis_info.status == 'COMPLETED' %}bg-emerald-500/15 text-emerald-400 border border-emerald-500/25{% else %}bg-white/5 text-apple-textSecondary border border-white/10{% endif %}">
+                                {% if daily_analysis_info and daily_analysis_info.status == 'COMPLETED' %}READY{% else %}IDLE{% endif %}
+                            </span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                            Daily Market Scanner &amp; AI Trade Finalizer
+                        </h1>
+                        <p class="text-xs md:text-sm text-apple-textSecondary leading-relaxed">
+                            Full end-to-end quantitative scan across all 207 Nifty constituents. Computes 137 alpha indicators, passes current state to calibrated XGBoost &amp; Global Regime models, filters favorable risk-reward setups, and finalizes exact Entry, Target, Stop Loss, and P&amp;L coordinates.
+                        </p>
+                        <div class="flex flex-wrap items-center gap-3 pt-1 text-xs text-apple-textSecondary">
+                            <span class="inline-flex items-center gap-1 font-mono text-slate-300">
+                                <i data-lucide="clock" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                <span>Session Updated:</span>
+                                <span id="analysisCompletedTimestamp" class="font-medium text-emerald-300 ml-1">
+                                    {% if daily_analysis_info and daily_analysis_info.last_run_timestamp %}
+                                        {{ daily_analysis_info.last_run_timestamp[:19].replace('T', ' ') }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </span>
+                            <span class="text-white/20">&bull;</span>
+                            <span class="text-apple-textSecondary font-mono" id="analysisSessionSummary">
+                                Target Date: <strong class="text-white" id="analysisTargetDateText">{% if market_schedule %}{{ market_schedule.target_date }}{% else %}2026-11-02{% endif %}</strong>
+                            </span>
+                            <span class="text-white/20">&bull;</span>
+                            <span class="text-[11px] text-apple-textTertiary" id="analysisScheduleReasonNote">
+                                {% if market_schedule %}{{ market_schedule.reason }}{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                        <div class="flex items-center gap-2">
+                            <button id="btnAnalysisRunPage" onclick="triggerDailyAnalysis(false)" class="apple-btn px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs md:text-sm font-semibold flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-500/25 disabled:opacity-50 disabled:pointer-events-none transition-all">
+                                <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                                <span>Run Market Analysis</span>
+                            </button>
+                            <button id="btnAnalysisForceDownload" onclick="triggerDailyAnalysis(true)" title="Force re-downloading candle data even if target date exists" class="px-3.5 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-apple-textSecondary hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline">Force Sync</span>
+                            </button>
+                        </div>
+                        <span class="text-[11px] text-apple-textTertiary">
+                            Refinalizes on every run &bull; 0% hardcoded
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Live Progress Box -->
+                <div id="analysisProgressBox" class="hidden mt-6 pt-5 border-t border-white/10 space-y-3">
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span id="analysisProgressPhase" class="font-medium text-white">Scanning Market</span>
+                            <span class="text-white/20">&bull;</span>
+                            <span id="analysisProgressStock" class="text-emerald-400 font-mono">Constituents</span>
+                        </div>
+                        <div class="flex items-center gap-3 font-mono">
+                            <span id="analysisProgressPercent" class="text-white font-semibold">0%</span>
+                            <span id="analysisProgressStopwatch" class="text-[11px] px-2.5 py-0.5 rounded-full bg-white/5 text-apple-textSecondary">0s</span>
+                        </div>
+                    </div>
+                    <div class="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div id="analysisProgressBarFill" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-apple-textSecondary">
+                        <span id="analysisProgressMessage">Evaluating market session schedule...</span>
+                        <span id="analysisProgressCounter" class="font-mono">0 / 207 Stocks</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Executive KPI Metric Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border border-white/5">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Constituents Evaluated</span>
+                    <div class="mt-2">
+                        <span id="kpiAnalysisTotalStocks" class="text-2xl font-bold text-white font-mono">207</span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">Active Nifty Stocks</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border border-white/5">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Finalized Buy Setups</span>
+                    <div class="mt-2">
+                        <span id="kpiAnalysisFinalizedCount" class="text-2xl font-bold text-emerald-400 font-mono">
+                            {{ daily_analysis_info.finalized_trades|length if daily_analysis_info and daily_analysis_info.finalized_trades else 0 }}
+                        </span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">Filtered with Positive Edge</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border border-white/5">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Alpha Strategy Mix</span>
+                    <div class="mt-2">
+                        <span id="kpiAnalysisStrategyMix" class="text-lg font-bold text-teal-300 font-mono">
+                            Dual Alpha &bull; 50MA &bull; Global
+                        </span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">3 Active Alpha Engines</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border border-white/5">
+                    <span class="text-xs font-medium text-apple-textSecondary uppercase tracking-wider">Average Risk-Reward</span>
+                    <div class="mt-2">
+                        <span id="kpiAnalysisAvgRR" class="text-2xl font-bold text-cyan-400 font-mono">1 : 2.05</span>
+                        <div class="text-xs text-apple-textSecondary mt-0.5">Expected Payoff Ratio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter, Search & View Controls Toolbar -->
+            <div class="glass-panel rounded-2xl p-4 space-y-3 border border-white/5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    
+                    <!-- Search Input -->
+                    <div class="relative flex-1 max-w-md">
+                        <i data-lucide="search" class="w-4 h-4 text-apple-textSecondary absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                        <input id="analysisSearchInput" oninput="applyAnalysisFilters()" type="text" placeholder="Search by Symbol (e.g. RELIANCE, SWIGGY) or Company..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-apple-textTertiary focus:outline-none focus:border-emerald-500/50 transition-all font-mono" />
+                    </div>
+
+                    <!-- Strategy Filter Pills -->
+                    <div id="analysisStrategyFilterPills" class="flex flex-wrap items-center gap-1.5">
+                        <button onclick="setAnalysisStrategyFilter('ALL')" id="filterPill-ALL" class="analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all">
+                            All Strategies (<span id="countPill-ALL">0</span>)
+                        </button>
+                        <button onclick="setAnalysisStrategyFilter('50 MA + Global Regime')" id="filterPill-50 MA + Global Regime" class="analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-apple-textSecondary hover:text-white border border-white/5 transition-all">
+                            Dual Alpha (<span id="countPill-dual">0</span>)
+                        </button>
+                        <button onclick="setAnalysisStrategyFilter('50 MA Setup')" id="filterPill-50 MA Setup" class="analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-apple-textSecondary hover:text-white border border-white/5 transition-all">
+                            50 MA Setup (<span id="countPill-50ma">0</span>)
+                        </button>
+                        <button onclick="setAnalysisStrategyFilter('Global Regime')" id="filterPill-Global Regime" class="analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-apple-textSecondary hover:text-white border border-white/5 transition-all">
+                            Global Regime (<span id="countPill-global">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- Sort Dropdown & Layout Mode -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <select id="analysisSortSelect" onchange="setAnalysisSort(this.value)" class="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none font-mono">
+                            <option value="rr_desc">Sort: Highest R:R</option>
+                            <option value="profit_desc">Sort: Highest Profit %</option>
+                            <option value="loss_asc">Sort: Lowest Loss %</option>
+                            <option value="symbol_asc">Sort: Symbol (A-Z)</option>
+                        </select>
+                        <div class="flex items-center bg-white/5 rounded-xl border border-white/10 p-0.5">
+                            <button id="btnViewModeCards" onclick="setAnalysisViewMode('cards')" class="p-1.5 rounded-lg bg-white/15 text-white" title="Card View">
+                                <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button id="btnViewModeTable" onclick="setAnalysisViewMode('table')" class="p-1.5 rounded-lg text-apple-textSecondary hover:text-white" title="Table View">
+                                <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finalized Trades List Container (Card Grid Mode) -->
+            <div id="analysisCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="col-span-full text-center py-12 text-apple-textSecondary">
+                    <i data-lucide="loader" class="w-6 h-6 animate-spin mx-auto text-emerald-400 mb-2"></i>
+                    <p class="text-xs">Loading finalized market trade setups...</p>
+                </div>
+            </div>
+
+            <!-- Finalized Trades List Container (Table Mode) -->
+            <div id="analysisTableContainer" class="hidden glass-panel rounded-2xl overflow-hidden border border-white/5">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-white/10 bg-white/[0.02] text-apple-textSecondary font-mono uppercase tracking-wider text-[11px]">
+                                <th class="py-3 px-4">Symbol / Company</th>
+                                <th class="py-3 px-4">Strategy</th>
+                                <th class="py-3 px-4">Action</th>
+                                <th class="py-3 px-4 text-right">Entry Price</th>
+                                <th class="py-3 px-4 text-right">Stop Loss</th>
+                                <th class="py-3 px-4 text-right">Target Price</th>
+                                <th class="py-3 px-4 text-right">Loss %</th>
+                                <th class="py-3 px-4 text-right">Profit %</th>
+                                <th class="py-3 px-4 text-right">Risk : Reward</th>
+                                <th class="py-3 px-4 text-center">Tech Context</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analysisTableBody" class="divide-y divide-white/5 font-mono">
+                            <!-- Injected by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div id="analysisPaginationBar" class="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3">
+                <div class="text-xs text-apple-textSecondary font-mono">
+                    Showing <span id="analysisShowingStart" class="text-white font-medium">1</span>-<span id="analysisShowingEnd" class="text-white font-medium">12</span> of <span id="analysisTotalTradesCount" class="text-emerald-400 font-medium">0</span> finalized setups
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnAnalysisPrevPage" onclick="changeAnalysisPage(-1)" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1 text-xs">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                        <span>Previous</span>
+                    </button>
+                    <span id="analysisPageIndicator" class="px-3 text-xs text-white font-mono font-medium">Page 1 / 1</span>
+                    <button id="btnAnalysisNextPage" onclick="changeAnalysisPage(1)" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:pointer-events-none border border-white/5 transition-all flex items-center gap-1 text-xs">
+                        <span>Next</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 7: TASK LOGS LEDGER -->
         <!-- ============================================================= -->
         <section id="tab-logs-view" class="hidden space-y-4">
             <div class="glass-panel rounded-3xl p-6 space-y-4">
@@ -2230,7 +2592,7 @@
 
         function switchTab(tab) {
             activeTabId = tab;
-            const tabs = ['dashboard', 'download', 'features', 'cleaning', 'training', 'inference', 'logs'];
+            const tabs = ['dashboard', 'download', 'features', 'cleaning', 'training', 'inference', 'analysis', 'logs'];
             tabs.forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
                 const view = document.getElementById(`tab-${t}-view`);
@@ -2257,6 +2619,8 @@
             } else if (tab === 'inference') {
                 fetchInferenceStatus();
                 loadTradeLedgerData();
+            } else if (tab === 'analysis') {
+                loadFinalizedTradesData();
             }
         }
 
@@ -5025,6 +5389,15 @@
                             renderInferenceInfo(msg.data);
                             loadTradeLedgerData();
                             break;
+
+                        case 'DAILY_ANALYSIS_PROGRESS':
+                            renderDailyAnalysisProgress(msg.data);
+                            break;
+
+                        case 'DAILY_ANALYSIS_INFO':
+                            renderDailyAnalysisInfo(msg.data);
+                            loadFinalizedTradesData();
+                            break;
                     }
                 } catch (e) {
                     console.error("[WebSocket] Parse error:", e);
@@ -5054,6 +5427,7 @@
         }
         connectWebSocket();
         loadTradeLedgerData();
+        loadFinalizedTradesData();
         fetch('/api/status')
             .then(r => r.json())
             .then(data => {
@@ -5067,6 +5441,463 @@
                 checkAndApplyDoneForTodayPills();
                 updateCompletionTimestamps();
             });
+    
+        // =====================================================================
+        // DAILY MARKET SCANNER & AI TRADE FINALIZER CONTROLLER
+        // =====================================================================
+        let allFinalizedTrades = [];
+        let filteredFinalizedTrades = [];
+        let currentAnalysisStrategy = 'ALL';
+        let currentAnalysisSort = 'rr_desc';
+        let currentAnalysisPage = 1;
+        const analysisPageSize = 12;
+        let analysisViewMode = 'cards';
+        let isAnalysisRunning = false;
+        let analysisPollInterval = null;
+
+        function triggerDailyAnalysis(forceDownload = false) {
+            if (isAnalysisRunning) return;
+            isAnalysisRunning = true;
+
+            const btnDash = document.getElementById('btnDashRunAnalysis');
+            const btnPage = document.getElementById('btnAnalysisRunPage');
+            const btnForce = document.getElementById('btnAnalysisForceDownload');
+
+            [btnDash, btnPage].forEach(b => {
+                if (b) {
+                    b.disabled = true;
+                    b.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Analyzing Market...</span>`;
+                }
+            });
+            if (btnForce) btnForce.disabled = true;
+
+            const dashProg = document.getElementById('dashProgressDailyAnalysis');
+            const pageProg = document.getElementById('analysisProgressBox');
+            if (dashProg) dashProg.classList.remove('hidden');
+            if (pageProg) pageProg.classList.remove('hidden');
+
+            lucide.createIcons();
+
+            fetch('/api/analysis/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force_download: forceDownload })
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log("[Analysis] Start response:", data);
+                if (data.status === 'RUNNING') {
+                    startAnalysisPolling();
+                } else if (data.status === 'ERROR') {
+                    alert("Analysis error: " + (data.message || "Failed to start."));
+                    resetAnalysisButtons();
+                }
+            })
+            .catch(err => {
+                console.error("[Analysis] Start failed:", err);
+                resetAnalysisButtons();
+            });
+        }
+
+        function startAnalysisPolling() {
+            if (analysisPollInterval) clearInterval(analysisPollInterval);
+            analysisPollInterval = setInterval(() => {
+                fetch('/api/analysis/progress')
+                    .then(r => r.json())
+                    .then(prog => {
+                        renderDailyAnalysisProgress(prog);
+                        if (prog.status === 'COMPLETED' || prog.status === 'ERROR' || prog.status === 'IDLE') {
+                            clearInterval(analysisPollInterval);
+                            analysisPollInterval = null;
+                            if (prog.status === 'COMPLETED') {
+                                loadFinalizedTradesData();
+                            }
+                            setTimeout(resetAnalysisButtons, 1200);
+                        }
+                    })
+                    .catch(() => {});
+            }, 800);
+        }
+
+        function renderDailyAnalysisProgress(prog) {
+            if (!prog) return;
+
+            const pct = Math.min(100, Math.max(0, prog.percentage || 0));
+            const pctStr = `${pct.toFixed(0)}%`;
+            const elapsed = `${(prog.elapsed_seconds || 0).toFixed(1)}s`;
+
+            // Dashboard Progress
+            const dashProg = document.getElementById('dashProgressDailyAnalysis');
+            const dashFill = document.getElementById('dashAnalysisBarFill');
+            const dashPct = document.getElementById('dashAnalysisPercent');
+            const dashWatch = document.getElementById('dashAnalysisStopwatch');
+            const dashPhase = document.getElementById('dashAnalysisPhase');
+            const dashStock = document.getElementById('dashAnalysisStock');
+            const dashMsg = document.getElementById('dashAnalysisMessage');
+            const dashCounter = document.getElementById('dashAnalysisCounter');
+
+            // Page Progress
+            const pageProg = document.getElementById('analysisProgressBox');
+            const pageFill = document.getElementById('analysisProgressBarFill');
+            const pagePct = document.getElementById('analysisProgressPercent');
+            const pageWatch = document.getElementById('analysisProgressStopwatch');
+            const pagePhase = document.getElementById('analysisProgressPhase');
+            const pageStock = document.getElementById('analysisProgressStock');
+            const pageMsg = document.getElementById('analysisProgressMessage');
+            const pageCounter = document.getElementById('analysisProgressCounter');
+
+            if (prog.status === 'RUNNING') {
+                if (dashProg) dashProg.classList.remove('hidden');
+                if (pageProg) pageProg.classList.remove('hidden');
+            }
+
+            if (dashFill) dashFill.style.width = pctStr;
+            if (pageFill) pageFill.style.width = pctStr;
+            if (dashPct) dashPct.innerText = pctStr;
+            if (pagePct) pagePct.innerText = pctStr;
+            if (dashWatch) dashWatch.innerText = elapsed;
+            if (pageWatch) pageWatch.innerText = elapsed;
+
+            if (dashPhase) dashPhase.innerText = prog.phase || "Scanning";
+            if (pagePhase) pagePhase.innerText = prog.phase || "Scanning";
+            if (dashStock) dashStock.innerText = prog.current_stock || "Constituents";
+            if (pageStock) pageStock.innerText = prog.current_stock || "Constituents";
+            if (dashMsg) dashMsg.innerText = prog.message || "Processing...";
+            if (pageMsg) pageMsg.innerText = prog.message || "Processing...";
+
+            const countStr = `${prog.current_index || 0} / ${prog.total_stocks || 207} Stocks`;
+            if (dashCounter) dashCounter.innerText = countStr;
+            if (pageCounter) pageCounter.innerText = countStr;
+
+            if (prog.status === 'COMPLETED') {
+                setTimeout(() => {
+                    if (dashProg) dashProg.classList.add('hidden');
+                    if (pageProg) pageProg.classList.add('hidden');
+                }, 2000);
+            }
+        }
+
+        function resetAnalysisButtons() {
+            isAnalysisRunning = false;
+            const btnDash = document.getElementById('btnDashRunAnalysis');
+            const btnPage = document.getElementById('btnAnalysisRunPage');
+            const btnForce = document.getElementById('btnAnalysisForceDownload');
+
+            if (btnDash) {
+                btnDash.disabled = false;
+                btnDash.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-white"></i><span>Run Daily Market Analysis</span>`;
+            }
+            if (btnPage) {
+                btnPage.disabled = false;
+                btnPage.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-white"></i><span>Run Market Analysis</span>`;
+            }
+            if (btnForce) btnForce.disabled = false;
+
+            lucide.createIcons();
+        }
+
+        function renderDailyAnalysisInfo(info) {
+            if (!info) return;
+
+            const count = info.finalized_trades ? info.finalized_trades.length : 0;
+            const countEl = document.getElementById('dashCount-analysis');
+            if (countEl) countEl.innerText = count;
+
+            const kpiCountEl = document.getElementById('kpiAnalysisFinalizedCount');
+            if (kpiCountEl) kpiCountEl.innerText = count;
+
+            const ts = info.last_run_timestamp ? info.last_run_timestamp.slice(0, 19).replace('T', ' ') : '--';
+            const dashTs = document.getElementById('dashCompleted-analysis');
+            if (dashTs) dashTs.innerText = ts;
+            const pageTs = document.getElementById('analysisCompletedTimestamp');
+            if (pageTs) pageTs.innerText = ts;
+
+            const b = info.strategies_breakdown || {};
+            const dualEl = document.getElementById('dashStatDualAlpha');
+            if (dualEl) dualEl.innerText = `${b['50 MA + Global Regime'] || 0} Setups`;
+            const maEl = document.getElementById('dashStat50MA');
+            if (maEl) maEl.innerText = `${b['50 MA Setup'] || 0} Setups`;
+            const globEl = document.getElementById('dashStatGlobal');
+            if (globEl) globEl.innerText = `${b['Global Regime'] || 0} Setups`;
+
+            const dualPill = document.getElementById('countPill-dual');
+            if (dualPill) dualPill.innerText = b['50 MA + Global Regime'] || 0;
+            const maPill = document.getElementById('countPill-50ma');
+            if (maPill) maPill.innerText = b['50 MA Setup'] || 0;
+            const globPill = document.getElementById('countPill-global');
+            if (globPill) globPill.innerText = b['Global Regime'] || 0;
+            const allPill = document.getElementById('countPill-ALL');
+            if (allPill) allPill.innerText = count;
+
+            const badgeDash = document.getElementById('dashBadge-analysis');
+            if (badgeDash) {
+                badgeDash.innerText = info.status === 'COMPLETED' ? 'READY' : 'IDLE';
+                if (info.status === 'COMPLETED') {
+                    badgeDash.className = "text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25";
+                }
+            }
+            const badgePage = document.getElementById('analysisPageStatusBadge');
+            if (badgePage) {
+                badgePage.innerText = info.status === 'COMPLETED' ? 'READY' : 'IDLE';
+                if (info.status === 'COMPLETED') {
+                    badgePage.className = "text-xs font-mono px-3 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25";
+                }
+            }
+        }
+
+        function loadFinalizedTradesData() {
+            fetch('/api/analysis/results')
+                .then(r => r.json())
+                .then(res => {
+                    if (res && res.data) {
+                        const info = res.data;
+                        renderDailyAnalysisInfo(info);
+                        allFinalizedTrades = info.finalized_trades || [];
+                        applyAnalysisFilters();
+                    }
+                })
+                .catch(err => {
+                    console.error("[Analysis] Failed to load finalized trades:", err);
+                });
+        }
+
+        function setAnalysisStrategyFilter(strat) {
+            currentAnalysisStrategy = strat;
+            currentAnalysisPage = 1;
+
+            document.querySelectorAll('.analysis-filter-btn').forEach(btn => {
+                btn.className = "analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-apple-textSecondary hover:text-white border border-white/5 transition-all";
+            });
+
+            const activeBtn = document.getElementById(`filterPill-${strat}`);
+            if (activeBtn) {
+                activeBtn.className = "analysis-filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all";
+            }
+
+            applyAnalysisFilters();
+        }
+
+        function setAnalysisSort(sortBy) {
+            currentAnalysisSort = sortBy;
+            currentAnalysisPage = 1;
+            applyAnalysisFilters();
+        }
+
+        function setAnalysisViewMode(mode) {
+            analysisViewMode = mode;
+            const cardsBox = document.getElementById('analysisCardsContainer');
+            const tableBox = document.getElementById('analysisTableContainer');
+            const btnCards = document.getElementById('btnViewModeCards');
+            const btnTable = document.getElementById('btnViewModeTable');
+
+            if (mode === 'cards') {
+                if (cardsBox) cardsBox.classList.remove('hidden');
+                if (tableBox) tableBox.classList.add('hidden');
+                if (btnCards) {
+                    btnCards.className = "p-1.5 rounded-lg bg-white/15 text-white";
+                }
+                if (btnTable) {
+                    btnTable.className = "p-1.5 rounded-lg text-apple-textSecondary hover:text-white";
+                }
+            } else {
+                if (cardsBox) cardsBox.classList.add('hidden');
+                if (tableBox) tableBox.classList.remove('hidden');
+                if (btnCards) {
+                    btnCards.className = "p-1.5 rounded-lg text-apple-textSecondary hover:text-white";
+                }
+                if (btnTable) {
+                    btnTable.className = "p-1.5 rounded-lg bg-white/15 text-white";
+                }
+            }
+            renderFinalizedTrades();
+        }
+
+        function applyAnalysisFilters() {
+            const query = (document.getElementById('analysisSearchInput')?.value || '').trim().toLowerCase();
+
+            filteredFinalizedTrades = allFinalizedTrades.filter(t => {
+                if (currentAnalysisStrategy !== 'ALL') {
+                    if (t.strategy !== currentAnalysisStrategy) return false;
+                }
+                if (query) {
+                    const sym = (t.symbol || '').toLowerCase();
+                    const name = (t.name || '').toLowerCase();
+                    const sec = (t.sector || '').toLowerCase();
+                    if (!sym.includes(query) && !name.includes(query) && !sec.includes(query)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // Sorting
+            filteredFinalizedTrades.sort((a, b) => {
+                if (currentAnalysisSort === 'rr_desc') {
+                    return (b.risk_reward_num || 0) - (a.risk_reward_num || 0);
+                } else if (currentAnalysisSort === 'profit_desc') {
+                    return (b.profit_pct || 0) - (a.profit_pct || 0);
+                } else if (currentAnalysisSort === 'loss_asc') {
+                    return (a.loss_pct || 0) - (b.loss_pct || 0);
+                } else if (currentAnalysisSort === 'symbol_asc') {
+                    return (a.symbol || '').localeCompare(b.symbol || '');
+                }
+                return 0;
+            });
+
+            renderFinalizedTrades();
+        }
+
+        function changeAnalysisPage(delta) {
+            const maxPage = Math.max(1, Math.ceil(filteredFinalizedTrades.length / analysisPageSize));
+            const newPage = currentAnalysisPage + delta;
+            if (newPage >= 1 && newPage <= maxPage) {
+                currentAnalysisPage = newPage;
+                renderFinalizedTrades();
+            }
+        }
+
+        function renderFinalizedTrades() {
+            const total = filteredFinalizedTrades.length;
+            const maxPage = Math.max(1, Math.ceil(total / analysisPageSize));
+            if (currentAnalysisPage > maxPage) currentAnalysisPage = maxPage;
+
+            const startIdx = (currentAnalysisPage - 1) * analysisPageSize;
+            const endIdx = Math.min(startIdx + analysisPageSize, total);
+            const pageTrades = filteredFinalizedTrades.slice(startIdx, endIdx);
+
+            // Update Pagination info
+            const startEl = document.getElementById('analysisShowingStart');
+            const endEl = document.getElementById('analysisShowingEnd');
+            const totalEl = document.getElementById('analysisTotalTradesCount');
+            const pageIndicator = document.getElementById('analysisPageIndicator');
+            const btnPrev = document.getElementById('btnAnalysisPrevPage');
+            const btnNext = document.getElementById('btnAnalysisNextPage');
+
+            if (startEl) startEl.innerText = total > 0 ? (startIdx + 1) : 0;
+            if (endEl) endEl.innerText = endIdx;
+            if (totalEl) totalEl.innerText = total;
+            if (pageIndicator) pageIndicator.innerText = `Page ${currentAnalysisPage} / ${maxPage}`;
+            if (btnPrev) btnPrev.disabled = (currentAnalysisPage <= 1);
+            if (btnNext) btnNext.disabled = (currentAnalysisPage >= maxPage);
+
+            // Render Card Grid View
+            const cardsContainer = document.getElementById('analysisCardsContainer');
+            if (cardsContainer) {
+                if (total === 0) {
+                    cardsContainer.innerHTML = `
+                        <div class="col-span-full text-center py-12 text-apple-textSecondary glass-panel rounded-2xl border border-white/5">
+                            <i data-lucide="inbox" class="w-8 h-8 mx-auto text-apple-textTertiary mb-2"></i>
+                            <p class="text-sm font-medium text-white">No Finalized Trades Match Filter</p>
+                            <p class="text-xs text-apple-textSecondary mt-1">Try resetting the search query or selecting "All Strategies".</p>
+                        </div>
+                    `;
+                } else {
+                    cardsContainer.innerHTML = pageTrades.map(t => {
+                        const isDual = t.strategy.includes('Dual') || t.strategy.includes('+');
+                        const is50MA = t.strategy.includes('50 MA') && !isDual;
+                        
+                        let stratPillClass = "bg-purple-500/15 text-purple-300 border-purple-500/30";
+                        if (isDual) stratPillClass = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
+                        else if (is50MA) stratPillClass = "bg-blue-500/15 text-blue-300 border-blue-500/30";
+
+                        const actionClass = t.action === 'STRONG BUY' ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' : 'text-blue-400 bg-blue-500/15 border-blue-500/30';
+
+                        return `
+                            <div class="glass-panel p-5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all flex flex-col justify-between space-y-4 shadow-lg group">
+                                <div>
+                                    <!-- Header: Symbol, Name, Strategy Badge -->
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-base font-bold text-white font-mono tracking-tight">${t.symbol}</span>
+                                                <span class="text-[10px] uppercase font-mono font-semibold px-2 py-0.5 rounded-full border ${actionClass}">${t.action}</span>
+                                            </div>
+                                            <div class="text-xs text-apple-textSecondary truncate max-w-[180px]">${t.name}</div>
+                                        </div>
+                                        <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border ${stratPillClass} shrink-0">
+                                            ${t.strategy}
+                                        </span>
+                                    </div>
+
+                                    <!-- Price Levels: Entry, Target, SL -->
+                                    <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/5">
+                                        <div class="bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
+                                            <div class="text-[10px] uppercase text-apple-textSecondary font-medium">Entry</div>
+                                            <div class="text-xs font-bold text-white font-mono mt-0.5">₹${t.entry_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                                        </div>
+                                        <div class="bg-rose-500/[0.04] p-2.5 rounded-xl border border-rose-500/15">
+                                            <div class="text-[10px] uppercase text-rose-400 font-medium">Stop Loss</div>
+                                            <div class="text-xs font-bold text-rose-300 font-mono mt-0.5">₹${t.sl_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                                            <div class="text-[10px] text-rose-400/80 font-mono">-${t.loss_pct}%</div>
+                                        </div>
+                                        <div class="bg-emerald-500/[0.04] p-2.5 rounded-xl border border-emerald-500/15">
+                                            <div class="text-[10px] uppercase text-emerald-400 font-medium">Target</div>
+                                            <div class="text-xs font-bold text-emerald-300 font-mono mt-0.5">₹${t.target_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                                            <div class="text-[10px] text-emerald-400/80 font-mono">+${t.profit_pct}%</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Risk-Reward & Indicators -->
+                                    <div class="flex items-center justify-between text-xs mt-3 px-1">
+                                        <span class="text-apple-textSecondary">Risk-to-Reward:</span>
+                                        <span class="font-mono font-bold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">${t.risk_reward}</span>
+                                    </div>
+
+                                    <!-- Technical Signals Context -->
+                                    <div class="mt-3 pt-3 border-t border-white/5 grid grid-cols-3 gap-1 text-[11px] font-mono text-apple-textSecondary">
+                                        <div>RSI: <span class="text-white">${t.rsi || '--'}</span></div>
+                                        <div>ATR: <span class="text-white">₹${t.atr || '--'}</span></div>
+                                        <div>MA50: <span class="text-white">₹${t.ma50 || '--'}</span></div>
+                                    </div>
+
+                                    <!-- Strategy Rationale -->
+                                    <p class="text-[11px] text-apple-textTertiary leading-snug mt-3 line-clamp-2" title="${t.rationale}">
+                                        ${t.rationale}
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // Render Table View
+            const tbody = document.getElementById('analysisTableBody');
+            if (tbody) {
+                if (total === 0) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-apple-textSecondary">No finalized trade setups found.</td></tr>`;
+                } else {
+                    tbody.innerHTML = pageTrades.map(t => {
+                        const actionClass = t.action === 'STRONG BUY' ? 'text-emerald-400' : 'text-blue-400';
+                        return `
+                            <tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-white">${t.symbol}</div>
+                                    <div class="text-[11px] text-apple-textTertiary truncate max-w-[140px]">${t.name}</div>
+                                </td>
+                                <td class="py-3 px-4 text-slate-300">${t.strategy}</td>
+                                <td class="py-3 px-4 ${actionClass} font-semibold">${t.action}</td>
+                                <td class="py-3 px-4 text-right text-white font-medium">₹${t.entry_price.toFixed(2)}</td>
+                                <td class="py-3 px-4 text-right text-rose-400 font-medium">₹${t.sl_price.toFixed(2)}</td>
+                                <td class="py-3 px-4 text-right text-emerald-400 font-medium">₹${t.target_price.toFixed(2)}</td>
+                                <td class="py-3 px-4 text-right text-rose-300">-${t.loss_pct}%</td>
+                                <td class="py-3 px-4 text-right text-emerald-300">+${t.profit_pct}%</td>
+                                <td class="py-3 px-4 text-right text-cyan-300 font-bold">${t.risk_reward}</td>
+                                <td class="py-3 px-4 text-center text-apple-textSecondary text-[11px]">
+                                    RSI: ${t.rsi} &bull; ATR: ₹${t.atr}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+
+            lucide.createIcons();
+        }
+
+        // Auto-load Analysis data on page initialization
+        loadFinalizedTradesData();
+    
     </script>
 </body>
 </html>

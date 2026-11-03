@@ -1,0 +1,30 @@
+{
+  "status": "COMPLETED",
+  "market_session_date": "2026-11-02",
+  "market_status": "Market Closed",
+  "last_run_timestamp": "2026-11-03T14:38:32.550090+05:30",
+  "total_stocks_analyzed": 207,
+  "total_bullish_candidates": 1,
+  "finalized_trades_count": 1,
+  "strategies_breakdown": {
+    "50 MA Setup": 1
+  },
+  "finalized_trades": [
+    {
+      "symbol": "TESTSYM",
+      "name": "Test Symbol",
+      "strategy": "50 MA Setup",
+      "action": "BUY",
+      "entry_price": 500.0,
+      "sl_price": 480.0,
+      "target_price": 540.0,
+      "loss_pct": 4.0,
+      "profit_pct": 8.0,
+      "risk_reward": "1 : 2.00",
+      "risk_reward_num": 2.0
+    }
+  ],
+  "duration_seconds": 5.2,
+  "message": "Test update",
+  "updated_at": "2026-11-03T14:38:32.550090+05:30"
+}

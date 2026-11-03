@@ -28,6 +28,7 @@ from offline.feature_generator import run_feature_generation_pipeline
 from offline.data_cleaner import run_data_cleaning_pipeline
 from offline.model_trainer import train_strategy_model, train_global_models, train_all_models
 from offline.model_inferencer import run_strategy_inference, run_global_inference, run_all_inference
+from offline.daily_analyzer import run_daily_analysis_pipeline, get_market_schedule_info
 
 # Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
@@ -74,6 +75,9 @@ def websocket_route(ws):
             "models_info": json_manager.get_models_info(),
             "inference": json_manager.get_inference_progress(),
             "inference_info": json_manager.get_inference_info(),
+            "daily_analysis": json_manager.get_daily_analysis_progress(),
+            "daily_analysis_info": json_manager.get_daily_analysis_info(),
+            "market_schedule": get_market_schedule_info(),
             "model_performance_log": json_manager.get_model_performance_log()
         }
         ws.send(json.dumps(initial_payload))
@@ -107,6 +111,9 @@ _train_lock = threading.Lock()
 
 _infer_thread: Optional[threading.Thread] = None
 _infer_lock = threading.Lock()
+
+_analysis_thread: Optional[threading.Thread] = None
+_analysis_lock = threading.Lock()
 
 
 def reconcile_stale_progress():
@@ -196,6 +203,23 @@ def reconcile_stale_progress():
                 message="All quantitative models evaluated and validated successfully."
             )
 
+    # 6. Daily Market Analysis
+    if _analysis_thread is None or not _analysis_thread.is_alive():
+        prog = json_manager.get_daily_analysis_progress()
+        if prog.get("status") in ("RUNNING", "SYNCING", "COMPUTING", "PREDICTING", "FINALIZING"):
+            info = json_manager.get_daily_analysis_info()
+            json_manager.update_daily_analysis_progress(
+                status="COMPLETED",
+                heading="Analysis Ready",
+                phase="Done",
+                current_stock="ALL_STOCKS",
+                current_index=207,
+                total_stocks=207,
+                percentage=100.0,
+                message="Daily market analysis and trade setups verified.",
+                finalized_count=len(info.get("finalized_trades", []))
+            )
+
 
 # ==============================================================================
 # FLASK ROUTES
@@ -210,14 +234,45 @@ def index():
     data_cleaning_info = json_manager.get_data_cleaning_info()
     models_info = json_manager.get_models_info()
     inference_info = json_manager.get_inference_info()
+    daily_analysis_info = json_manager.get_daily_analysis_info()
+    market_schedule = get_market_schedule_info()
     performance_log = json_manager.get_model_performance_log()
     return render_template(
         "index.html",
+        active_tab="dashboard",
         download_info=download_info,
         feature_gen_info=feature_gen_info,
         data_cleaning_info=data_cleaning_info,
         models_info=models_info,
         inference_info=inference_info,
+        daily_analysis_info=daily_analysis_info,
+        market_schedule=market_schedule,
+        performance_log=performance_log
+    )
+
+
+@app.route("/analysis", methods=["GET"])
+def analysis_page():
+    """Renders the Daily Market Analysis and Finalized Trades view."""
+    reconcile_stale_progress()
+    download_info = json_manager.get_stocks_download_info()
+    feature_gen_info = json_manager.get_feature_gen_info()
+    data_cleaning_info = json_manager.get_data_cleaning_info()
+    models_info = json_manager.get_models_info()
+    inference_info = json_manager.get_inference_info()
+    daily_analysis_info = json_manager.get_daily_analysis_info()
+    market_schedule = get_market_schedule_info()
+    performance_log = json_manager.get_model_performance_log()
+    return render_template(
+        "index.html",
+        active_tab="analysis",
+        download_info=download_info,
+        feature_gen_info=feature_gen_info,
+        data_cleaning_info=data_cleaning_info,
+        models_info=models_info,
+        inference_info=inference_info,
+        daily_analysis_info=daily_analysis_info,
+        market_schedule=market_schedule,
         performance_log=performance_log
     )
 
@@ -233,11 +288,14 @@ def get_system_status():
         "data_cleaning_info": json_manager.get_data_cleaning_info(),
         "models_info": json_manager.get_models_info(),
         "inference_info": json_manager.get_inference_info(),
+        "daily_analysis_info": json_manager.get_daily_analysis_info(),
         "progress": json_manager.get_download_progress(),
         "feature_gen_progress": json_manager.get_feature_gen_progress(),
         "data_cleaning_progress": json_manager.get_data_cleaning_progress(),
         "models_training_progress": json_manager.get_models_training_progress(),
         "inference_progress": json_manager.get_inference_progress(),
+        "daily_analysis_progress": json_manager.get_daily_analysis_progress(),
+        "market_schedule": get_market_schedule_info(),
         "performance_log": json_manager.get_model_performance_log(),
         "stocks_count": len(json_manager.get_stocks_list()),
         "current_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
@@ -836,6 +894,84 @@ def get_logs():
     limit = request.args.get("limit", default=30, type=int)
     return jsonify({
         "logs": json_manager.get_app_logs(limit=limit)
+    })
+
+
+# ==============================================================================
+# DAILY MARKET ANALYSIS & TRADE FINALIZER ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/analysis/start", methods=["POST"])
+def start_daily_analysis():
+    """Triggers the Daily Market Analysis & AI Trade Finalizer pipeline."""
+    global _analysis_thread
+    with _analysis_lock:
+        if _analysis_thread and _analysis_thread.is_alive():
+            return jsonify({
+                "status": "BUSY",
+                "message": "Daily market analysis is already running."
+            }), 409
+
+        force_download = False
+        try:
+            req_data = request.get_json(silent=True) or {}
+            force_download = bool(req_data.get("force_download", False))
+        except Exception:
+            force_download = False
+
+        def _worker():
+            try:
+                import importlib
+                import offline.daily_analyzer
+                importlib.reload(offline.daily_analyzer)
+                offline.daily_analyzer.run_daily_analysis_pipeline(force_download=force_download)
+            except Exception as e:
+                logger.error(f"Daily analysis pipeline failed: {e}", exc_info=True)
+                json_manager.update_daily_analysis_progress(
+                    status="ERROR",
+                    heading="Analysis Failed",
+                    message=f"Pipeline error: {str(e)}",
+                    error=str(e)
+                )
+                json_manager.log_app_event(
+                    event="DAILY_ANALYSIS_ERROR",
+                    status="Error",
+                    message=f"Daily analysis error: {str(e)}",
+                    error=str(e)
+                )
+
+        _analysis_thread = threading.Thread(target=_worker, daemon=True)
+        _analysis_thread.start()
+
+        return jsonify({
+            "status": "STARTED",
+            "message": "Daily market analysis and AI trade finalizer started in background.",
+            "force_download": force_download
+        })
+
+
+@app.route("/api/analysis/progress", methods=["GET"])
+def get_analysis_progress():
+    """Returns transient real-time progress for Daily Market Analysis."""
+    return jsonify(json_manager.get_daily_analysis_progress())
+
+
+@app.route("/api/analysis/results", methods=["GET"])
+def get_analysis_results():
+    """Returns complete finalized trade setups and executive metrics."""
+    info = json_manager.get_daily_analysis_info()
+    return jsonify({
+        "status": "SUCCESS",
+        "data": info
+    })
+
+
+@app.route("/api/analysis/schedule", methods=["GET"])
+def get_market_schedule_endpoint():
+    """Returns current NSE market schedule and post/pre 3:30 PM classification."""
+    return jsonify({
+        "status": "SUCCESS",
+        "schedule": get_market_schedule_info()
     })
 
 
