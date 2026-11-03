@@ -1,14 +1,14 @@
 {
   "status": "COMPLETED",
-  "heading": "Analysis Complete",
+  "heading": "Analysis Ready",
   "phase": "Done",
   "current_stock": "ALL_STOCKS",
   "current_index": 207,
   "total_stocks": 207,
   "percentage": 100.0,
-  "message": "Analyzed 207 stocks. Finalized 174 high-conviction trade setups across Market In Session (< 3:30 PM IST) | Using Previous Closed Session (2026-11-02) in 21.4s.",
-  "elapsed_seconds": 21.4,
-  "finalized_count": 174,
+  "message": "Analyzed 207 stocks. Finalized 37 setups (Armed: 8, Active: 7, Wins: 3, Losses: 3) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-03) in 28.7s.",
+  "elapsed_seconds": 28.7,
+  "finalized_count": 37,
   "error": null,
-  "updated_at": "2026-11-03T14:54:28.689596+05:30"
+  "updated_at": "2026-11-03T15:30:43.639306+05:30"
 }
