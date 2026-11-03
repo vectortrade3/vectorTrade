@@ -250,6 +250,49 @@ class Test50MALedgerApi(unittest.TestCase):
         # 100 lookups including full JSON parsing should complete in under 0.5s (average < 5ms per lookup)
         self.assertLess(elapsed, 0.5, f"100 lookups took {elapsed:.4f}s, expected < 0.5s")
 
+    def test_13_trades_filter_by_split_train(self):
+        """Test 13: Verifies filtering by split=TRAIN returns exact historical training trades."""
+        response = self.client.get("/api/strategy/50ma/trades?split=TRAIN&limit=20")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.get_json()
+        self.assertEqual(data.get("total_trades"), 7091)
+        trades = data.get("trades", [])
+        self.assertEqual(len(trades), 20)
+        for t in trades:
+            self.assertEqual(t.get("split"), "TRAIN")
+            self.assertFalse(t.get("is_test_1y"))
+
+    def test_14_trades_filter_by_split_test_1y(self):
+        """Test 14: Verifies filtering by split=TEST_1Y returns exact 1-year out-of-sample test trades."""
+        response = self.client.get("/api/strategy/50ma/trades?split=TEST_1Y&limit=20")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.get_json()
+        self.assertEqual(data.get("total_trades"), 1576)
+        trades = data.get("trades", [])
+        self.assertEqual(len(trades), 20)
+        for t in trades:
+            self.assertEqual(t.get("split"), "TEST_1Y")
+            self.assertTrue(t.get("is_test_1y"))
+
+    def test_15_summary_api_last_1_year_kpis(self):
+        """Test 15: Verifies /api/strategy/50ma/summary includes exact last_1_year KPI breakdown."""
+        response = self.client.get("/api/strategy/50ma/summary")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.get_json()
+        self.assertIn("last_1_year", data)
+        l1y = data["last_1_year"]
+        self.assertEqual(l1y.get("timeframe"), "LAST_1_YEAR")
+        self.assertEqual(l1y.get("total_trades"), 1576)
+        self.assertEqual(l1y.get("success_count"), 453)
+        self.assertEqual(l1y.get("loss_count"), 1035)
+        self.assertEqual(l1y.get("neutral_count"), 80)
+        self.assertAlmostEqual(l1y.get("win_rate", 0), 28.7, places=1)
+        self.assertEqual(l1y.get("start_date"), "2025-10-06")
+        self.assertEqual(l1y.get("end_date"), "2026-10-05")
+
 
 if __name__ == "__main__":
     unittest.main()

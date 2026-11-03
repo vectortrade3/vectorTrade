@@ -35,6 +35,8 @@ GENERATED_DIR = BASE_DIR / "5_year_data" / "generated"
 FINAL_DATA_OUTPUT = BASE_DIR / "5_year_final_data.csv"
 FINAL_DATA_GLOBAL_OUTPUT = BASE_DIR / "5_year_final_data_global.csv"
 FINAL_DATA_50MA_OUTPUT = BASE_DIR / "5_year_final_data_50ma.csv"
+FINAL_DATA_50MA_TRAIN_OUTPUT = BASE_DIR / "5_year_final_data_50ma_train.csv"
+FINAL_DATA_50MA_TEST_OUTPUT = BASE_DIR / "5_year_final_data_50ma_test_1y.csv"
 
 # Exact column mapping from 5_years_3_data_cleaning.ipynb
 COLUMN_MAPPING: Dict[str, str] = {
@@ -586,6 +588,8 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
             FINAL_DATA_OUTPUT.exists()
             and FINAL_DATA_GLOBAL_OUTPUT.exists()
             and FINAL_DATA_50MA_OUTPUT.exists()
+            and FINAL_DATA_50MA_TRAIN_OUTPUT.exists()
+            and FINAL_DATA_50MA_TEST_OUTPUT.exists()
             and (last_clean_run_date == today_str or (last_clean_date and last_clean_date >= last_downloaded_date))
         ):
             msg = f"Data already combined and cleaned up to {last_clean_date} for all {total_files} constituents today ({today_str}). Consolidation skipped."
@@ -823,6 +827,29 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         total_rows=total_rows,
         total_trades_50ma=total_50ma
     )
+
+    # -------------------------------------------------------------------------
+    # 50MA 1-YEAR OUT-OF-SAMPLE SPLIT (HISTORICAL 4Y TRAIN vs LAST 1Y TEST)
+    # -------------------------------------------------------------------------
+    cutoff_str = ""
+    train_count = 0
+    test_1y_count = 0
+    if not df_50ma.empty and "setup_date" in df_50ma.columns:
+        max_date = pd.to_datetime(df_50ma["setup_date"].max())
+        cutoff_1y = max_date - pd.DateOffset(years=1)
+        cutoff_str = cutoff_1y.strftime("%Y-%m-%d")
+
+        # Add split columns: TRAIN (current year - 5 to current year - 1) vs TEST_1Y (last 1 year)
+        df_50ma["split"] = np.where(df_50ma["setup_date"] >= cutoff_str, "TEST_1Y", "TRAIN")
+        df_50ma["is_test_1y"] = df_50ma["split"] == "TEST_1Y"
+
+        df_train_50ma = df_50ma[df_50ma["split"] == "TRAIN"]
+        df_test_50ma = df_50ma[df_50ma["split"] == "TEST_1Y"]
+        train_count = len(df_train_50ma)
+        test_1y_count = len(df_test_50ma)
+
+        df_train_50ma.to_csv(FINAL_DATA_50MA_TRAIN_OUTPUT, index=False)
+        df_test_50ma.to_csv(FINAL_DATA_50MA_TEST_OUTPUT, index=False)
 
     df_50ma.to_csv(FINAL_DATA_50MA_OUTPUT, index=False)
 

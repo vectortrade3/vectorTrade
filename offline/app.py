@@ -917,6 +917,7 @@ def get_strategy_50ma_trades_api():
       - limit: Page size limit (default: 50, max: 500)
     """
     outcome = request.args.get("outcome", default="ALL", type=str)
+    split = request.args.get("split", default="ALL", type=str)
     setup = request.args.get("setup", default="ALL", type=str)
     symbol = request.args.get("symbol", default="", type=str)
     sector = request.args.get("sector", default="", type=str)
@@ -930,6 +931,7 @@ def get_strategy_50ma_trades_api():
         setup=setup,
         symbol=symbol,
         sector=sector,
+        split=split,
         sort_by=sort_by,
         order=order,
         page=page,

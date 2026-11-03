@@ -55,26 +55,62 @@
     "filter_strategy_data": true,
     "filter_condition": "base_signal == True and outcome in ['Target', 'SL', 'Target_1_2', 'SL_Hit'] and risk > 0",
     "target_column": "max_r_achieved",
-    "train_test_split_ratio": 0.80,
+    "train_test_split_ratio": 0.8,
     "chronological_split": true,
     "leakage_columns": [
-      "base_signal", "signal_strength", "entry_price", "stop_loss", "risk", "target_1_2",
-      "target_hit", "sl_hit", "timeout", "outcome", "days_to_outcome",
-      "return_7d_after_signal", "max_gain_7d", "max_loss_7d", "mfe", "mae", "Trade_Triggered",
-      "max_r_achieved", "date", "symbol", "sector", "Stock Symbol", "Sector", "Trading_Day_Of_Week"
+      "base_signal",
+      "signal_strength",
+      "entry_price",
+      "stop_loss",
+      "risk",
+      "target_1_2",
+      "target_hit",
+      "sl_hit",
+      "timeout",
+      "outcome",
+      "days_to_outcome",
+      "return_7d_after_signal",
+      "max_gain_7d",
+      "max_loss_7d",
+      "mfe",
+      "mae",
+      "Trade_Triggered",
+      "max_r_achieved",
+      "date",
+      "symbol",
+      "sector",
+      "Stock Symbol",
+      "Sector",
+      "Trading_Day_Of_Week"
     ],
     "param_grid": {
-      "n_estimators": [100, 200],
-      "max_depth": [3, 4, 5],
-      "learning_rate": [0.01, 0.05, 0.1],
-      "subsample": [0.8, 1.0]
+      "n_estimators": [
+        100,
+        200
+      ],
+      "max_depth": [
+        3,
+        4,
+        5
+      ],
+      "learning_rate": [
+        0.01,
+        0.05,
+        0.1
+      ],
+      "subsample": [
+        0.8,
+        1.0
+      ]
     },
-    "correlation_prune_threshold": 0.90
+    "correlation_prune_threshold": 0.9,
+    "split_mode": "last_1_year_out_of_sample",
+    "cutoff_offset_years": 1
   },
   "inference": {
     "success_threshold_r": 1.0,
     "strong_buy_threshold_r": 1.15,
-    "min_eval_r": 0.70
+    "min_eval_r": 0.7
   },
   "artifacts": {
     "base_model": "models/strategy_base_model.pkl",

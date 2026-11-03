@@ -2,6 +2,7 @@
 VectorTrade - 50MA Strategy Data & Chart Ledger Service
 Provides high-performance, cached in-memory querying, filtering, and chart retrieval
 for verified 50MA strategy trades from 5_year_final_data_50ma.csv.
+Supports 1-year out-of-sample test partitioning (TRAIN vs TEST_1Y).
 """
 
 from __future__ import annotations
@@ -29,7 +30,8 @@ TRADE_LIST_COLUMNS = [
     "trade_id", "symbol", "setup_date", "sector", "setup_num", "setup_name",
     "entry_price", "sl_price", "risk", "target_price", "risk_reward", "risk_reward_num",
     "loss_pct", "profit_pct", "outcome", "days_held", "exit_price", "exit_date",
-    "realized_pnl_pct", "realized_r", "mfe_pct", "mae_pct", "dist_low_bb", "dist_low_ma50"
+    "realized_pnl_pct", "realized_r", "mfe_pct", "mae_pct", "dist_low_bb", "dist_low_ma50",
+    "split", "is_test_1y"
 ]
 
 
@@ -58,6 +60,13 @@ def load_50ma_dataset(force_reload: bool = False) -> pd.DataFrame:
     if "trade_id" in df.columns:
         df["trade_id"] = df["trade_id"].astype(str)
         _cached_index = {t_id: idx for idx, t_id in enumerate(df["trade_id"])}
+
+    # Ensure split column exists
+    if "split" not in df.columns and "setup_date" in df.columns and not df.empty:
+        max_date = pd.to_datetime(df["setup_date"].max())
+        cutoff_1y = (max_date - pd.DateOffset(years=1)).strftime("%Y-%m-%d")
+        df["split"] = np.where(df["setup_date"] >= cutoff_1y, "TEST_1Y", "TRAIN")
+        df["is_test_1y"] = df["split"] == "TEST_1Y"
 
     _cached_df = df
     _cached_mtime = mtime
@@ -129,7 +138,9 @@ def get_50ma_trade_by_id(trade_id: str) -> Optional[Dict[str, Any]]:
         "realized_pnl_pct": float(row.get("realized_pnl_pct", 0.0)),
         "realized_r": float(row.get("realized_r", 0.0)),
         "mfe_pct": float(row.get("mfe_pct", 0.0)) if pd.notnull(row.get("mfe_pct")) else 0.0,
-        "mae_pct": float(row.get("mae_pct", 0.0)) if pd.notnull(row.get("mae_pct")) else 0.0
+        "mae_pct": float(row.get("mae_pct", 0.0)) if pd.notnull(row.get("mae_pct")) else 0.0,
+        "split": str(row.get("split", "TRAIN")),
+        "is_test_1y": bool(row.get("is_test_1y", False))
     }
 
     coordinates = {
@@ -155,6 +166,7 @@ def query_50ma_trades(
     setup: Optional[Any] = None,
     symbol: Optional[str] = None,
     sector: Optional[str] = None,
+    split: Optional[str] = None,
     sort_by: str = "setup_date",
     order: str = "desc",
     page: int = 1,
@@ -162,6 +174,7 @@ def query_50ma_trades(
 ) -> Dict[str, Any]:
     """
     Filters, sorts, and paginates the 50MA trades dataset.
+    Supports partitioning by split: ALL, TRAIN (historical 4 years), TEST_1Y (last 1 year out-of-sample).
     Returns lightweight trade records for table rendering alongside summary KPIs.
     """
     df = load_50ma_dataset()
@@ -181,13 +194,19 @@ def query_50ma_trades(
     total_unfiltered = len(df)
     filtered_df = df
 
-    # 1. Filter by Outcome
+    # 1. Filter by Split (TRAIN vs TEST_1Y)
+    if split and str(split).strip().upper() not in ("ALL", ""):
+        split_clean = str(split).strip().upper()
+        if "split" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["split"].str.upper() == split_clean]
+
+    # 2. Filter by Outcome
     if outcome and str(outcome).strip().upper() not in ("ALL", ""):
         out_clean = str(outcome).strip().upper()
         if "outcome" in filtered_df.columns:
             filtered_df = filtered_df[filtered_df["outcome"].str.upper() == out_clean]
 
-    # 2. Filter by Setup Subclassification
+    # 3. Filter by Setup Subclassification
     if setup is not None and str(setup).strip().upper() not in ("ALL", ""):
         try:
             s_num = int(setup)
@@ -196,13 +215,13 @@ def query_50ma_trades(
         except (ValueError, TypeError):
             pass
 
-    # 3. Filter by Symbol substring
+    # 4. Filter by Symbol substring
     if symbol and str(symbol).strip():
         sym_clean = str(symbol).strip().upper()
         if "symbol" in filtered_df.columns:
             filtered_df = filtered_df[filtered_df["symbol"].str.upper().str.contains(sym_clean, na=False)]
 
-    # 4. Filter by Sector
+    # 5. Filter by Sector
     if sector and str(sector).strip() and str(sector).strip().upper() != "ALL":
         sec_clean = str(sector).strip().upper()
         if "sector" in filtered_df.columns:
@@ -284,6 +303,7 @@ def get_50ma_strategy_summary() -> Dict[str, Any]:
     """
     Computes executive performance breakdown across all 50MA trades:
     - Overall performance KPIs (Win%, Loss%, Neutral%, Net R, Payoff)
+    - Dedicated Last 1 Year Out-Of-Sample Breakdown (exact 1Y trades, win rate, P&L, and net R)
     - Subclassification breakdown (Setup 1, Setup 2, Setup 3)
     - Chronological annual performance breakdown (2021-2026)
     - Sector distribution and edge analysis
@@ -307,6 +327,44 @@ def get_50ma_strategy_summary() -> Dict[str, Any]:
     avg_days_success = round(float(df[df["outcome"] == "SUCCESS"]["days_held"].mean()), 1) if success > 0 else 0.0
     avg_days_loss = round(float(df[df["outcome"] == "LOSS"]["days_held"].mean()), 1) if loss > 0 else 0.0
     avg_days_neutral = round(float(df[df["outcome"] == "NEUTRAL"]["days_held"].mean()), 1) if neutral > 0 else 0.0
+
+    # -------------------------------------------------------------------------
+    # LAST 1 YEAR OUT-OF-SAMPLE TEST BREAKDOWN
+    # -------------------------------------------------------------------------
+    if "split" in df.columns:
+        test_1y_df = df[df["split"] == "TEST_1Y"]
+    else:
+        max_dt = pd.to_datetime(df["setup_date"].max())
+        cutoff_1y = (max_dt - pd.DateOffset(years=1)).strftime("%Y-%m-%d")
+        test_1y_df = df[df["setup_date"] >= cutoff_1y]
+
+    t1y_total = len(test_1y_df)
+    t1y_outcomes = test_1y_df["outcome"].value_counts().to_dict() if t1y_total > 0 else {}
+    t1y_succ = int(t1y_outcomes.get("SUCCESS", 0))
+    t1y_loss = int(t1y_outcomes.get("LOSS", 0))
+    t1y_neut = int(t1y_outcomes.get("NEUTRAL", 0))
+    t1y_pend = int(t1y_outcomes.get("PENDING", 0))
+    t1y_win_rate = round((t1y_succ / t1y_total) * 100, 1) if t1y_total > 0 else 0.0
+    t1y_r = round(float(test_1y_df["realized_r"].sum()), 2) if t1y_total > 0 else 0.0
+    t1y_pnl = round(float(test_1y_df["realized_pnl_pct"].mean()), 2) if t1y_total > 0 else 0.0
+    t1y_days = round(float(test_1y_df["days_held"].mean()), 1) if t1y_total > 0 else 0.0
+    t1y_start = str(test_1y_df["setup_date"].min())[:10] if t1y_total > 0 else ""
+    t1y_end = str(test_1y_df["setup_date"].max())[:10] if t1y_total > 0 else ""
+
+    last_1_year_summary = {
+        "timeframe": "LAST_1_YEAR",
+        "start_date": t1y_start,
+        "end_date": t1y_end,
+        "total_trades": t1y_total,
+        "win_rate": t1y_win_rate,
+        "success_count": t1y_succ,
+        "loss_count": t1y_loss,
+        "neutral_count": t1y_neut,
+        "pending_count": t1y_pend,
+        "total_realized_r": t1y_r,
+        "avg_realized_pnl": t1y_pnl,
+        "avg_holding_days": t1y_days
+    }
 
     # Setup Breakdown
     setups_summary = {}
@@ -393,6 +451,7 @@ def get_50ma_strategy_summary() -> Dict[str, Any]:
             "avg_holding_days_loss": avg_days_loss,
             "avg_holding_days_neutral": avg_days_neutral
         },
+        "last_1_year": last_1_year_summary,
         "setups": setups_summary,
         "yearly": yearly_summary,
         "top_sectors": sector_summary[:10]

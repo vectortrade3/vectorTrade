@@ -183,8 +183,21 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         )
         return {"status": "ERROR", "message": err_msg}
 
-    test_start = int(n_samples * 0.80)
-    test_df = df_signals.iloc[test_start:].copy()
+    strat_inst = StrategyManager.get_strategy("ma50_setup")
+    train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
+    split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
+
+    if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
+        max_date = pd.to_datetime(df_signals["date"].max())
+        cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
+        test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
+        logger.info(
+            f"50MA Strategy 1-Year Inference: Evaluating {len(test_df):,} out-of-sample trades "
+            f"({cutoff_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})."
+        )
+    else:
+        test_start = int(n_samples * float(train_cfg.get("train_test_split_ratio", 0.80)))
+        test_df = df_signals.iloc[test_start:].copy()
 
     base_features = _load_features_list(BASE_DIR / "base_features.txt")
     refined_features = _load_features_list(BASE_DIR / "final_features.txt")
@@ -275,6 +288,25 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         removed_features=removed_count
     )
 
+    _update_model_log(
+        model_name="Strategy_50MA_1Y_Test",
+        metrics={
+            "Timeframe": f"{t1y_start} to {t1y_end}",
+            "Total_Trades": total_test_trades,
+            "Taken_Trades": taken_count,
+            "Wins_Taken": wins_taken,
+            "Losses_Taken": losses_taken,
+            "Win_Rate_Taken": f"{win_rate_taken_val:.1f}%",
+            "Win_Rate_All": f"{win_rate_all_val:.1f}%",
+            "Overall_PnL_Pct": round(overall_pnl_taken, 2),
+            "Net_R_Taken": round(net_r_taken, 2),
+            "Accuracy": f"{acc_ref:.1f}%",
+            "MAE": round(mae_ref, 3)
+        },
+        features_count=len(refined_features),
+        removed_features=removed_count
+    )
+
     # -------------------------------------------------------------------------
     # STAGE 4: TRADE LEDGER & PERFORMANCE SIMULATION (75% -> 90%)
     # -------------------------------------------------------------------------
@@ -342,7 +374,12 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     win_rate_all_val = (all_wins / total_test_trades * 100.0) if total_test_trades > 0 else 0.0
     overall_pnl_all = sum(t['trade_pnl_pct'] for t in trades_list)
 
+    t1y_start = str(test_df['date'].min())[:10] if not test_df.empty else ""
+    t1y_end = str(test_df['date'].max())[:10] if not test_df.empty else ""
     summary_50ma = {
+        "timeframe": "LAST_1_YEAR",
+        "timeframe_start": t1y_start,
+        "timeframe_end": t1y_end,
         "total_trades": total_test_trades,
         "taken_trades": taken_count,
         "skipped_trades": total_test_trades - taken_count,

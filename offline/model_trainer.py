@@ -219,9 +219,23 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
         )
         return {"status": "ERROR", "message": err_msg}
 
-    train_end = int(n_samples * 0.80)
-    train_df = df_signals.iloc[:train_end]
-    test_df = df_signals.iloc[train_end:]
+    strat_inst = StrategyManager.get_strategy("ma50_setup")
+    train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
+    split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
+
+    if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
+        max_date = pd.to_datetime(df_signals["date"].max())
+        cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
+        train_df = df_signals[df_signals["date"] < cutoff_date].copy()
+        test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
+        logger.info(
+            f"50MA Strategy 1-Year Partition: Train={len(train_df):,} setups (before {cutoff_date.strftime('%Y-%m-%d')}), "
+            f"Test_1Y={len(test_df):,} setups (exact last 1 year from {cutoff_date.strftime('%Y-%m-%d')})."
+        )
+    else:
+        train_end = int(n_samples * float(train_cfg.get("train_test_split_ratio", 0.80)))
+        train_df = df_signals.iloc[:train_end].copy()
+        test_df = df_signals.iloc[train_end:].copy()
 
     base_features = _extract_base_features(df_signals)
     X_train = train_df[base_features]
@@ -244,7 +258,7 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
         heading="Tuning Base Model",
         current_model="strategy_base_model.pkl",
         percentage=25.0,
-        message=f"Tuning base XGBoost regressor on {len(base_features)} features across {train_end:,} setups...",
+        message=f"Tuning base XGBoost regressor on {len(base_features)} features across {len(train_df):,} setups...",
         elapsed_seconds=time.time() - start_time
     )
 
@@ -348,7 +362,12 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     # STAGE 5: COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    completion_msg = f"Strategy model tuned with MAE: {mae_ref:.2f} R ({len(refined_features)} features, {n_samples:,} setups in {duration:.1f}s)."
+    t1y_start = str(test_df['date'].min())[:10] if not test_df.empty else ""
+    t1y_end = str(test_df['date'].max())[:10] if not test_df.empty else ""
+    completion_msg = (
+        f"Strategy model tuned with MAE: {mae_ref:.2f} R ({len(refined_features)} features, "
+        f"{len(train_df):,} historical train setups, {len(test_df):,} 1Y test setups [{t1y_start} to {t1y_end}] in {duration:.1f}s)."
+    )
 
     json_manager.update_strategy_model_info(
         status="COMPLETED",
