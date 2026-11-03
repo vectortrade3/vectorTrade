@@ -1,1 +1,0 @@
-"""VectorTrade config package."""

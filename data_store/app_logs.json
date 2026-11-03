@@ -1,6 +1,902 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-03T23:25:51.055283+05:30",
+      "readable_time": "2026-11-03 23:25:51 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:50.947075+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:50.814947+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:50.700886+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:50.563639+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:50.315519+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:25:49.644347+05:30",
+      "readable_time": "2026-11-03 23:25:49 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:25.848929+05:30",
+      "readable_time": "2026-11-03 23:21:25 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:25.581179+05:30",
+      "readable_time": "2026-11-03 23:21:25 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:25.446108+05:30",
+      "readable_time": "2026-11-03 23:21:25 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:24.699239+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:24.600736+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:24.483253+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T23:21:24.370461+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:40:44.934807+05:30",
+      "readable_time": "2026-11-03 22:40:44 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:40:06.634568+05:30",
+      "readable_time": "2026-11-03 22:40:06 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:39:34.313389+05:30",
+      "readable_time": "2026-11-03 22:39:34 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:28:04.777919+05:30",
+      "readable_time": "2026-11-03 22:28:04 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.4s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:28:04.664766+05:30",
+      "readable_time": "2026-11-03 22:28:04 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.4s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:27:48.271344+05:30",
+      "readable_time": "2026-11-03 22:27:48 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:12:30.372128+05:30",
+      "readable_time": "2026-11-03 22:12:30 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 170.0s).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:10:37.304835+05:30",
+      "readable_time": "2026-11-03 22:10:37 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 20.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:10:37.133543+05:30",
+      "readable_time": "2026-11-03 22:10:37 India Standard Time",
+      "event": "GLOBAL_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 20.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:10:17.185683+05:30",
+      "readable_time": "2026-11-03 22:10:17 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:10:16.847827+05:30",
+      "readable_time": "2026-11-03 22:10:16 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 36.0s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:10:16.667658+05:30",
+      "readable_time": "2026-11-03 22:10:16 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 36.0s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:09:40.674796+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:09:40.463204+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:09:40.210654+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 149.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T22:07:11.068441+05:30",
+      "readable_time": "2026-11-03 22:07:11 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T21:17:44.070611+05:30",
+      "readable_time": "2026-11-03 21:17:44 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T21:17:07.021400+05:30",
+      "readable_time": "2026-11-03 21:17:07 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Cleaned 252,589 global rows and 8,708 verified 50MA trades (Win Rate: 35.3%, Success: 3072, Loss: 5145, Neutral: 473) across 207 stocks in 167.7s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T21:14:19.308169+05:30",
+      "readable_time": "2026-11-03 21:14:19 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting data consolidation, 50MA forward trajectory extraction, and cleaning for 207 stocks up to 2026-11-01...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T20:54:25.045908+05:30",
+      "readable_time": "2026-11-03 20:54:25 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:39:42.011823+05:30",
+      "readable_time": "2026-11-03 16:39:42 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 19.9s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:39:41.945314+05:30",
+      "readable_time": "2026-11-03 16:39:41 India Standard Time",
+      "event": "GLOBAL_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 19.9s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:39:22.128836+05:30",
+      "readable_time": "2026-11-03 16:39:22 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:39:21.762618+05:30",
+      "readable_time": "2026-11-03 16:39:21 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 29.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:39:21.551187+05:30",
+      "readable_time": "2026-11-03 16:39:21 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 29.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:38:52.432448+05:30",
+      "readable_time": "2026-11-03 16:38:52 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:47.183525+05:30",
+      "readable_time": "2026-11-03 16:34:47 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 17.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:47.037339+05:30",
+      "readable_time": "2026-11-03 16:34:47 India Standard Time",
+      "event": "GLOBAL_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 17.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:29.599975+05:30",
+      "readable_time": "2026-11-03 16:34:29 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:29.376665+05:30",
+      "readable_time": "2026-11-03 16:34:29 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:29.221988+05:30",
+      "readable_time": "2026-11-03 16:34:29 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:12.734896+05:30",
+      "readable_time": "2026-11-03 16:34:12 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:34:11.800845+05:30",
+      "readable_time": "2026-11-03 16:34:11 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 155.3s).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:31:36.556855+05:30",
+      "readable_time": "2026-11-03 16:31:36 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:31:36.367644+05:30",
+      "readable_time": "2026-11-03 16:31:36 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 158.7s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:28:57.699476+05:30",
+      "readable_time": "2026-11-03 16:28:57 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:28:46.909029+05:30",
+      "readable_time": "2026-11-03 16:28:46 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:10:17.597098+05:30",
+      "readable_time": "2026-11-03 16:10:17 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 123.4s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:08:14.158645+05:30",
+      "readable_time": "2026-11-03 16:08:14 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:08:14.009539+05:30",
+      "readable_time": "2026-11-03 16:08:14 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 121.9s).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:06:12.095664+05:30",
+      "readable_time": "2026-11-03 16:06:12 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T16:06:03.063390+05:30",
+      "readable_time": "2026-11-03 16:06:03 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T15:09:01.578105+05:30",
+      "readable_time": "2026-11-03 15:09:01 India Standard Time",
+      "event": "DAILY_MARKET_ANALYSIS",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Analyzed 207 stocks. Finalized 175 high-conviction trade setups across Market In Session (< 3:30 PM IST) | Using Previous Closed Session (2026-11-02) in 16.9s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T15:08:34.353567+05:30",
+      "readable_time": "2026-11-03 15:08:34 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T14:44:10.785902+05:30",
+      "readable_time": "2026-11-03 14:44:10 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-03T13:03:25.540494+05:30",
+      "readable_time": "2026-11-03 13:03:25 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T23:15:12.047330+05:30",
+      "readable_time": "2026-11-02 23:15:12 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:05:51.591454+05:30",
+      "readable_time": "2026-11-02 21:05:51 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 100.9s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:04:10.695362+05:30",
+      "readable_time": "2026-11-02 21:04:10 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:04:10.588105+05:30",
+      "readable_time": "2026-11-02 21:04:10 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 101.9s).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:02:28.711001+05:30",
+      "readable_time": "2026-11-02 21:02:28 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:02:24.356766+05:30",
+      "readable_time": "2026-11-02 21:02:24 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:02:01.664884+05:30",
+      "readable_time": "2026-11-02 21:02:01 India Standard Time",
+      "event": "ALL_MODELS_TRAINING",
+      "status": "Error",
+      "message": "[ERROR] Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "timestamp": "2026-11-02T21:01:45.382968+05:30",
+      "readable_time": "2026-11-02 21:01:45 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:01:44.565471+05:30",
+      "readable_time": "2026-11-02 21:01:44 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:01:43.708494+05:30",
+      "readable_time": "2026-11-02 21:01:43 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:01:43.397472+05:30",
+      "readable_time": "2026-11-02 21:01:43 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:01:42.867084+05:30",
+      "readable_time": "2026-11-02 21:01:42 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T21:01:42.819561+05:30",
+      "readable_time": "2026-11-02 21:01:42 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:48.263656+05:30",
+      "readable_time": "2026-11-02 20:33:48 India Standard Time",
+      "event": "ALL_MODELS_TRAINING",
+      "status": "Error",
+      "message": "[ERROR] Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "timestamp": "2026-11-02T20:33:32.148460+05:30",
+      "readable_time": "2026-11-02 20:33:32 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:31.327779+05:30",
+      "readable_time": "2026-11-02 20:33:31 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:30.499015+05:30",
+      "readable_time": "2026-11-02 20:33:30 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:29.717693+05:30",
+      "readable_time": "2026-11-02 20:33:29 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:29.653563+05:30",
+      "readable_time": "2026-11-02 20:33:29 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:33:24.456790+05:30",
+      "readable_time": "2026-11-02 20:33:24 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:32:53.818529+05:30",
+      "readable_time": "2026-11-02 20:32:53 India Standard Time",
+      "event": "ALL_MODELS_TRAINING",
+      "status": "Error",
+      "message": "[ERROR] Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "timestamp": "2026-11-02T20:32:36.926875+05:30",
+      "readable_time": "2026-11-02 20:32:36 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:32:36.085421+05:30",
+      "readable_time": "2026-11-02 20:32:36 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:32:35.243211+05:30",
+      "readable_time": "2026-11-02 20:32:35 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:32:34.414545+05:30",
+      "readable_time": "2026-11-02 20:32:34 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:32:34.380354+05:30",
+      "readable_time": "2026-11-02 20:32:34 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:20:39.546175+05:30",
+      "readable_time": "2026-11-02 20:20:39 India Standard Time",
+      "event": "ALL_MODELS_TRAINING",
+      "status": "Error",
+      "message": "[ERROR] Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "timestamp": "2026-11-02T20:20:23.279095+05:30",
+      "readable_time": "2026-11-02 20:20:23 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:20:12.770806+05:30",
+      "readable_time": "2026-11-02 20:20:12 India Standard Time",
+      "event": "ALL_MODELS_TRAINING",
+      "status": "Error",
+      "message": "[ERROR] Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "timestamp": "2026-11-02T20:19:50.969049+05:30",
+      "readable_time": "2026-11-02 20:19:50 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:19:50.666153+05:30",
+      "readable_time": "2026-11-02 20:19:50 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Cleaned & combined 252,589 rows across 207 stocks with 157 features in 106.7s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:18:03.993414+05:30",
+      "readable_time": "2026-11-02 20:18:03 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting data consolidation and cleaning for 207 stocks up to 2026-11-02...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:18:03.456937+05:30",
+      "readable_time": "2026-11-02 20:18:03 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Completed. Generated features for 207 stocks up to 2026-11-02 in 213.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:14:29.985749+05:30",
+      "readable_time": "2026-11-02 20:14:29 India Standard Time",
+      "event": "FEATURE_GENERATION",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting feature generation for 207 stocks up to 2026-11-02...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:14:05.422788+05:30",
+      "readable_time": "2026-11-02 20:14:05 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Successfully appended 207 new market bars across 207 stocks up to 2026-11-02.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:14:05.400745+05:30",
+      "readable_time": "2026-11-02 20:14:05 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Successfully appended 207 new market bars across 207 stocks up to 2026-11-02.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:12:18.076950+05:30",
+      "readable_time": "2026-11-02 20:12:18 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-11-02 to 2026-11-02...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:12:18.003567+05:30",
+      "readable_time": "2026-11-02 20:12:18 India Standard Time",
+      "event": "DOWNLOAD_TRIGGERED",
+      "status": "Everything fine",
+      "message": "User initiated market data synchronization.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T20:11:42.015619+05:30",
+      "readable_time": "2026-11-02 20:11:42 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T16:11:10.145845+05:30",
+      "readable_time": "2026-11-02 16:11:10 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-02T00:14:03.720973+05:30",
+      "readable_time": "2026-11-02 00:14:03 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:37.280698+05:30",
+      "readable_time": "2026-11-01 23:46:37 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global Regime evaluated: Directional Accuracy 46.7%, Win Rate 50.3%, Overall P&L +259.0% (1574/1753 Long, 179 Cash) in 10.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:37.221525+05:30",
+      "readable_time": "2026-11-01 23:46:37 India Standard Time",
+      "event": "GLOBAL_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "Global Regime evaluated: Directional Accuracy 46.7%, Win Rate 50.3%, Overall P&L +259.0% (1574/1753 Long, 179 Cash) in 10.5s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:26.717196+05:30",
+      "readable_time": "2026-11-01 23:46:26 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:26.598970+05:30",
+      "readable_time": "2026-11-01 23:46:26 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 25.2%, Overall P&L -601.0%, Net R -195.0R (801/1055 taken, 78.0% recall) in 9.6s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:26.466640+05:30",
+      "readable_time": "2026-11-01 23:46:26 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 25.2%, Overall P&L -601.0%, Net R -195.0R (801/1055 taken, 78.0% recall) in 9.6s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:46:16.892719+05:30",
+      "readable_time": "2026-11-01 23:46:16 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:45:15.253252+05:30",
+      "readable_time": "2026-11-01 23:45:15 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models tuned (Gain MAE: 15.9570, Drop MAE: 10.1205) with 74 features in 30.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:44:45.202279+05:30",
+      "readable_time": "2026-11-01 23:44:45 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:44:45.126422+05:30",
+      "readable_time": "2026-11-01 23:44:45 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model tuned with MAE: 0.89 R (95 features, 5,273 setups in 60.6s).",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:43:44.570826+05:30",
+      "readable_time": "2026-11-01 23:43:44 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-01T23:43:37.336900+05:30",
+      "readable_time": "2026-11-01 23:43:37 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://127.0.0.1:5000",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-01T22:22:39.032071+05:30",
       "readable_time": "2026-11-01 22:22:39 India Standard Time",
       "event": "APP_STARTED",
@@ -721,5 +1617,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-01T22:22:39.032071+05:30"
+  "last_event_time": "2026-11-03T23:25:51.055283+05:30"
 }

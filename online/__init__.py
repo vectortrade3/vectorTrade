@@ -1,1 +1,0 @@
-"""VectorTrade online package."""

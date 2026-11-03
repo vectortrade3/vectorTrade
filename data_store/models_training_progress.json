@@ -5,9 +5,9 @@
   "heading": "Done",
   "current_model": "",
   "percentage": 100.0,
-  "message": "All models trained successfully in 0.1s.",
-  "elapsed_seconds": 0.1,
+  "message": "All 2 active strategy models trained successfully in 320.0s.",
+  "elapsed_seconds": 320.0,
   "error": null,
   "metrics": {},
-  "updated_at": "2026-11-01T22:18:14.103425+05:30"
+  "updated_at": "2026-11-03T22:12:31.029794+05:30"
 }

@@ -1,20 +1,21 @@
 {
   "status": "COMPLETED",
-  "active_section": "GLOBAL",
+  "active_section": "STRATEGY",
   "phase": "Done",
   "heading": "Done",
-  "current_model": "5_year_global_gain_model.pkl",
+  "current_model": "5_year_xgboost_model.pkl",
   "percentage": 100.0,
-  "message": "Global Regime evaluated: Directional Accuracy 48.7%, Win Rate 48.3%, Overall P&L +36.4% (1189/1744 Long, 555 Cash) in 9.2s.",
-  "elapsed_seconds": 9.2,
+  "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.4s.",
+  "elapsed_seconds": 16.4,
   "error": null,
   "metrics": {
-    "directional_accuracy": "48.7%",
-    "win_rate_pct": "48.3%",
-    "overall_pnl_pct": "+36.4%",
-    "long_regimes": "1189/1744",
-    "mae_gain_refined": 15.485,
-    "mae_drop_refined": 9.889
+    "win_rate_taken": "25.1%",
+    "overall_pnl_pct": "-606.0%",
+    "net_r_taken": "-198.0R",
+    "taken_trades": "798/1055",
+    "accuracy_refined": "44.4%",
+    "win_rate_recall": "77.0%",
+    "mae_refined": 0.884
   },
-  "updated_at": "2026-11-01T23:33:35.165970+05:30"
+  "updated_at": "2026-11-03T22:28:04.662783+05:30"
 }

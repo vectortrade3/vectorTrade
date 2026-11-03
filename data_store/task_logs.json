@@ -1,6 +1,206 @@
 {
   "task_logs": [
     {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:51.026350+05:30",
+      "readable_time": "2026-11-03 23:25:51 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:50.917011+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:50.782969+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:50.691369+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:50.531458+05:30",
+      "readable_time": "2026-11-03 23:25:50 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:25:49.638261+05:30",
+      "readable_time": "2026-11-03 23:25:49 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:25.820995+05:30",
+      "readable_time": "2026-11-03 23:21:25 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:25.413050+05:30",
+      "readable_time": "2026-11-03 23:21:25 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:24.670676+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:24.566732+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:24.453100+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T23:21:24.337066+05:30",
+      "readable_time": "2026-11-03 23:21:24 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-03). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:40:44.908000+05:30",
+      "readable_time": "2026-11-03 22:40:44 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:40:06.602086+05:30",
+      "readable_time": "2026-11-03 22:40:06 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:39:34.290789+05:30",
+      "readable_time": "2026-11-03 22:39:34 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:28:04.696643+05:30",
+      "readable_time": "2026-11-03 22:28:04 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.4s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T22:27:48.237754+05:30",
+      "readable_time": "2026-11-03 22:27:48 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:12:30.358162+05:30",
+      "readable_time": "2026-11-03 22:12:30 India Standard Time",
+      "message": "Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 170.0s).",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:10:37.212558+05:30",
+      "readable_time": "2026-11-03 22:10:37 India Standard Time",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 20.1s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T22:10:17.084828+05:30",
+      "readable_time": "2026-11-03 22:10:17 India Standard Time",
+      "message": "Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:10:16.783593+05:30",
+      "readable_time": "2026-11-03 22:10:16 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 36.0s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T22:09:40.637335+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T22:09:40.405374+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T22:09:40.166931+05:30",
+      "readable_time": "2026-11-03 22:09:40 India Standard Time",
+      "message": "Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 149.1s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T22:07:11.030271+05:30",
+      "readable_time": "2026-11-03 22:07:11 India Standard Time",
+      "message": "Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
       "task_name": "DATA_CLEANING",
       "status": "COMPLETED",
       "timestamp": "2026-11-03T21:17:44.054228+05:30",
@@ -913,7 +1113,7 @@
       "error": null
     }
   ],
-  "last_task": "DATA_CLEANING",
+  "last_task": "STRATEGY_MODEL_TRAINING",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-03T21:17:44.054228+05:30"
+  "last_updated": "2026-11-03T23:25:51.026350+05:30"
 }
