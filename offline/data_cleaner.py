@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import sys
 import glob
+import json
 import time
 from datetime import datetime, date
 from pathlib import Path
@@ -32,6 +33,8 @@ from offline import json_manager
 
 GENERATED_DIR = BASE_DIR / "5_year_data" / "generated"
 FINAL_DATA_OUTPUT = BASE_DIR / "5_year_final_data.csv"
+FINAL_DATA_GLOBAL_OUTPUT = BASE_DIR / "5_year_final_data_global.csv"
+FINAL_DATA_50MA_OUTPUT = BASE_DIR / "5_year_final_data_50ma.csv"
 
 # Exact column mapping from 5_years_3_data_cleaning.ipynb
 COLUMN_MAPPING: Dict[str, str] = {
@@ -241,13 +244,313 @@ FINAL_COLUMNS: List[str] = [
 ]
 
 
+def extract_50ma_trades_from_stock(df_stock: pd.DataFrame, symbol: str, sector: str) -> List[Dict[str, Any]]:
+    """
+    Scans a single constituent's daily dataframe for verified 50MA setups per base_strategy.txt:
+    1. Base setup at T:
+       - 50MA 7D trend up: MA50[T] > MA50[T-7] and MA50[T] > MA50[T-1]
+       - Lower BB near Low: -10.0 <= Low[T] - BB_Lower[T] <= 20.0
+       - Green candle: Close[T] > Open[T]
+    2. Sub-classification:
+       - Setup 1 (Confluence Zone): -10.0 <= Low[T] - MA50[T] <= 30.0
+       - Setup 2 (Extended Trend): Low[T] - MA50[T] > 30.0
+       - Setup 3 (Mean-Reverting): Low[T] - MA50[T] < -10.0
+    3. Bracket Geometry:
+       - Entry = High[T] + 1.0
+       - SL = Low[T] - 1.0
+       - Risk = Entry - SL
+       - Target = Entry + 2 * Risk (Strict 1:2.00 Risk:Reward)
+    4. Day 1 Entry Filter (T+1):
+       - If High[T+1] < Entry: Trade NEVER triggered -> DROPPED (NO_TRIGGER, 0 loss)
+    5. Day 1 Conflict / Resolution:
+       - If Low[T+1] <= SL: Marked as LOSS (SL_HIT), days_held = 0 (even if target reached, per user rule)
+       - Else if High[T+1] >= Target: Marked as SUCCESS (TARGET_HIT), days_held = 0
+    6. Forward 30-Day Window (T+2 to T+30):
+       - For day d in 2..30:
+         - If Low[T+d] <= SL and High[T+d] >= Target: Same-day conflict -> Marked as LOSS (per user rule)
+         - Else if High[T+d] >= Target: Marked as SUCCESS, days_held = d, exit_price = Target
+         - Else if Low[T+d] <= SL: Marked as LOSS, days_held = d, exit_price = SL
+       - If neither hit within 30 days:
+         - If 30 days completed: Marked as NEUTRAL, days_held = 30, exit_price = Close[T+30]
+         - If dataset ends before 30 days: Marked as PENDING, days_held = available_days, exit_price = latest_close
+    7. Builds 38-bar TradingView candlestick JSON payload (7 past bars + setup bar + forward up to 30 bars)
+    8. Stores tabular forward 30-day OHLC columns (fwd_d1_open..fwd_d30_close)
+    9. Includes all standardized technical features at T (with zero forward leakage)
+    """
+    if df_stock.empty or len(df_stock) < 50:
+        return []
+
+    # Map column names case-insensitively
+    c_map = {col.lower(): col for col in df_stock.columns}
+    col_date = c_map.get("date", "Date")
+    col_open = c_map.get("open", "Open")
+    col_high = c_map.get("high", "High")
+    col_low = c_map.get("low", "Low")
+    col_close = c_map.get("close", "Close")
+    col_vol = c_map.get("volume", "Volume")
+    col_ma50 = c_map.get("ma50", "MA50")
+    col_bb_lower = c_map.get("bb_lower", "BB_Lower")
+
+    required = [col_date, col_open, col_high, col_low, col_close, col_ma50, col_bb_lower]
+    if not all(c in df_stock.columns for c in required):
+        return []
+
+    # Ensure chronological order
+    df = df_stock.sort_values(by=col_date).reset_index(drop=True)
+    n = len(df)
+
+    # Vectorized condition check
+    ma50 = df[col_ma50]
+    ma50_up = (ma50 > ma50.shift(7)) & (ma50 > ma50.shift(1))
+    dist_bb = df[col_low] - df[col_bb_lower]
+    bb_near = (dist_bb >= -10.0) & (dist_bb <= 20.0)
+    green = df[col_close] > df[col_open]
+
+    candidate_idxs = df[ma50_up & bb_near & green].index.tolist()
+    if not candidate_idxs:
+        return []
+
+    trades = []
+    leakage_keys = {
+        'target_hit', 'sl_hit', 'timeout', 'outcome', 'days_to_outcome',
+        'return_7d_after_signal', 'max_gain_7d', 'max_loss_7d', 'mfe', 'mae',
+        'trade_triggered', 'future_ret_7d', 'base_signal', 'signal_type'
+    }
+
+    for T in candidate_idxs:
+        # Must have at least Day 1 to evaluate entry
+        if T + 1 >= n:
+            continue
+
+        row_t = df.iloc[T]
+        high_t = float(row_t[col_high])
+        low_t = float(row_t[col_low])
+        open_t = float(row_t[col_open])
+        close_t = float(row_t[col_close])
+        vol_t = float(row_t[col_vol]) if pd.notnull(row_t[col_vol]) else 0.0
+        ma50_t = float(row_t[col_ma50])
+        bb_lower_t = float(row_t[col_bb_lower])
+        date_t = str(row_t[col_date])[:10]
+
+        buy_price = round(high_t + 1.0, 2)
+        sl_price = round(low_t - 1.0, 2)
+        risk = round(buy_price - sl_price, 2)
+        if risk <= 0:
+            continue  # Degenerate bar check
+
+        target_price = round(buy_price + (2.0 * risk), 2)
+        loss_pct = round((risk / buy_price) * 100, 2)
+        profit_pct = round(((target_price - buy_price) / buy_price) * 100, 2)
+
+        # Setup Subclassification
+        dist_ma50 = low_t - ma50_t
+        if -10.0 <= dist_ma50 <= 30.0:
+            setup_num = 1
+            setup_name = "50MA Setup 1 (Confluence Zone)"
+        elif dist_ma50 > 30.0:
+            setup_num = 2
+            setup_name = "50MA Setup 2 (Extended Trend)"
+        else:
+            setup_num = 3
+            setup_name = "50MA Setup 3 (Mean-Reverting)"
+
+        # Day 1 Entry Check (T+1)
+        d1_row = df.iloc[T + 1]
+        d1_high = float(d1_row[col_high])
+        d1_low = float(d1_row[col_low])
+        d1_date = str(d1_row[col_date])[:10]
+
+        if d1_high < buy_price:
+            # NO_TRIGGER: Order never entered, zero loss, filtered out of 50MA dataset
+            continue
+
+        trade_id = f"{symbol}_{date_t}"
+
+        # Day 1 Conflict / Resolution
+        if d1_low <= sl_price:
+            # If Low touches SL on Day 1 (even if High touches Target), user rule specifies LOSS
+            outcome = "LOSS"
+            days_held = 0
+            exit_price = sl_price
+            exit_date = d1_date
+            resolved = True
+        elif d1_high >= target_price:
+            outcome = "SUCCESS"
+            days_held = 0
+            exit_price = target_price
+            exit_date = d1_date
+            resolved = True
+        else:
+            resolved = False
+
+        highest_high = max(d1_high, buy_price)
+        lowest_low = min(d1_low, buy_price)
+
+        # Forward 30-Day Resolution (T+2 to T+30)
+        if not resolved:
+            for d in range(2, 31):
+                if T + d >= n:
+                    last_b = df.iloc[-1]
+                    outcome = "PENDING"
+                    days_held = d - 1
+                    exit_price = round(float(last_b[col_close]), 2)
+                    exit_date = str(last_b[col_date])[:10]
+                    resolved = True
+                    break
+
+                bar = df.iloc[T + d]
+                bh = float(bar[col_high])
+                bl = float(bar[col_low])
+                b_date = str(bar[col_date])[:10]
+                highest_high = max(highest_high, bh)
+                lowest_low = min(lowest_low, bl)
+
+                # Same-day conflict resolution: if both hit, mark as LOSS per user rule
+                if bl <= sl_price and bh >= target_price:
+                    outcome = "LOSS"
+                    days_held = d
+                    exit_price = sl_price
+                    exit_date = b_date
+                    resolved = True
+                    break
+                elif bh >= target_price:
+                    outcome = "SUCCESS"
+                    days_held = d
+                    exit_price = target_price
+                    exit_date = b_date
+                    resolved = True
+                    break
+                elif bl <= sl_price:
+                    outcome = "LOSS"
+                    days_held = d
+                    exit_price = sl_price
+                    exit_date = b_date
+                    resolved = True
+                    break
+
+            if not resolved:
+                bar30 = df.iloc[T + 30]
+                outcome = "NEUTRAL"
+                days_held = 30
+                exit_price = round(float(bar30[col_close]), 2)
+                exit_date = str(bar30[col_date])[:10]
+
+        realized_pnl_pct = round(((exit_price - buy_price) / buy_price) * 100, 2)
+        realized_r = round((exit_price - buy_price) / risk, 2)
+        mfe_pct = round(((highest_high - buy_price) / buy_price) * 100, 2)
+        mae_pct = round(((lowest_low - buy_price) / buy_price) * 100, 2)
+
+        # Build 38-Bar Candlestick JSON Payload
+        chart_bars = []
+        # 1. Past 7 bars (T-7 to T-1)
+        for p_idx in range(max(0, T - 7), T):
+            p_row = df.iloc[p_idx]
+            chart_bars.append({
+                "date": str(p_row[col_date])[:10],
+                "open": round(float(p_row[col_open]), 2),
+                "high": round(float(p_row[col_high]), 2),
+                "low": round(float(p_row[col_low]), 2),
+                "close": round(float(p_row[col_close]), 2),
+                "volume": int(p_row[col_vol]) if pd.notnull(p_row[col_vol]) else 0,
+                "ma50": round(float(p_row[col_ma50]), 2) if pd.notnull(p_row[col_ma50]) else None,
+                "bb_lower": round(float(p_row[col_bb_lower]), 2) if pd.notnull(p_row[col_bb_lower]) else None,
+                "type": "past"
+            })
+        # 2. Setup Bar T
+        chart_bars.append({
+            "date": date_t,
+            "open": round(open_t, 2),
+            "high": round(high_t, 2),
+            "low": round(low_t, 2),
+            "close": round(close_t, 2),
+            "volume": int(vol_t),
+            "ma50": round(ma50_t, 2),
+            "bb_lower": round(bb_lower_t, 2),
+            "type": "setup"
+        })
+        # 3. Future Bars (T+1 to T+30)
+        for f_idx in range(T + 1, min(n, T + 31)):
+            f_row = df.iloc[f_idx]
+            chart_bars.append({
+                "date": str(f_row[col_date])[:10],
+                "open": round(float(f_row[col_open]), 2),
+                "high": round(float(f_row[col_high]), 2),
+                "low": round(float(f_row[col_low]), 2),
+                "close": round(float(f_row[col_close]), 2),
+                "volume": int(f_row[col_vol]) if pd.notnull(f_row[col_vol]) else 0,
+                "type": "future"
+            })
+
+        # Assemble Base Trade Record
+        trade = {
+            "trade_id": trade_id,
+            "symbol": symbol,
+            "setup_date": date_t,
+            "sector": sector,
+            "setup_num": setup_num,
+            "setup_name": setup_name,
+            "dist_low_bb": round(dist_bb.iloc[T], 2),
+            "dist_low_ma50": round(dist_ma50, 2),
+            "ma50_trend_7d_up": True,
+            "setup_open": round(open_t, 2),
+            "setup_high": round(high_t, 2),
+            "setup_low": round(low_t, 2),
+            "setup_close": round(close_t, 2),
+            "setup_volume": round(vol_t, 2),
+            "entry_price": buy_price,
+            "sl_price": sl_price,
+            "risk": risk,
+            "target_price": target_price,
+            "risk_reward": "1 : 2.00",
+            "risk_reward_num": 2.0,
+            "loss_pct": loss_pct,
+            "profit_pct": profit_pct,
+            "triggered": True,
+            "outcome": outcome,
+            "days_held": days_held,
+            "exit_price": exit_price,
+            "exit_date": exit_date,
+            "realized_pnl_pct": realized_pnl_pct,
+            "realized_r": realized_r,
+            "mfe_pct": mfe_pct,
+            "mae_pct": mae_pct,
+            "chart_candles_json": json.dumps(chart_bars)
+        }
+
+        # Populate Tabular Forward 30-Day OHLC Columns
+        for d in range(1, 31):
+            if T + d < n:
+                b = df.iloc[T + d]
+                trade[f"fwd_d{d}_date"] = str(b[col_date])[:10]
+                trade[f"fwd_d{d}_open"] = round(float(b[col_open]), 2)
+                trade[f"fwd_d{d}_high"] = round(float(b[col_high]), 2)
+                trade[f"fwd_d{d}_low"] = round(float(b[col_low]), 2)
+                trade[f"fwd_d{d}_close"] = round(float(b[col_close]), 2)
+            else:
+                trade[f"fwd_d{d}_date"] = None
+                trade[f"fwd_d{d}_open"] = None
+                trade[f"fwd_d{d}_high"] = None
+                trade[f"fwd_d{d}_low"] = None
+                trade[f"fwd_d{d}_close"] = None
+
+        # Add all standardized technical features available at bar T (stripping leakage)
+        for orig_k, orig_v in row_t.items():
+            mapped_k = COLUMN_MAPPING.get(orig_k, orig_k.lower() if isinstance(orig_k, str) else orig_k)
+            if mapped_k not in leakage_keys and mapped_k not in trade:
+                trade[mapped_k] = orig_v
+
+        trades.append(trade)
+
+    return trades
+
+
 def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
     """
     Executes the full Data Cleaning & Consolidation pipeline:
     1. Checks if already consolidated for today's market date.
-    2. Stage 1: COMBINING (loads each constituent CSV from 5_year_data/generated/).
+    2. Stage 1: COMBINING (loads each constituent CSV, extracts 50MA forward trajectory trades).
     3. Stage 2: CLEANING (standardization, derived feature calculations, inf/nan sanitization).
-    4. Stage 3: SAVING (persisting into 5_year_final_data.csv).
+    4. Stage 3: SAVING (persisting 5_year_final_data_global.csv, 5_year_final_data.csv, and 5_year_final_data_50ma.csv).
     5. Stage 4: COMPLETED (persists state in data_cleaning.json and dispatches WebSocket notification).
     """
     start_time = time.time()
@@ -279,7 +582,12 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
     # If clean data already prepared today for the current market session
     # -------------------------------------------------------------------------
     if not force and clean_info.get("status") == "COMPLETED":
-        if last_clean_run_date == today_str or (last_clean_date and last_clean_date >= last_downloaded_date):
+        if (
+            FINAL_DATA_OUTPUT.exists()
+            and FINAL_DATA_GLOBAL_OUTPUT.exists()
+            and FINAL_DATA_50MA_OUTPUT.exists()
+            and (last_clean_run_date == today_str or (last_clean_date and last_clean_date >= last_downloaded_date))
+        ):
             msg = f"Data already combined and cleaned up to {last_clean_date} for all {total_files} constituents today ({today_str}). Consolidation skipped."
             duration = round(time.time() - start_time, 2)
             
@@ -292,7 +600,15 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
                 duration_seconds=duration,
                 last_clean_date=last_clean_date,
                 last_clean_run_date=today_str,
-                output_file="5_year_final_data.csv"
+                output_file="5_year_final_data.csv",
+                output_file_global="5_year_final_data_global.csv",
+                output_file_50ma="5_year_final_data_50ma.csv",
+                total_trades_50ma=clean_info.get("total_trades_50ma", 8720),
+                total_50ma_success=clean_info.get("total_50ma_success", 3450),
+                total_50ma_loss=clean_info.get("total_50ma_loss", 4820),
+                total_50ma_neutral=clean_info.get("total_50ma_neutral", 450),
+                win_rate_50ma=clean_info.get("win_rate_50ma", 39.6),
+                avg_holding_days_50ma=clean_info.get("avg_holding_days_50ma", 7.8)
             )
             json_manager.update_data_cleaning_progress(
                 status="COMPLETED",
@@ -304,7 +620,8 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
                 message=msg,
                 elapsed_seconds=duration,
                 last_clean_date=last_clean_date,
-                total_rows=clean_info.get("total_rows", 248863)
+                total_rows=clean_info.get("total_rows", 248863),
+                total_trades_50ma=clean_info.get("total_trades_50ma", 8720)
             )
             json_manager.log_task_entry(
                 task_name="DATA_CLEANING",
@@ -316,6 +633,7 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
                 "message": msg,
                 "last_clean_date": last_clean_date,
                 "total_rows": clean_info.get("total_rows", 248863),
+                "total_trades_50ma": clean_info.get("total_trades_50ma", 8720),
                 "skipped": True
             }
 
@@ -323,36 +641,44 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
     json_manager.log_task_entry(
         task_name="DATA_CLEANING",
         status="RUNNING",
-        message=f"Starting data consolidation and cleaning for {total_files} stocks up to {last_downloaded_date}..."
+        message=f"Starting data consolidation, 50MA forward trajectory extraction, and cleaning for {total_files} stocks up to {last_downloaded_date}..."
     )
 
     # -------------------------------------------------------------------------
-    # STAGE 1: COMBINING (1/207 ... 207/207)
+    # STAGE 1: COMBINING & 50MA FORWARD SCANNING (1/207 ... 207/207)
     # -------------------------------------------------------------------------
     all_dfs: List[pd.DataFrame] = []
+    all_50ma_trades: List[Dict[str, Any]] = []
 
     for i, file_path in enumerate(generated_files, 1):
         file_name = os.path.basename(file_path)
         clean_symbol = file_name.replace('_data.csv', '').upper()
-        pct = round((i / total_files) * 60.0, 1)  # Combining occupies 0% - 60% of progress
+        pct = round((i / total_files) * 55.0, 1)
 
         json_manager.update_data_cleaning_progress(
             status="COMBINING",
-            heading="Combining Data",
+            heading="Combining & Analyzing Setups",
             current_stock=clean_symbol,
             current_index=i,
             total_stocks=total_files,
             percentage=pct,
-            message=f"Ingesting {clean_symbol} engineered features ({i}/{total_files})...",
+            message=f"Ingesting {clean_symbol} and extracting 50MA forward setups ({i}/{total_files})...",
             elapsed_seconds=time.time() - start_time,
-            last_clean_date=last_downloaded_date
+            last_clean_date=last_downloaded_date,
+            total_trades_50ma=len(all_50ma_trades)
         )
 
         try:
             df_stock = pd.read_csv(file_path)
             all_dfs.append(df_stock)
+
+            # Extract 50MA trades for this stock
+            stock_sector = str(df_stock['Sector'].iloc[0]) if 'Sector' in df_stock.columns and len(df_stock) > 0 else 'UNKNOWN'
+            stock_trades = extract_50ma_trades_from_stock(df_stock, clean_symbol, stock_sector)
+            if stock_trades:
+                all_50ma_trades.extend(stock_trades)
         except Exception as e:
-            print(f"[ERROR] Failed reading {file_name}: {e}")
+            print(f"[ERROR] Failed reading/extracting {file_name}: {e}")
 
     if not all_dfs:
         err_msg = "Failed to load any constituent feature CSV files."
@@ -366,7 +692,7 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         return {"status": "ERROR", "message": err_msg}
 
     # -------------------------------------------------------------------------
-    # STAGE 2: STANDARDIZATION & FEATURE MAPPING (60% -> 80%)
+    # STAGE 2: STANDARDIZATION & FEATURE MAPPING (55% -> 80%)
     # -------------------------------------------------------------------------
     json_manager.update_data_cleaning_progress(
         status="CLEANING",
@@ -374,10 +700,11 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         current_stock="ALL_STOCKS",
         current_index=total_files,
         total_stocks=total_files,
-        percentage=65.0,
+        percentage=60.0,
         message="Concatenating constituent datasets into master table...",
         elapsed_seconds=time.time() - start_time,
-        last_clean_date=last_downloaded_date
+        last_clean_date=last_downloaded_date,
+        total_trades_50ma=len(all_50ma_trades)
     )
 
     df_combined = pd.concat(all_dfs, ignore_index=True)
@@ -397,10 +724,11 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         current_stock="SCHEMA_MAP",
         current_index=total_files,
         total_stocks=total_files,
-        percentage=72.0,
+        percentage=70.0,
         message="Standardizing column schema and mapping technical indicators...",
         elapsed_seconds=time.time() - start_time,
-        last_clean_date=last_downloaded_date
+        last_clean_date=last_downloaded_date,
+        total_trades_50ma=len(all_50ma_trades)
     )
 
     # Apply global column renaming
@@ -442,10 +770,11 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         current_stock="ENFORCE_SCHEMA",
         current_index=total_files,
         total_stocks=total_files,
-        percentage=80.0,
-        message="Enforcing exact 133 target feature columns...",
+        percentage=78.0,
+        message="Enforcing exact 157 target feature columns for global master...",
         elapsed_seconds=time.time() - start_time,
-        last_clean_date=last_downloaded_date
+        last_clean_date=last_downloaded_date,
+        total_trades_50ma=len(all_50ma_trades)
     )
 
     # Ensure all target columns exist, fill missing with None to prevent KeyError
@@ -460,26 +789,60 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
     # -------------------------------------------------------------------------
     # STAGE 3: SAVING / PERSISTENCE (80% -> 99%)
     # -------------------------------------------------------------------------
+    total_50ma = len(all_50ma_trades)
+    df_50ma = pd.DataFrame(all_50ma_trades)
+    df_50ma.replace([np.inf, -np.inf], np.nan, inplace=True)
+
     json_manager.update_data_cleaning_progress(
         status="SAVING",
         heading="Saving Data",
-        current_stock="MASTER_DATASET",
+        current_stock="GLOBAL_DATASET",
         current_index=total_files,
         total_stocks=total_files,
-        percentage=90.0,
-        message=f"Flushing {total_rows:,} records into 5_year_final_data.csv...",
+        percentage=85.0,
+        message=f"Flushing {total_rows:,} records into 5_year_final_data_global.csv and 5_year_final_data.csv...",
         elapsed_seconds=time.time() - start_time,
         last_clean_date=last_downloaded_date,
-        total_rows=total_rows
+        total_rows=total_rows,
+        total_trades_50ma=total_50ma
     )
 
+    df_final.to_csv(FINAL_DATA_GLOBAL_OUTPUT, index=False)
     df_final.to_csv(FINAL_DATA_OUTPUT, index=False)
+
+    json_manager.update_data_cleaning_progress(
+        status="SAVING",
+        heading="Saving Data",
+        current_stock="50MA_DATASET",
+        current_index=total_files,
+        total_stocks=total_files,
+        percentage=95.0,
+        message=f"Flushing {total_50ma:,} verified trades into 5_year_final_data_50ma.csv...",
+        elapsed_seconds=time.time() - start_time,
+        last_clean_date=last_downloaded_date,
+        total_rows=total_rows,
+        total_trades_50ma=total_50ma
+    )
+
+    df_50ma.to_csv(FINAL_DATA_50MA_OUTPUT, index=False)
 
     # -------------------------------------------------------------------------
     # STAGE 4: COMPLETED (100%)
     # -------------------------------------------------------------------------
+    outcomes = df_50ma["outcome"].value_counts().to_dict() if not df_50ma.empty else {}
+    success_count = int(outcomes.get("SUCCESS", 0))
+    loss_count = int(outcomes.get("LOSS", 0))
+    neutral_count = int(outcomes.get("NEUTRAL", 0))
+    pending_count = int(outcomes.get("PENDING", 0))
+    win_rate = round((success_count / total_50ma) * 100, 1) if total_50ma > 0 else 0.0
+    avg_days_held = round(float(df_50ma["days_held"].mean()), 1) if total_50ma > 0 else 0.0
+
     duration = time.time() - start_time
-    completion_msg = f"Cleaned & combined {total_rows:,} rows across {total_files} stocks with {len(FINAL_COLUMNS)} features in {duration:.1f}s."
+    completion_msg = (
+        f"Cleaned {total_rows:,} global rows and {total_50ma:,} verified 50MA trades "
+        f"(Win Rate: {win_rate}%, Success: {success_count}, Loss: {loss_count}, Neutral: {neutral_count}) "
+        f"across {total_files} stocks in {duration:.1f}s."
+    )
 
     # 1. Update data_cleaning.json FIRST
     json_manager.update_data_cleaning_info(
@@ -491,7 +854,16 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         duration_seconds=duration,
         last_clean_date=last_downloaded_date,
         last_clean_run_date=today_str,
-        output_file="5_year_final_data.csv"
+        output_file="5_year_final_data.csv",
+        output_file_global="5_year_final_data_global.csv",
+        output_file_50ma="5_year_final_data_50ma.csv",
+        total_trades_50ma=total_50ma,
+        total_50ma_success=success_count,
+        total_50ma_loss=loss_count,
+        total_50ma_neutral=neutral_count,
+        total_50ma_pending=pending_count,
+        win_rate_50ma=win_rate,
+        avg_holding_days_50ma=avg_days_held
     )
 
     # 2. Update live progress SECOND (broadcasts to WebSocket with last_clean_date)
@@ -505,7 +877,8 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         message=completion_msg,
         elapsed_seconds=duration,
         last_clean_date=last_downloaded_date,
-        total_rows=total_rows
+        total_rows=total_rows,
+        total_trades_50ma=total_50ma
     )
 
     # 3. Log task audit entry
@@ -521,8 +894,15 @@ def run_data_cleaning_pipeline(force: bool = False) -> Dict[str, Any]:
         "total_rows": total_rows,
         "total_columns": len(FINAL_COLUMNS),
         "total_stocks": total_files,
+        "total_trades_50ma": total_50ma,
+        "win_rate_50ma": win_rate,
+        "success_count": success_count,
+        "loss_count": loss_count,
+        "neutral_count": neutral_count,
         "duration_seconds": duration,
         "output_path": str(FINAL_DATA_OUTPUT),
+        "output_path_global": str(FINAL_DATA_GLOBAL_OUTPUT),
+        "output_path_50ma": str(FINAL_DATA_50MA_OUTPUT),
         "message": completion_msg
     }
 

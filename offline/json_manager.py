@@ -822,7 +822,8 @@ def update_data_cleaning_info(
     duration_seconds: float = 0.0,
     last_clean_date: Optional[str] = None,
     last_clean_run_date: Optional[str] = None,
-    output_file: str = "5_year_final_data.csv"
+    output_file: str = "5_year_final_data.csv",
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """Updates data_cleaning.json and appends run entry to history."""
     current = get_data_cleaning_info()
@@ -845,6 +846,7 @@ def update_data_cleaning_info(
         "duration_seconds": round(duration_seconds, 2),
         "message": message
     }
+    entry.update(kwargs)
 
     current["last_clean_date"] = clean_date
     current["last_clean_run_date"] = run_date
@@ -855,6 +857,7 @@ def update_data_cleaning_info(
     current["total_stocks"] = total_stocks
     current["output_file"] = output_file
     current["message"] = message
+    current.update(kwargs)
 
     history = current.get("history", [])
     history.insert(0, entry)
@@ -878,7 +881,8 @@ def get_data_cleaning_progress() -> Dict[str, Any]:
         "elapsed_seconds": 0.0,
         "error": None,
         "last_clean_date": None,
-        "total_rows": 0
+        "total_rows": 0,
+        "total_trades_50ma": 0
     }
     return read_json_file(DATA_CLEANING_PROGRESS_FILE, default_progress)
 
@@ -894,7 +898,8 @@ def update_data_cleaning_progress(
     elapsed_seconds: float = 0.0,
     error: Optional[str] = None,
     last_clean_date: Optional[str] = None,
-    total_rows: int = 0
+    total_rows: int = 0,
+    total_trades_50ma: int = 0
 ) -> None:
     """Updates live transient data cleaning progress and broadcasts to listeners."""
     data = {
@@ -909,6 +914,7 @@ def update_data_cleaning_progress(
         "error": error,
         "last_clean_date": last_clean_date,
         "total_rows": total_rows,
+        "total_trades_50ma": total_trades_50ma,
         "updated_at": datetime.now().astimezone().isoformat()
     }
     write_json_file(DATA_CLEANING_PROGRESS_FILE, data)

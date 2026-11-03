@@ -1,6 +1,462 @@
 {
   "task_logs": [
     {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T21:17:44.054228+05:30",
+      "readable_time": "2026-11-03 21:17:44 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-03). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T21:17:06.998269+05:30",
+      "readable_time": "2026-11-03 21:17:06 India Standard Time",
+      "message": "Cleaned 252,589 global rows and 8,708 verified 50MA trades (Win Rate: 35.3%, Success: 3072, Loss: 5145, Neutral: 473) across 207 stocks in 167.7s.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T21:14:19.292132+05:30",
+      "readable_time": "2026-11-03 21:14:19 India Standard Time",
+      "message": "Starting data consolidation, 50MA forward trajectory extraction, and cleaning for 207 stocks up to 2026-11-01...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:39:41.983160+05:30",
+      "readable_time": "2026-11-03 16:39:41 India Standard Time",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 19.9s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:39:22.083927+05:30",
+      "readable_time": "2026-11-03 16:39:22 India Standard Time",
+      "message": "Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:39:21.700360+05:30",
+      "readable_time": "2026-11-03 16:39:21 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 29.1s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:38:52.415680+05:30",
+      "readable_time": "2026-11-03 16:38:52 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:34:47.098843+05:30",
+      "readable_time": "2026-11-03 16:34:47 India Standard Time",
+      "message": "Global Regime evaluated: Directional Accuracy 46.8%, Win Rate 50.2%, Overall P&L +229.0% (1600/1753 Long, 153 Cash) in 17.5s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:34:29.570740+05:30",
+      "readable_time": "2026-11-03 16:34:29 India Standard Time",
+      "message": "Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:34:29.320126+05:30",
+      "readable_time": "2026-11-03 16:34:29 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.5s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:34:12.713363+05:30",
+      "readable_time": "2026-11-03 16:34:12 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:34:11.793330+05:30",
+      "readable_time": "2026-11-03 16:34:11 India Standard Time",
+      "message": "Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 155.3s).",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:31:36.505075+05:30",
+      "readable_time": "2026-11-03 16:31:36 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:31:36.332499+05:30",
+      "readable_time": "2026-11-03 16:31:36 India Standard Time",
+      "message": "Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 158.7s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:28:57.670368+05:30",
+      "readable_time": "2026-11-03 16:28:57 India Standard Time",
+      "message": "Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:10:17.561782+05:30",
+      "readable_time": "2026-11-03 16:10:17 India Standard Time",
+      "message": "Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 123.4s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:08:14.133582+05:30",
+      "readable_time": "2026-11-03 16:08:14 India Standard Time",
+      "message": "Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T16:08:13.977382+05:30",
+      "readable_time": "2026-11-03 16:08:13 India Standard Time",
+      "message": "Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 121.9s).",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-03T16:06:12.069418+05:30",
+      "readable_time": "2026-11-03 16:06:12 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "DAILY_MARKET_ANALYSIS",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-03T15:09:01.491237+05:30",
+      "readable_time": "2026-11-03 15:09:01 India Standard Time",
+      "message": "Analyzed 207 stocks. Finalized 175 high-conviction trade setups across Market In Session (< 3:30 PM IST) | Using Previous Closed Session (2026-11-02) in 16.9s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T21:05:51.581914+05:30",
+      "readable_time": "2026-11-02 21:05:51 India Standard Time",
+      "message": "Global models tuned (Gain MAE: 16.0224, Drop MAE: 10.0033) with 75 features in 100.9s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T21:04:10.671398+05:30",
+      "readable_time": "2026-11-02 21:04:10 India Standard Time",
+      "message": "Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T21:04:10.562088+05:30",
+      "readable_time": "2026-11-02 21:04:10 India Standard Time",
+      "message": "Strategy model tuned with MAE: 0.88 R (99 features, 5,273 setups in 101.9s).",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T21:02:28.703860+05:30",
+      "readable_time": "2026-11-02 21:02:28 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "ALL_MODELS_TRAINING",
+      "status": "ERROR",
+      "timestamp": "2026-11-02T21:02:01.654242+05:30",
+      "readable_time": "2026-11-02 21:02:01 India Standard Time",
+      "message": "Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T21:01:45.365594+05:30",
+      "readable_time": "2026-11-02 21:01:45 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T21:01:44.550169+05:30",
+      "readable_time": "2026-11-02 21:01:44 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "FEATURE_GENERATION",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T21:01:43.699649+05:30",
+      "readable_time": "2026-11-02 21:01:43 India Standard Time",
+      "message": "Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T21:01:42.851510+05:30",
+      "readable_time": "2026-11-02 21:01:42 India Standard Time",
+      "message": "Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "task_name": "ALL_MODELS_TRAINING",
+      "status": "ERROR",
+      "timestamp": "2026-11-02T20:33:48.247570+05:30",
+      "readable_time": "2026-11-02 20:33:48 India Standard Time",
+      "message": "Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:33:32.141493+05:30",
+      "readable_time": "2026-11-02 20:33:32 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:33:31.320491+05:30",
+      "readable_time": "2026-11-02 20:33:31 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "FEATURE_GENERATION",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:33:30.489193+05:30",
+      "readable_time": "2026-11-02 20:33:30 India Standard Time",
+      "message": "Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:33:29.697853+05:30",
+      "readable_time": "2026-11-02 20:33:29 India Standard Time",
+      "message": "Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "task_name": "ALL_MODELS_TRAINING",
+      "status": "ERROR",
+      "timestamp": "2026-11-02T20:32:53.811627+05:30",
+      "readable_time": "2026-11-02 20:32:53 India Standard Time",
+      "message": "Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:32:36.913878+05:30",
+      "readable_time": "2026-11-02 20:32:36 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:32:36.080539+05:30",
+      "readable_time": "2026-11-02 20:32:36 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-02 for all 207 constituents today (2026-11-02). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "FEATURE_GENERATION",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:32:35.229953+05:30",
+      "readable_time": "2026-11-02 20:32:35 India Standard Time",
+      "message": "Features already computed up to 2026-11-02 for all 207 stocks. Generation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:32:34.400117+05:30",
+      "readable_time": "2026-11-02 20:32:34 India Standard Time",
+      "message": "Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "task_name": "ALL_MODELS_TRAINING",
+      "status": "ERROR",
+      "timestamp": "2026-11-02T20:20:39.540961+05:30",
+      "readable_time": "2026-11-02 20:20:39 India Standard Time",
+      "message": "Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:20:23.269866+05:30",
+      "readable_time": "2026-11-02 20:20:23 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "ALL_MODELS_TRAINING",
+      "status": "ERROR",
+      "timestamp": "2026-11-02T20:20:12.765118+05:30",
+      "readable_time": "2026-11-02 20:20:12 India Standard Time",
+      "message": "Pipeline error: A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled.",
+      "error": "A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.\n\nDetailed tracebacks of the workers should have been printed to stderr in the executor process if faulthandler was not disabled."
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:19:50.963723+05:30",
+      "readable_time": "2026-11-02 20:19:50 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:19:50.659032+05:30",
+      "readable_time": "2026-11-02 20:19:50 India Standard Time",
+      "message": "Cleaned & combined 252,589 rows across 207 stocks with 157 features in 106.7s.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:18:03.987449+05:30",
+      "readable_time": "2026-11-02 20:18:03 India Standard Time",
+      "message": "Starting data consolidation and cleaning for 207 stocks up to 2026-11-02...",
+      "error": null
+    },
+    {
+      "task_name": "FEATURE_GENERATION",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:18:03.448237+05:30",
+      "readable_time": "2026-11-02 20:18:03 India Standard Time",
+      "message": "Completed. Generated features for 207 stocks up to 2026-11-02 in 213.5s.",
+      "error": null
+    },
+    {
+      "task_name": "FEATURE_GENERATION",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:14:29.984174+05:30",
+      "readable_time": "2026-11-02 20:14:29 India Standard Time",
+      "message": "Starting feature generation for 207 stocks up to 2026-11-02...",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-02T20:14:05.413722+05:30",
+      "readable_time": "2026-11-02 20:14:05 India Standard Time",
+      "message": "Successfully appended 207 new market bars across 207 stocks up to 2026-11-02.",
+      "error": null
+    },
+    {
+      "task_name": "STOCKS_DOWNLOAD",
+      "status": "RUNNING",
+      "timestamp": "2026-11-02T20:12:18.041582+05:30",
+      "readable_time": "2026-11-02 20:12:18 India Standard Time",
+      "message": "Starting market data sync for 207 stocks from 2026-11-02 to 2026-11-02...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T23:46:37.245618+05:30",
+      "readable_time": "2026-11-01 23:46:37 India Standard Time",
+      "message": "Global Regime evaluated: Directional Accuracy 46.7%, Win Rate 50.3%, Overall P&L +259.0% (1574/1753 Long, 179 Cash) in 10.5s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T23:46:26.688564+05:30",
+      "readable_time": "2026-11-01 23:46:26 India Standard Time",
+      "message": "Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T23:46:26.490870+05:30",
+      "readable_time": "2026-11-01 23:46:26 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 25.2%, Overall P&L -601.0%, Net R -195.0R (801/1055 taken, 78.0% recall) in 9.6s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T23:46:16.863444+05:30",
+      "readable_time": "2026-11-01 23:46:16 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T23:45:15.232014+05:30",
+      "readable_time": "2026-11-01 23:45:15 India Standard Time",
+      "message": "Global models tuned (Gain MAE: 15.9570, Drop MAE: 10.1205) with 74 features in 30.1s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T23:44:45.188720+05:30",
+      "readable_time": "2026-11-01 23:44:45 India Standard Time",
+      "message": "Starting Global Regime Models training pipeline...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-01T23:44:45.113072+05:30",
+      "readable_time": "2026-11-01 23:44:45 India Standard Time",
+      "message": "Strategy model tuned with MAE: 0.89 R (95 features, 5,273 setups in 60.6s).",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "RUNNING",
+      "timestamp": "2026-11-01T23:43:44.555777+05:30",
+      "readable_time": "2026-11-01 23:43:44 India Standard Time",
+      "message": "Starting Strategy Model training pipeline...",
+      "error": null
+    },
+    {
       "task_name": "STOCKS_DOWNLOAD",
       "status": "COMPLETED",
       "timestamp": "2026-11-01T22:04:21.747517+05:30",
@@ -457,7 +913,7 @@
       "error": null
     }
   ],
-  "last_task": "STOCKS_DOWNLOAD",
+  "last_task": "DATA_CLEANING",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-01T22:04:21.747517+05:30"
+  "last_updated": "2026-11-03T21:17:44.054228+05:30"
 }
