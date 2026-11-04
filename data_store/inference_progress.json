@@ -5,17 +5,17 @@
   "heading": "Done",
   "current_model": "5_year_xgboost_model.pkl",
   "percentage": 100.0,
-  "message": "50 MA Strategy evaluated: Win Rate 25.1%, Overall P&L -606.0%, Net R -198.0R (798/1055 taken, 77.0% recall) in 16.4s.",
-  "elapsed_seconds": 16.4,
+  "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 1.5s.",
+  "elapsed_seconds": 1.5,
   "error": null,
   "metrics": {
-    "win_rate_taken": "25.1%",
-    "overall_pnl_pct": "-606.0%",
-    "net_r_taken": "-198.0R",
-    "taken_trades": "798/1055",
-    "accuracy_refined": "44.4%",
-    "win_rate_recall": "77.0%",
-    "mae_refined": 0.884
+    "win_rate_taken": "35.1%",
+    "overall_pnl_pct": "+111.5%",
+    "net_r_taken": "+15.0R",
+    "taken_trades": "279/1576",
+    "accuracy_refined": "66.0%",
+    "win_rate_recall": "21.6%",
+    "mae_refined": 1.249
   },
-  "updated_at": "2026-11-03T22:28:04.662783+05:30"
+  "updated_at": "2026-11-04T17:34:58.596214+05:30"
 }

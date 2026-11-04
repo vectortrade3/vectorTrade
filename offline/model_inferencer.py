@@ -18,6 +18,7 @@ import os
 import sys
 import time
 import json
+import logging
 from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
@@ -25,6 +26,8 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+logger = logging.getLogger("VectorTrade.ModelInferencer")
 
 # Resolve directory roots
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +40,8 @@ MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 FINAL_DATA_CSV = BASE_DIR / "5_year_final_data.csv"
+FINAL_DATA_50MA_CSV = BASE_DIR / "5_year_final_data_50ma.csv"
+FINAL_DATA_50MA_TEST_CSV = BASE_DIR / "5_year_final_data_50ma_test_1y.csv"
 MODEL_PERFORMANCE_LOG_FILE = MODELS_DIR / "model_performance_log.json"
 
 
@@ -122,8 +127,23 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         }
 
     # Verify model and dataset files exist
-    required_files = [
-        FINAL_DATA_CSV,
+    has_dataset = (
+        FINAL_DATA_50MA_TEST_CSV.exists()
+        or FINAL_DATA_50MA_CSV.exists()
+        or FINAL_DATA_CSV.exists()
+    )
+    if not has_dataset:
+        err_msg = "Dataset missing for strategy inference. Run Data Cleaning first."
+        json_manager.update_inference_progress(
+            status="ERROR",
+            active_section="STRATEGY",
+            message=err_msg,
+            error=err_msg
+        )
+        json_manager.log_task_entry("STRATEGY_INFERENCE", "ERROR", err_msg, error=err_msg)
+        return {"status": "ERROR", "message": err_msg}
+
+    required_models = [
         MODELS_DIR / "strategy_base_model.pkl",
         MODELS_DIR / "strategy_base_scaler.pkl",
         MODELS_DIR / "strategy_base_imputer.pkl",
@@ -133,7 +153,7 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         BASE_DIR / "base_features.txt",
         BASE_DIR / "final_features.txt"
     ]
-    for rf in required_files:
+    for rf in required_models:
         if not rf.exists():
             err_msg = f"Required file missing for strategy inference: {rf.name}"
             json_manager.update_inference_progress(
@@ -154,25 +174,52 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     # -------------------------------------------------------------------------
     # STAGE 1: INGESTION & TEST SPLIT (0% -> 25%)
     # -------------------------------------------------------------------------
+    dataset_name = (
+        "5_year_final_data_50ma_test_1y.csv" if FINAL_DATA_50MA_TEST_CSV.exists()
+        else ("5_year_final_data_50ma.csv" if FINAL_DATA_50MA_CSV.exists() else "5_year_final_data.csv")
+    )
     json_manager.update_inference_progress(
         status="EVALUATING",
         active_section="STRATEGY",
         phase="Ingestion",
         heading="Filtering Setups",
-        current_model="5_year_final_data.csv",
+        current_model=dataset_name,
         percentage=10.0,
-        message="Loading master dataset and filtering out-of-sample trade setups...",
+        message="Loading out-of-sample 1-year trade setups...",
         elapsed_seconds=time.time() - start_time
     )
 
-    df = pd.read_csv(FINAL_DATA_CSV)
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df['date'] = pd.to_datetime(df['date'])
+    if FINAL_DATA_50MA_TEST_CSV.exists():
+        test_df = pd.read_csv(FINAL_DATA_50MA_TEST_CSV)
+        logger.info(f"Loaded dedicated 50MA 1-Year test dataset: {len(test_df):,} out-of-sample setups.")
+    elif FINAL_DATA_50MA_CSV.exists():
+        df_50ma = pd.read_csv(FINAL_DATA_50MA_CSV)
+        if "is_test_1y" in df_50ma.columns:
+            test_df = df_50ma[df_50ma["is_test_1y"]].copy()
+        elif "split" in df_50ma.columns:
+            test_df = df_50ma[df_50ma["split"] == "TEST_1Y"].copy()
+        else:
+            test_start = int(len(df_50ma) * 0.80)
+            test_df = df_50ma.iloc[test_start:].copy()
+    else:
+        df = pd.read_csv(FINAL_DATA_CSV)
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'])
+        df_signals = StrategyManager.filter_dataset("ma50_setup", df)
+        strat_inst = StrategyManager.get_strategy("ma50_setup")
+        train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
+        split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
+        if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
+            max_date = pd.to_datetime(df_signals["date"].max())
+            cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
+            test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
+        else:
+            test_start = int(len(df_signals) * float(train_cfg.get("train_test_split_ratio", 0.80)))
+            test_df = df_signals.iloc[test_start:].copy()
 
-    # Strict 50MA Setup filtering via StrategyManager: isolates only 50MA setup trades for evaluation
-    df_signals = StrategyManager.filter_dataset("ma50_setup", df)
-
-    n_samples = len(df_signals)
+    test_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    n_samples = len(test_df)
     if n_samples < 50:
         err_msg = f"Insufficient triggered trades for inference ({n_samples} found)."
         json_manager.update_inference_progress(
@@ -183,24 +230,21 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         )
         return {"status": "ERROR", "message": err_msg}
 
-    strat_inst = StrategyManager.get_strategy("ma50_setup")
-    train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
-    split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
-
-    if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
-        max_date = pd.to_datetime(df_signals["date"].max())
-        cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
-        test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
-        logger.info(
-            f"50MA Strategy 1-Year Inference: Evaluating {len(test_df):,} out-of-sample trades "
-            f"({cutoff_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})."
-        )
-    else:
-        test_start = int(n_samples * float(train_cfg.get("train_test_split_ratio", 0.80)))
-        test_df = df_signals.iloc[test_start:].copy()
-
     base_features = _load_features_list(BASE_DIR / "base_features.txt")
     refined_features = _load_features_list(BASE_DIR / "final_features.txt")
+    base_features = [f for f in base_features if f in test_df.columns]
+    refined_features = [f for f in refined_features if f in test_df.columns]
+
+    # Target variable handling
+    if 'realized_r' in test_df.columns and pd.notnull(test_df['realized_r']).sum() > 0:
+        actual_target = test_df['realized_r']
+    else:
+        actual_target = test_df['max_r_achieved']
+
+    if 'outcome' in test_df.columns:
+        test_df['actual_is_success'] = test_df['outcome'] == 'SUCCESS'
+    else:
+        test_df['actual_is_success'] = actual_target >= 1.0
 
     # -------------------------------------------------------------------------
     # STAGE 2: BASE MODEL EVALUATION (25% -> 55%)
@@ -225,11 +269,10 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     preds_base = base_model.predict(X_test_s_base)
 
     test_df['predicted_r_base'] = preds_base
-    test_df['actual_is_success'] = test_df['max_r_achieved'] >= 1.0
-    test_df['predicted_is_success_base'] = test_df['predicted_r_base'] >= 1.0
+    test_df['predicted_is_success_base'] = test_df['predicted_r_base'] >= 0.20
 
     acc_base = float((test_df['actual_is_success'] == test_df['predicted_is_success_base']).mean() * 100)
-    mae_base = float(mean_absolute_error(test_df['max_r_achieved'], preds_base))
+    mae_base = float(mean_absolute_error(actual_target, preds_base))
 
     _update_model_log(
         model_name="Strategy_Base",
@@ -239,7 +282,7 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     )
 
     # -------------------------------------------------------------------------
-    # STAGE 3: REFINED MODEL EVALUATION (55% -> 90%)
+    # STAGE 3: REFINED MODEL EVALUATION (55% -> 75%)
     # -------------------------------------------------------------------------
     json_manager.update_inference_progress(
         status="EVALUATING",
@@ -264,16 +307,118 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     X_test_s_ref = refined_scaler.transform(refined_imputer.transform(X_test_ref))
     preds_ref = refined_model.predict(X_test_s_ref)
 
+    # Optional 50MA win/loss classifier for probability calibration
+    clf_path = MODELS_DIR / "5_year_xgboost_50ma_classifier.pkl"
+    probs_win = None
+    if clf_path.exists():
+        try:
+            clf_50ma = joblib.load(clf_path)
+            probs_win = clf_50ma.predict_proba(X_test_s_ref)[:, 1]
+            test_df['win_probability'] = probs_win
+        except Exception as e:
+            logger.warning(f"Could not load 50MA classifier: {e}")
+            probs_win = None
+
     test_df['predicted_r_ref'] = preds_ref
-    test_df['predicted_is_success_ref'] = test_df['predicted_r_ref'] >= 1.0
+    if probs_win is not None:
+        test_df['predicted_is_success_ref'] = probs_win >= 0.37
+    else:
+        test_df['predicted_is_success_ref'] = test_df['predicted_r_ref'] >= 0.20
 
     acc_ref = float((test_df['actual_is_success'] == test_df['predicted_is_success_ref']).mean() * 100)
-    mae_ref = float(mean_absolute_error(test_df['max_r_achieved'], preds_ref))
+    mae_ref = float(mean_absolute_error(actual_target, preds_ref))
 
-    actual_successes = test_df[test_df['actual_is_success'] == True]
-    successes_caught = int(actual_successes['predicted_is_success_ref'].sum())
+    # -------------------------------------------------------------------------
+    # STAGE 4: TRADE LEDGER & PERFORMANCE SIMULATION (75% -> 90%)
+    # -------------------------------------------------------------------------
+    json_manager.update_inference_progress(
+        status="EVALUATING",
+        active_section="STRATEGY",
+        phase="Phase 3: Trade Ledger Simulation",
+        heading="Generating Trade Ledger",
+        current_model="5_year_xgboost_model.pkl",
+        percentage=75.0,
+        message=f"Simulating trade executions across {len(test_df):,} out-of-sample setups...",
+        elapsed_seconds=time.time() - start_time
+    )
+
+    trades_list: List[Dict[str, Any]] = []
+    running_pnl = 0.0
+    for idx, (_, row) in enumerate(test_df.iterrows()):
+        pred_r = float(preds_ref[idx])
+        prob_w = float(probs_win[idx]) if probs_win is not None else None
+        entry = float(row.get('entry_price', row.get('Entry_Price', 0.0)))
+        sl = float(row.get('sl_price', row.get('stop_loss', 0.0)))
+        tgt = float(row.get('target_price', row.get('target_1_2', 0.0)))
+        risk = float(row.get('risk', entry - sl if entry and sl else 1.0))
+        outcome = str(row.get('outcome', 'UNKNOWN'))
+
+        # Determine ground truth R and P&L
+        if 'realized_r' in row and pd.notnull(row['realized_r']):
+            real_r = float(row['realized_r'])
+            pnl_pct = float(row['realized_pnl_pct'])
+            is_win = (outcome == "SUCCESS")
+        else:
+            if outcome in ("Target", "SUCCESS"):
+                pnl_pct = ((tgt - entry) / entry) * 100.0 if entry > 0 else 0.0
+                is_win = True
+                real_r = 2.0
+            else:
+                pnl_pct = ((sl - entry) / entry) * 100.0 if entry > 0 else 0.0
+                is_win = False
+                real_r = -1.0
+
+        if prob_w is not None:
+            decision = "TAKE" if prob_w >= 0.37 else "SKIP"
+        else:
+            decision = "TAKE" if pred_r >= 0.20 else "SKIP"
+
+        if decision == "TAKE":
+            running_pnl += pnl_pct
+
+        d_val = row.get('setup_date', row.get('date', ''))
+        d_str = d_val.strftime('%Y-%m-%d') if hasattr(d_val, 'strftime') else str(d_val)[:10]
+
+        trades_list.append({
+            "id": idx + 1,
+            "symbol": str(row.get('symbol', '')),
+            "date": d_str,
+            "entry_price": round(entry, 2),
+            "stop_loss": round(sl, 2),
+            "target": round(tgt, 2),
+            "risk": round(risk, 2),
+            "predicted_r": round(pred_r, 2),
+            "win_probability": round(prob_w, 3) if prob_w is not None else None,
+            "real_r": round(real_r, 2),
+            "outcome": outcome,
+            "decision": decision,
+            "is_win": is_win,
+            "trade_pnl_pct": round(pnl_pct, 2),
+            "cumulative_pnl_pct": round(running_pnl, 2)
+        })
+
+    total_test_trades = len(trades_list)
+    taken_trades_list = [t for t in trades_list if t['decision'] == 'TAKE']
+    taken_count = len(taken_trades_list)
+    wins_taken = sum(1 for t in taken_trades_list if t['is_win'])
+    losses_taken = taken_count - wins_taken
+    win_rate_taken_val = (wins_taken / taken_count * 100.0) if taken_count > 0 else 0.0
+    overall_pnl_taken = sum(t['trade_pnl_pct'] for t in taken_trades_list)
+    net_r_taken = float((wins_taken * 2.0) - (losses_taken * 1.0))
+
+    all_wins = sum(1 for t in trades_list if t['is_win'])
+    win_rate_all_val = (all_wins / total_test_trades * 100.0) if total_test_trades > 0 else 0.0
+    overall_pnl_all = sum(t['trade_pnl_pct'] for t in trades_list)
+    net_r_all = float((all_wins * 2.0) - ((total_test_trades - all_wins) * 1.0))
+
+    date_col = 'setup_date' if 'setup_date' in test_df.columns else ('date' if 'date' in test_df.columns else None)
+    t1y_start = str(test_df[date_col].min())[:10] if date_col and not test_df.empty else ""
+    t1y_end = str(test_df[date_col].max())[:10] if date_col and not test_df.empty else ""
+
+    actual_successes = [t for t in trades_list if t['is_win']]
     total_actual = len(actual_successes)
-    recall = float((successes_caught / total_actual) * 100 if total_actual > 0 else 0.0)
+    successes_caught = sum(1 for t in actual_successes if t['decision'] == 'TAKE')
+    recall = float((successes_caught / total_actual) * 100.0 if total_actual > 0 else 0.0)
 
     removed_count = max(0, len(base_features) - len(refined_features))
 
@@ -299,7 +444,9 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
             "Win_Rate_Taken": f"{win_rate_taken_val:.1f}%",
             "Win_Rate_All": f"{win_rate_all_val:.1f}%",
             "Overall_PnL_Pct": round(overall_pnl_taken, 2),
+            "Overall_PnL_All": round(overall_pnl_all, 2),
             "Net_R_Taken": round(net_r_taken, 2),
+            "Net_R_All": round(net_r_all, 2),
             "Accuracy": f"{acc_ref:.1f}%",
             "MAE": round(mae_ref, 3)
         },
@@ -307,75 +454,6 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         removed_features=removed_count
     )
 
-    # -------------------------------------------------------------------------
-    # STAGE 4: TRADE LEDGER & PERFORMANCE SIMULATION (75% -> 90%)
-    # -------------------------------------------------------------------------
-    json_manager.update_inference_progress(
-        status="EVALUATING",
-        active_section="STRATEGY",
-        phase="Phase 3: Trade Ledger Simulation",
-        heading="Generating Trade Ledger",
-        current_model="5_year_xgboost_model.pkl",
-        percentage=75.0,
-        message=f"Simulating trade executions across {len(test_df):,} out-of-sample setups...",
-        elapsed_seconds=time.time() - start_time
-    )
-
-    trades_list: List[Dict[str, Any]] = []
-    running_pnl = 0.0
-    for idx, (_, row) in enumerate(test_df.iterrows()):
-        pred_r = float(row['predicted_r_ref'])
-        entry = float(row['entry_price'])
-        sl = float(row['stop_loss'])
-        tgt = float(row['target_1_2'])
-        risk = float(row['risk'])
-        outcome = str(row['outcome'])
-        decision = "TAKE" if pred_r >= 1.0 else "SKIP"
-        
-        if outcome == "Target":
-            pnl_pct = ((tgt - entry) / entry) * 100.0
-            is_win = True
-        else:
-            pnl_pct = ((sl - entry) / entry) * 100.0
-            is_win = False
-            
-        if decision == "TAKE":
-            running_pnl += pnl_pct
-
-        d_val = row['date']
-        d_str = d_val.strftime('%Y-%m-%d') if hasattr(d_val, 'strftime') else str(d_val)[:10]
-        trades_list.append({
-            "id": idx + 1,
-            "symbol": str(row['symbol']),
-            "date": d_str,
-            "entry_price": round(entry, 2),
-            "stop_loss": round(sl, 2),
-            "target": round(tgt, 2),
-            "risk": round(risk, 2),
-            "predicted_r": round(pred_r, 2),
-            "real_r": round(float(row['max_r_achieved']), 2),
-            "outcome": outcome,
-            "decision": decision,
-            "is_win": is_win,
-            "trade_pnl_pct": round(pnl_pct, 2),
-            "cumulative_pnl_pct": round(running_pnl, 2)
-        })
-
-    total_test_trades = len(trades_list)
-    taken_trades_list = [t for t in trades_list if t['decision'] == 'TAKE']
-    taken_count = len(taken_trades_list)
-    wins_taken = sum(1 for t in taken_trades_list if t['is_win'])
-    losses_taken = taken_count - wins_taken
-    win_rate_taken_val = (wins_taken / taken_count * 100.0) if taken_count > 0 else 0.0
-    overall_pnl_taken = sum(t['trade_pnl_pct'] for t in taken_trades_list)
-    net_r_taken = float((wins_taken * 2.0) - (losses_taken * 1.0))
-
-    all_wins = sum(1 for t in trades_list if t['is_win'])
-    win_rate_all_val = (all_wins / total_test_trades * 100.0) if total_test_trades > 0 else 0.0
-    overall_pnl_all = sum(t['trade_pnl_pct'] for t in trades_list)
-
-    t1y_start = str(test_df['date'].min())[:10] if not test_df.empty else ""
-    t1y_end = str(test_df['date'].max())[:10] if not test_df.empty else ""
     summary_50ma = {
         "timeframe": "LAST_1_YEAR",
         "timeframe_start": t1y_start,
@@ -390,6 +468,7 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
         "overall_pnl_pct": round(overall_pnl_taken, 2),
         "overall_pnl_pct_all": round(overall_pnl_all, 2),
         "net_r_taken": round(net_r_taken, 2),
+        "net_r_all": round(net_r_all, 2),
         "accuracy_refined": f"{acc_ref:.1f}%",
         "win_rate_recall": f"{recall:.1f}%",
         "mae_refined": round(mae_ref, 3),

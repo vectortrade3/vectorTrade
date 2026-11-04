@@ -1,13 +1,17 @@
 {
   "status": "COMPLETED",
-  "active_section": "ALL",
+  "active_section": "STRATEGY",
   "phase": "Done",
   "heading": "Done",
-  "current_model": "",
+  "current_model": "5_year_xgboost_model.pkl",
   "percentage": 100.0,
-  "message": "All 2 active strategy models trained successfully in 320.0s.",
-  "elapsed_seconds": 320.0,
+  "message": "Strategy model tuned with MAE: 1.25 R (115 features, 7,091 historical train setups, 1,576 1Y test setups [2025-10-06 to 2026-10-05] in 140.5s).",
+  "elapsed_seconds": 140.5,
   "error": null,
-  "metrics": {},
-  "updated_at": "2026-11-03T22:12:31.029794+05:30"
+  "metrics": {
+    "mae_base": 1.273,
+    "mae_refined": 1.249,
+    "features_count": 115
+  },
+  "updated_at": "2026-11-04T17:31:51.032134+05:30"
 }

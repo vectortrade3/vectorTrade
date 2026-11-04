@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+import logging
 from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
@@ -28,6 +29,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+logger = logging.getLogger("VectorTrade.ModelTrainer")
+
 # Resolve directory roots
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -39,13 +42,23 @@ MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 FINAL_DATA_CSV = BASE_DIR / "5_year_final_data.csv"
+FINAL_DATA_50MA_CSV = BASE_DIR / "5_year_final_data_50ma.csv"
+FINAL_DATA_50MA_TRAIN_CSV = BASE_DIR / "5_year_final_data_50ma_train.csv"
+FINAL_DATA_50MA_TEST_CSV = BASE_DIR / "5_year_final_data_50ma_test_1y.csv"
 
 # Strict leakage columns to exclude from predictive features
 LEAKAGE_COLS = [
     'base_signal', 'signal_strength', 'entry_price', 'stop_loss', 'risk', 'target_1_2',
     'target_hit', 'sl_hit', 'timeout', 'outcome', 'days_to_outcome',
     'return_7d_after_signal', 'max_gain_7d', 'max_loss_7d', 'mfe', 'mae', 'Trade_Triggered',
-    'max_r_achieved', 'date', 'symbol', 'sector', 'Stock Symbol', 'Sector', 'Trading_Day_Of_Week'
+    'max_r_achieved', 'date', 'symbol', 'sector', 'Stock Symbol', 'Sector', 'Trading_Day_Of_Week',
+    # Extended 50MA strategy leakage shielding:
+    'trade_id', 'setup_date', 'setup_num', 'setup_name',
+    'sl_price', 'target_price', 'risk_reward', 'risk_reward_num',
+    'loss_pct', 'profit_pct', 'triggered', 'days_held', 'exit_price', 'exit_date',
+    'realized_pnl_pct', 'realized_r', 'mfe_pct', 'mae_pct',
+    'chart_candles_json', 'split', 'is_test_1y', 'candle_green', 'bb_near_low',
+    'setup_open', 'setup_high', 'setup_low', 'setup_close', 'setup_volume'
 ]
 
 # Hyperparameter search distribution
@@ -58,10 +71,12 @@ PARAM_GRID = {
 
 
 def _extract_base_features(df: pd.DataFrame) -> List[str]:
-    """Extracts valid numeric feature columns excluding leakage and high-null columns."""
+    """Extracts valid numeric feature columns excluding leakage, forward trajectory, and high-null columns."""
     features = [
         c for c in df.columns 
-        if c not in LEAKAGE_COLS and pd.api.types.is_numeric_dtype(df[c])
+        if c not in LEAKAGE_COLS
+        and not c.startswith('fwd_')
+        and pd.api.types.is_numeric_dtype(df[c])
     ]
     features = [f for f in features if df[f].isnull().mean() < 1.0]
     return sorted(features)
@@ -170,8 +185,8 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
                 "skipped": True
             }
 
-    if not FINAL_DATA_CSV.exists():
-        err_msg = f"Master dataset {FINAL_DATA_CSV.name} not found. Run Data Cleaning first."
+    if not FINAL_DATA_CSV.exists() and not FINAL_DATA_50MA_CSV.exists() and not FINAL_DATA_50MA_TRAIN_CSV.exists():
+        err_msg = f"Master dataset not found. Run Data Cleaning first."
         json_manager.update_models_training_progress(
             status="ERROR",
             active_section="STRATEGY",
@@ -190,25 +205,61 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     # -------------------------------------------------------------------------
     # STAGE 1: INGESTION & FILTERING (0% -> 15%)
     # -------------------------------------------------------------------------
+    dataset_name = (
+        "5_year_final_data_50ma_train.csv" if FINAL_DATA_50MA_TRAIN_CSV.exists()
+        else ("5_year_final_data_50ma.csv" if FINAL_DATA_50MA_CSV.exists() else "5_year_final_data.csv")
+    )
     json_manager.update_models_training_progress(
         status="TRAINING",
         active_section="STRATEGY",
         phase="Ingestion",
         heading="Ingesting & Filtering",
-        current_model="5_year_final_data.csv",
+        current_model=dataset_name,
         percentage=10.0,
-        message="Loading master dataset and filtering valid triggered trade setups...",
+        message="Loading verified 50MA dataset and establishing 1-year out-of-sample partition...",
         elapsed_seconds=time.time() - start_time
     )
 
-    df = pd.read_csv(FINAL_DATA_CSV)
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df['date'] = pd.to_datetime(df['date'])
+    # Ingestion prioritizing verified 50MA datasets
+    if FINAL_DATA_50MA_TRAIN_CSV.exists() and FINAL_DATA_50MA_TEST_CSV.exists():
+        train_df = pd.read_csv(FINAL_DATA_50MA_TRAIN_CSV)
+        test_df = pd.read_csv(FINAL_DATA_50MA_TEST_CSV)
+        logger.info(f"Loaded dedicated 50MA datasets: Train={len(train_df):,}, Test={len(test_df):,}")
+    elif FINAL_DATA_50MA_CSV.exists():
+        df_50ma = pd.read_csv(FINAL_DATA_50MA_CSV)
+        if "split" in df_50ma.columns:
+            train_df = df_50ma[df_50ma["split"] == "TRAIN"].copy()
+            test_df = df_50ma[df_50ma["split"] == "TEST_1Y"].copy()
+        elif "is_test_1y" in df_50ma.columns:
+            train_df = df_50ma[~df_50ma["is_test_1y"]].copy()
+            test_df = df_50ma[df_50ma["is_test_1y"]].copy()
+        else:
+            train_end = int(len(df_50ma) * 0.80)
+            train_df = df_50ma.iloc[:train_end].copy()
+            test_df = df_50ma.iloc[train_end:].copy()
+    else:
+        df = pd.read_csv(FINAL_DATA_CSV)
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'])
+        df_signals = StrategyManager.filter_dataset("ma50_setup", df)
+        strat_inst = StrategyManager.get_strategy("ma50_setup")
+        train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
+        split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
+        if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
+            max_date = pd.to_datetime(df_signals["date"].max())
+            cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
+            train_df = df_signals[df_signals["date"] < cutoff_date].copy()
+            test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
+        else:
+            train_end = int(len(df_signals) * float(train_cfg.get("train_test_split_ratio", 0.80)))
+            train_df = df_signals.iloc[:train_end].copy()
+            test_df = df_signals.iloc[train_end:].copy()
 
-    # Strict 50MA Setup filtering via StrategyManager: isolates only 50MA setup trades
-    df_signals = StrategyManager.filter_dataset("ma50_setup", df)
+    train_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    test_df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    n_samples = len(df_signals)
+    n_samples = len(train_df)
     if n_samples < 50:
         err_msg = f"Insufficient triggered trades for training ({n_samples} found)."
         json_manager.update_models_training_progress(
@@ -219,29 +270,18 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
         )
         return {"status": "ERROR", "message": err_msg}
 
-    strat_inst = StrategyManager.get_strategy("ma50_setup")
-    train_cfg = strat_inst.config.get("training", {}) if strat_inst else {}
-    split_mode = train_cfg.get("split_mode", "last_1_year_out_of_sample")
+    base_features = _extract_base_features(train_df)
+    base_features = [f for f in base_features if f in test_df.columns]
 
-    if split_mode == "last_1_year_out_of_sample" and "date" in df_signals.columns and not df_signals.empty:
-        max_date = pd.to_datetime(df_signals["date"].max())
-        cutoff_date = max_date - pd.DateOffset(years=int(train_cfg.get("cutoff_offset_years", 1)))
-        train_df = df_signals[df_signals["date"] < cutoff_date].copy()
-        test_df = df_signals[df_signals["date"] >= cutoff_date].copy()
-        logger.info(
-            f"50MA Strategy 1-Year Partition: Train={len(train_df):,} setups (before {cutoff_date.strftime('%Y-%m-%d')}), "
-            f"Test_1Y={len(test_df):,} setups (exact last 1 year from {cutoff_date.strftime('%Y-%m-%d')})."
-        )
-    else:
-        train_end = int(n_samples * float(train_cfg.get("train_test_split_ratio", 0.80)))
-        train_df = df_signals.iloc[:train_end].copy()
-        test_df = df_signals.iloc[train_end:].copy()
-
-    base_features = _extract_base_features(df_signals)
     X_train = train_df[base_features]
-    y_train = train_df['max_r_achieved']
     X_test = test_df[base_features]
-    y_test = test_df['max_r_achieved']
+
+    if 'realized_r' in train_df.columns and pd.notnull(train_df['realized_r']).sum() > 0:
+        y_train = train_df['realized_r']
+        y_test = test_df['realized_r']
+    else:
+        y_train = train_df['max_r_achieved']
+        y_test = test_df['max_r_achieved']
 
     imputer = SimpleImputer(strategy='median')
     scaler = StandardScaler()
@@ -354,6 +394,25 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     joblib.dump(scaler_ref, MODELS_DIR / '5_year_scaler.pkl')
     joblib.dump(imputer_ref, MODELS_DIR / '5_year_imputer.pkl')
 
+    # Train auxiliary 50MA win/loss classifier if outcome column exists
+    if 'outcome' in train_df.columns and 'outcome' in test_df.columns:
+        try:
+            y_win_tr = (train_df['outcome'] == 'SUCCESS').astype(int)
+            clf = xgb.XGBClassifier(
+                n_estimators=100,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                random_state=42,
+                n_jobs=2,
+                eval_metric='logloss'
+            )
+            clf.fit(X_train_s_ref, y_win_tr)
+            joblib.dump(clf, MODELS_DIR / '5_year_xgboost_50ma_classifier.pkl')
+            logger.info("Saved 50MA win/loss classifier to models/5_year_xgboost_50ma_classifier.pkl")
+        except Exception as e:
+            logger.warning(f"Could not train 50MA classifier: {e}")
+
     with open(BASE_DIR / 'final_features.txt', 'w', encoding='utf-8') as f:
         for feat in refined_features:
             f.write(f"{feat}\n")
@@ -362,8 +421,9 @@ def train_strategy_model(force: bool = False) -> Dict[str, Any]:
     # STAGE 5: COMPLETED
     # -------------------------------------------------------------------------
     duration = time.time() - start_time
-    t1y_start = str(test_df['date'].min())[:10] if not test_df.empty else ""
-    t1y_end = str(test_df['date'].max())[:10] if not test_df.empty else ""
+    date_col = 'setup_date' if 'setup_date' in test_df.columns else ('date' if 'date' in test_df.columns else None)
+    t1y_start = str(test_df[date_col].min())[:10] if date_col and not test_df.empty else ""
+    t1y_end = str(test_df[date_col].max())[:10] if date_col and not test_df.empty else ""
     completion_msg = (
         f"Strategy model tuned with MAE: {mae_ref:.2f} R ({len(refined_features)} features, "
         f"{len(train_df):,} historical train setups, {len(test_df):,} 1Y test setups [{t1y_start} to {t1y_end}] in {duration:.1f}s)."
