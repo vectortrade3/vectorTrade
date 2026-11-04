@@ -2,7 +2,7 @@
   "status": "COMPLETED",
   "last_trained_date": "2026-11-01",
   "last_trained_run_date": "2026-11-04",
-  "last_run_timestamp": "2026-11-04T17:37:30.528155+05:30",
+  "last_run_timestamp": "2026-11-04T17:42:18.303841+05:30",
   "strategy_model": {
     "status": "COMPLETED",
     "last_trained_date": "2026-11-01",
@@ -16,7 +16,7 @@
     "mae_refined": 1.249,
     "duration_seconds": 0.02,
     "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
-    "updated_at": "2026-11-04T17:37:30.528155+05:30"
+    "updated_at": "2026-11-04T17:42:18.303841+05:30"
   },
   "global_models": {
     "status": "COMPLETED",
@@ -30,9 +30,9 @@
     "features_count": 75,
     "mae_gain": 16.0224,
     "mae_drop": 10.0033,
-    "duration_seconds": 0.02,
+    "duration_seconds": 0.01,
     "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
-    "updated_at": "2026-11-04T17:37:30.440572+05:30"
+    "updated_at": "2026-11-04T17:42:18.206597+05:30"
   },
   "models": [
     "5_year_xgboost_model.pkl",
@@ -41,6 +41,54 @@
   ],
   "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
   "history": [
+    {
+      "timestamp": "2026-11-04T17:42:18.303841+05:30",
+      "section": "STRATEGY_MODEL",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-04",
+      "mae_base": 1.273,
+      "mae_refined": 1.249,
+      "features_count": 115,
+      "duration_seconds": 0.02,
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped."
+    },
+    {
+      "timestamp": "2026-11-04T17:42:18.206597+05:30",
+      "section": "GLOBAL_MODELS",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-04",
+      "mae_gain": 16.0224,
+      "mae_drop": 10.0033,
+      "features_count": 75,
+      "duration_seconds": 0.01,
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped."
+    },
+    {
+      "timestamp": "2026-11-04T17:42:18.095133+05:30",
+      "section": "GLOBAL_MODELS",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-04",
+      "mae_gain": 16.0224,
+      "mae_drop": 10.0033,
+      "features_count": 75,
+      "duration_seconds": 0.02,
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped."
+    },
+    {
+      "timestamp": "2026-11-04T17:42:18.007547+05:30",
+      "section": "STRATEGY_MODEL",
+      "status": "COMPLETED",
+      "date": "2026-11-01",
+      "run_date": "2026-11-04",
+      "mae_base": 1.273,
+      "mae_refined": 1.249,
+      "features_count": 115,
+      "duration_seconds": 0.0,
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped."
+    },
     {
       "timestamp": "2026-11-04T17:37:30.528155+05:30",
       "section": "STRATEGY_MODEL",
