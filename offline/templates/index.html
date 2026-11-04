@@ -2077,6 +2077,168 @@
                     </div>
                 </div>
 
+                <!-- ============================================================== -->
+                <!-- SCENARIO BENCHMARK COMPARISON MATRIX (5Y vs 1Y vs 1Y + AI MODEL) -->
+                <!-- ============================================================== -->
+                <div class="glass-panel rounded-3xl p-6 space-y-5 border border-white/10 relative overflow-hidden">
+                    <!-- Header & Filter Tabs -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <h3 class="text-sm font-semibold text-white tracking-tight">Execution Benchmark &amp; Scenario Matrix</h3>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-apple-textSecondary border border-white/10">3 Options</span>
+                            </div>
+                            <p class="text-xs text-apple-textSecondary">
+                                Compare mechanical strategy execution across 5-Year and 1-Year horizons against the AI model's filtered high-conviction trades.
+                            </p>
+                        </div>
+
+                        <!-- Scenario Quick Filter Buttons -->
+                        <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/10 text-xs self-start md:self-auto">
+                            <button id="pillScenarioFilterInfer-ALL" onclick="filterScenarioTableInfer('ALL')" class="px-3 py-1 rounded-lg font-medium text-white bg-white/15 transition-all">All Scenarios</button>
+                            <button id="pillScenarioFilterInfer-5Y" onclick="filterScenarioTableInfer('5Y_ALL')" class="px-3 py-1 rounded-lg font-medium text-apple-textSecondary hover:text-white transition-all">5Y All</button>
+                            <button id="pillScenarioFilterInfer-1Y" onclick="filterScenarioTableInfer('1Y_ALL')" class="px-3 py-1 rounded-lg font-medium text-purple-300 hover:text-white transition-all">1Y All</button>
+                            <button id="pillScenarioFilterInfer-MODEL" onclick="filterScenarioTableInfer('1Y_MODEL')" class="px-3 py-1 rounded-lg font-medium text-emerald-400 hover:text-white flex items-center gap-1.5 transition-all">
+                                <span>1Y + AI Model</span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scenario Comparison Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-white/10 text-[11px] text-apple-textSecondary uppercase tracking-wider font-medium">
+                                    <th class="py-3 px-3.5">Execution Option</th>
+                                    <th class="py-3 px-3 text-right">Total Setups</th>
+                                    <th class="py-3 px-3 text-right">Profitable Setups</th>
+                                    <th class="py-3 px-3 text-right">Trades We Took</th>
+                                    <th class="py-3 px-3 text-right">Trades Won</th>
+                                    <th class="py-3 px-3 text-right">Win Rate</th>
+                                    <th class="py-3 px-3 text-right">Overall P&amp;L %</th>
+                                    <th class="py-3 px-3 text-right">Net R</th>
+                                    <th class="py-3 px-3 text-right">Max Profit Trade</th>
+                                    <th class="py-3 px-3 text-right">Max Loss Trade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scenarioTableBodyInfer" class="divide-y divide-white/5 font-mono">
+                                <!-- Option 1: 5-Year All Setups -->
+                                <tr data-scenario-id="5Y_ALL" class="hover:bg-white/[0.03] transition-colors">
+                                    <td class="py-3 px-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                                            <div>
+                                                <div class="font-semibold text-white text-xs">All Trades (Last 5 Years)</div>
+                                                <div class="text-[10px] text-apple-textSecondary font-sans mt-0.5">5Y Historical Baseline &bull; 2021-2026</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-slate-200">8,667</td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-400 font-semibold">3,068</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">(35.4%)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-white font-semibold">8,667</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">(100%)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-400 font-semibold">3,068</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">5,117 Lost</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">35.4%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-emerald-400">+7,041.5%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-amber-400">+1,220.3 R</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-emerald-400 font-medium">+43.40%</td>
+                                    <td class="py-3 px-3 text-right text-rose-400 font-medium">-31.62%</td>
+                                </tr>
+
+                                <!-- Option 2: 1-Year All Setups -->
+                                <tr data-scenario-id="1Y_ALL" class="hover:bg-white/[0.03] transition-colors">
+                                    <td class="py-3 px-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                                            <div>
+                                                <div class="font-semibold text-white text-xs">All Trades (Last 1 Year)</div>
+                                                <div class="text-[10px] text-purple-300/80 font-sans mt-0.5">1Y Raw Baseline (No AI) &bull; 2025-10-06 to 2026-10-05</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-slate-200">1,576</td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-400 font-semibold">453</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">(28.7%)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-white font-semibold">1,576</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">(100%)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-rose-400 font-semibold">453</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">1,035 Lost</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/25">28.7%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-rose-400">-193.7%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-rose-400">-100.8 R</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-emerald-400 font-medium">+16.81%</td>
+                                    <td class="py-3 px-3 text-right text-rose-400 font-medium">-13.79%</td>
+                                </tr>
+
+                                <!-- Option 3: 1-Year + AI Model Filter -->
+                                <tr data-scenario-id="1Y_MODEL" class="hover:bg-white/[0.03] transition-colors bg-emerald-500/[0.04] border-l-2 border-emerald-400">
+                                    <td class="py-3 px-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            <div>
+                                                <div class="font-semibold text-white text-xs">Last 1 Year + AI Model Filter</div>
+                                                <div class="text-[10px] text-emerald-300 font-sans mt-0.5">XGBoost ML Guided &bull; 2025-10-06 to 2026-10-05</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-slate-200">1,576</td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-400 font-semibold">453</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">(28.7% universe)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-300 font-semibold">279</span>
+                                        <span class="text-[10px] text-emerald-400/80 font-sans block">(17.7% taken)</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="text-emerald-400 font-semibold">98</span>
+                                        <span class="text-[10px] text-apple-textSecondary font-sans block">171 Lost</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">35.1%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-emerald-400">+111.5%</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right">
+                                        <span class="font-bold text-amber-400">+15.0 R</span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right text-emerald-400 font-medium">+15.00%</td>
+                                    <td class="py-3 px-3 text-right text-rose-300 font-medium">-7.41%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- 50 MA Trade Execution Ledger Card -->
                 <div class="glass-panel rounded-3xl p-6 space-y-5">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
@@ -5441,6 +5603,7 @@
                 const sIn = document.getElementById('tradeSearchInput50ma');
                 if (sIn) sIn.value = '';
                 loadTradeLedgerData();
+                load50MASummary();
             } else if (subview === 'global') {
                 if (overview) overview.classList.add('hidden');
                 if (view50ma) view50ma.classList.add('hidden');
@@ -6855,9 +7018,42 @@
             }
         }
 
+        function filterScenarioTableInfer(filter) {
+            const filterMap = {
+                'ALL': 'ALL',
+                '5Y_ALL': '5Y',
+                '1Y_ALL': '1Y',
+                '1Y_MODEL': 'MODEL'
+            };
+            ['ALL', '5Y_ALL', '1Y_ALL', '1Y_MODEL'].forEach(f => {
+                const btnKey = filterMap[f];
+                const btn = document.getElementById(`pillScenarioFilterInfer-${btnKey}`);
+                if (btn) {
+                    if (f === filter) {
+                        btn.classList.add('bg-white/15', 'text-white');
+                        btn.classList.remove('text-apple-textSecondary');
+                    } else {
+                        btn.classList.remove('bg-white/15', 'text-white');
+                        btn.classList.add('text-apple-textSecondary');
+                    }
+                }
+            });
+
+            const rows = document.querySelectorAll('#scenarioTableBodyInfer tr');
+            rows.forEach(r => {
+                const scId = r.getAttribute('data-scenario-id');
+                if (filter === 'ALL' || scId === filter) {
+                    r.classList.remove('hidden');
+                } else {
+                    r.classList.add('hidden');
+                }
+            });
+        }
+
         function render50MAScenarioComparison(scData) {
             const tbody = document.getElementById('scenarioTableBody');
-            if (!tbody || !scData || !Array.isArray(scData.scenarios)) return;
+            const tbodyInfer = document.getElementById('scenarioTableBodyInfer');
+            if (!scData || !Array.isArray(scData.scenarios)) return;
 
             const rowsHtml = scData.scenarios.map(sc => {
                 const isModel = sc.id === '1Y_MODEL';
@@ -6923,7 +7119,8 @@
                 `;
             }).join('');
 
-            tbody.innerHTML = rowsHtml;
+            if (tbody) tbody.innerHTML = rowsHtml;
+            if (tbodyInfer) tbodyInfer.innerHTML = rowsHtml;
             if (window.lucide) lucide.createIcons();
             if (currentScenarioFilter !== 'ALL') {
                 filterScenarioTable(currentScenarioFilter);

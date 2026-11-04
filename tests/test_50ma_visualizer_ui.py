@@ -87,12 +87,14 @@ class Test50MAVisualizerUI(unittest.TestCase):
         self.assertIn('id="canvas50MAChart"', body)
 
     def test_08_scenario_benchmark_table_and_filters_exist(self):
-        """Test 8: Verifies Scenario Comparison Matrix and filter pills are rendered."""
+        """Test 8: Verifies Scenario Comparison Matrix and filter pills are rendered in both 50MA and Inference views."""
         self.assertIn('id="scenarioTableBody"', self.html_content)
+        self.assertIn('id="scenarioTableBodyInfer"', self.html_content)
         self.assertIn('id="pillScenarioFilter-ALL"', self.html_content)
         self.assertIn('id="pillScenarioFilter-5Y"', self.html_content)
         self.assertIn('id="pillScenarioFilter-1Y"', self.html_content)
         self.assertIn('id="pillScenarioFilter-MODEL"', self.html_content)
+        self.assertIn('id="pillScenarioFilterInfer-ALL"', self.html_content)
         self.assertIn("Execution Benchmark &amp; Scenario Matrix", self.html_content)
         self.assertIn("All Trades (Last 5 Years)", self.html_content)
         self.assertIn("All Trades (Last 1 Year)", self.html_content)
