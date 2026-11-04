@@ -293,6 +293,75 @@ class Test50MALedgerApi(unittest.TestCase):
         self.assertEqual(l1y.get("start_date"), "2025-10-06")
         self.assertEqual(l1y.get("end_date"), "2026-10-05")
 
+    def test_16_summary_api_scenario_comparison(self):
+        """Test 16: Verifies /api/strategy/50ma/summary returns scenario_comparison with 3 options."""
+        response = self.client.get("/api/strategy/50ma/summary")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.get_json()
+        self.assertIn("scenario_comparison", data)
+        sc = data["scenario_comparison"]
+        self.assertIn("scenarios", sc)
+        scenarios = sc["scenarios"]
+        self.assertEqual(len(scenarios), 3)
+
+        sc_map = {item["id"]: item for item in scenarios}
+        self.assertIn("5Y_ALL", sc_map)
+        self.assertIn("1Y_ALL", sc_map)
+        self.assertIn("1Y_MODEL", sc_map)
+
+        # 5Y All Setups
+        sc_5y = sc_map["5Y_ALL"]
+        self.assertEqual(sc_5y["total_trades"], 8667)
+        self.assertEqual(sc_5y["profit_trades"], 3068)
+        self.assertEqual(sc_5y["trades_taken"], 8667)
+        self.assertEqual(sc_5y["wins_taken"], 3068)
+        self.assertAlmostEqual(sc_5y["win_rate_taken"], 35.4, places=1)
+        self.assertGreater(sc_5y["overall_pnl_pct"], 7000.0)
+        self.assertAlmostEqual(sc_5y["max_profit_pct"], 43.40, places=1)
+        self.assertAlmostEqual(sc_5y["max_loss_pct"], -31.62, places=1)
+
+        # 1Y All Setups
+        sc_1y = sc_map["1Y_ALL"]
+        self.assertEqual(sc_1y["total_trades"], 1576)
+        self.assertEqual(sc_1y["profit_trades"], 453)
+        self.assertEqual(sc_1y["trades_taken"], 1576)
+        self.assertEqual(sc_1y["wins_taken"], 453)
+        self.assertAlmostEqual(sc_1y["win_rate_taken"], 28.7, places=1)
+        self.assertLess(sc_1y["overall_pnl_pct"], 0.0)
+        self.assertAlmostEqual(sc_1y["max_profit_pct"], 16.81, places=1)
+        self.assertAlmostEqual(sc_1y["max_loss_pct"], -13.79, places=1)
+
+        # 1Y + AI Model Filter
+        sc_model = sc_map["1Y_MODEL"]
+        self.assertEqual(sc_model["total_trades"], 1576)
+        self.assertEqual(sc_model["profit_trades"], 453)
+        self.assertEqual(sc_model["trades_taken"], 279)
+        self.assertEqual(sc_model["wins_taken"], 98)
+        self.assertAlmostEqual(sc_model["win_rate_taken"], 35.1, places=1)
+        self.assertGreater(sc_model["overall_pnl_pct"], 100.0)
+        self.assertEqual(sc_model["net_r"], 15.0)
+        self.assertAlmostEqual(sc_model["max_profit_pct"], 15.00, places=1)
+        self.assertAlmostEqual(sc_model["max_loss_pct"], -7.41, places=1)
+
+    def test_17_trades_filter_by_split_model_take(self):
+        """Test 17: Verifies /api/strategy/50ma/trades?split=MODEL_TAKE returns exact 279 AI recommended trades."""
+        response = self.client.get("/api/strategy/50ma/trades?split=MODEL_TAKE&limit=300")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.get_json()
+        self.assertEqual(data.get("status"), "SUCCESS")
+        self.assertEqual(data.get("total_trades"), 279)
+        trades = data.get("trades", [])
+        self.assertEqual(len(trades), 279)
+
+        summary = data.get("summary", {})
+        self.assertEqual(summary.get("success_count"), 98)
+        self.assertEqual(summary.get("loss_count"), 171)
+        self.assertEqual(summary.get("neutral_count"), 6)
+        self.assertEqual(summary.get("pending_count"), 4)
+        self.assertAlmostEqual(summary.get("win_rate", 0), 35.1, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()

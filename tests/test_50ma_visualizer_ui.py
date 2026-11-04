@@ -44,10 +44,11 @@ class Test50MAVisualizerUI(unittest.TestCase):
         self.assertIn('id="table50MABody"', self.html_content)
 
     def test_04_split_and_outcome_filter_controls(self):
-        """Test 4: Verifies split (TRAIN, TEST_1Y) and outcome filter pills exist."""
+        """Test 4: Verifies split (TRAIN, TEST_1Y, MODEL_TAKE) and outcome filter pills exist."""
         self.assertIn('id="pill50MASplit-ALL"', self.html_content)
         self.assertIn('id="pill50MASplit-TRAIN"', self.html_content)
         self.assertIn('id="pill50MASplit-TEST_1Y"', self.html_content)
+        self.assertIn('id="pill50MASplit-MODEL_TAKE"', self.html_content)
         self.assertIn('id="pill50MAOutcome-ALL"', self.html_content)
         self.assertIn('id="pill50MAOutcome-SUCCESS"', self.html_content)
         self.assertIn('id="pill50MAOutcome-LOSS"', self.html_content)
@@ -72,6 +73,9 @@ class Test50MAVisualizerUI(unittest.TestCase):
         self.assertIn("function open50MAChartModal(tradeId)", self.html_content)
         self.assertIn("function close50MAChartModal()", self.html_content)
         self.assertIn("function draw50MACandlestickChart()", self.html_content)
+        self.assertIn("function filterScenarioTable(filter)", self.html_content)
+        self.assertIn("function render50MAScenarioComparison(scData)", self.html_content)
+        self.assertIn("function applyScenarioToLedger(split)", self.html_content)
 
     def test_07_flask_index_renders_successfully(self):
         """Test 7: Verifies Flask GET / renders status 200 and includes all 50MA UI sections."""
@@ -81,6 +85,18 @@ class Test50MAVisualizerUI(unittest.TestCase):
         self.assertIn('id="tab-ma50-view"', body)
         self.assertIn('id="modal50MAChart"', body)
         self.assertIn('id="canvas50MAChart"', body)
+
+    def test_08_scenario_benchmark_table_and_filters_exist(self):
+        """Test 8: Verifies Scenario Comparison Matrix and filter pills are rendered."""
+        self.assertIn('id="scenarioTableBody"', self.html_content)
+        self.assertIn('id="pillScenarioFilter-ALL"', self.html_content)
+        self.assertIn('id="pillScenarioFilter-5Y"', self.html_content)
+        self.assertIn('id="pillScenarioFilter-1Y"', self.html_content)
+        self.assertIn('id="pillScenarioFilter-MODEL"', self.html_content)
+        self.assertIn("Execution Benchmark &amp; Scenario Matrix", self.html_content)
+        self.assertIn("All Trades (Last 5 Years)", self.html_content)
+        self.assertIn("All Trades (Last 1 Year)", self.html_content)
+        self.assertIn("Last 1 Year + AI Model Filter", self.html_content)
 
 
 if __name__ == "__main__":
