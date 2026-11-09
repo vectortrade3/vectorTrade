@@ -1,6 +1,6 @@
 {
   "strategy": "50_MA_SETUP",
-  "updated_at": "2026-11-04T17:34:58.490863+05:30",
+  "updated_at": "2026-11-09T15:03:24.419707+05:30",
   "summary": {
     "timeframe": "LAST_1_YEAR",
     "timeframe_start": "2025-10-06",
@@ -19,7 +19,7 @@
     "accuracy_refined": "66.0%",
     "win_rate_recall": "21.6%",
     "mae_refined": 1.249,
-    "generated_at": "2026-11-04T17:34:58.490863+05:30"
+    "generated_at": "2026-11-09T15:03:24.419707+05:30"
   },
   "total_trades": 1576,
   "trades": [

@@ -3,6 +3,614 @@
     {
       "task_name": "STRATEGY_MODEL_TRAINING",
       "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:39.790081+05:30",
+      "readable_time": "2026-11-09 15:49:39 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:39.755925+05:30",
+      "readable_time": "2026-11-09 15:49:39 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:39.726133+05:30",
+      "readable_time": "2026-11-09 15:49:39 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:39.698270+05:30",
+      "readable_time": "2026-11-09 15:49:39 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:39.461984+05:30",
+      "readable_time": "2026-11-09 15:49:39 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:49:29.654700+05:30",
+      "readable_time": "2026-11-09 15:49:29 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:30.626859+05:30",
+      "readable_time": "2026-11-09 15:34:30 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:30.581448+05:30",
+      "readable_time": "2026-11-09 15:34:30 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:30.538645+05:30",
+      "readable_time": "2026-11-09 15:34:30 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:30.507486+05:30",
+      "readable_time": "2026-11-09 15:34:30 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:24.114963+05:30",
+      "readable_time": "2026-11-09 15:34:24 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:34:23.811748+05:30",
+      "readable_time": "2026-11-09 15:34:23 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:42.829674+05:30",
+      "readable_time": "2026-11-09 15:30:42 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:42.779912+05:30",
+      "readable_time": "2026-11-09 15:30:42 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:42.733977+05:30",
+      "readable_time": "2026-11-09 15:30:42 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:42.701750+05:30",
+      "readable_time": "2026-11-09 15:30:42 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:36.787563+05:30",
+      "readable_time": "2026-11-09 15:30:36 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:30:36.527140+05:30",
+      "readable_time": "2026-11-09 15:30:36 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:56.726451+05:30",
+      "readable_time": "2026-11-09 15:25:56 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:56.686004+05:30",
+      "readable_time": "2026-11-09 15:25:56 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:56.644069+05:30",
+      "readable_time": "2026-11-09 15:25:56 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:56.608258+05:30",
+      "readable_time": "2026-11-09 15:25:56 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:51.295140+05:30",
+      "readable_time": "2026-11-09 15:25:51 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:25:51.027318+05:30",
+      "readable_time": "2026-11-09 15:25:51 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:05.055016+05:30",
+      "readable_time": "2026-11-09 15:18:05 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:05.010486+05:30",
+      "readable_time": "2026-11-09 15:18:05 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:04.960920+05:30",
+      "readable_time": "2026-11-09 15:18:04 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:04.927203+05:30",
+      "readable_time": "2026-11-09 15:18:04 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:04.870644+05:30",
+      "readable_time": "2026-11-09 15:18:04 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:18:04.627189+05:30",
+      "readable_time": "2026-11-09 15:18:04 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.482919+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.447544+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.408290+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.375183+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.323275+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:12:55.042752+05:30",
+      "readable_time": "2026-11-09 15:12:55 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.504443+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.462701+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.414022+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.381259+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.323834+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:07:43.087824+05:30",
+      "readable_time": "2026-11-09 15:07:43 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:31.283823+05:30",
+      "readable_time": "2026-11-09 15:03:31 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:31.252079+05:30",
+      "readable_time": "2026-11-09 15:03:31 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:31.188804+05:30",
+      "readable_time": "2026-11-09 15:03:31 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:31.153532+05:30",
+      "readable_time": "2026-11-09 15:03:31 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-09). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:31.100298+05:30",
+      "readable_time": "2026-11-09 15:03:31 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:30.808575+05:30",
+      "readable_time": "2026-11-09 15:03:30 India Standard Time",
+      "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 6.3s.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-09T15:03:24.513061+05:30",
+      "readable_time": "2026-11-09 15:03:24 India Standard Time",
+      "message": "Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:24.462682+05:30",
+      "readable_time": "2026-11-09 15:03:24 India Standard Time",
+      "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 0.7s.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_INFERENCE",
+      "status": "RUNNING",
+      "timestamp": "2026-11-09T15:03:23.784807+05:30",
+      "readable_time": "2026-11-09 15:03:23 India Standard Time",
+      "message": "Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-09T15:03:23.691536+05:30",
+      "readable_time": "2026-11-09 15:03:23 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-09). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:38.162952+05:30",
+      "readable_time": "2026-11-04 22:06:38 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:38.017024+05:30",
+      "readable_time": "2026-11-04 22:06:38 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:37.831395+05:30",
+      "readable_time": "2026-11-04 22:06:37 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:37.729604+05:30",
+      "readable_time": "2026-11-04 22:06:37 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:37.572190+05:30",
+      "readable_time": "2026-11-04 22:06:37 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T22:06:36.541303+05:30",
+      "readable_time": "2026-11-04 22:06:36 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-04). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.477499+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.410360+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.373108+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.341519+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.288376+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:37:15.023797+05:30",
+      "readable_time": "2026-11-04 20:37:15 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-04). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:28.311371+05:30",
+      "readable_time": "2026-11-04 20:35:28 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:28.198097+05:30",
+      "readable_time": "2026-11-04 20:35:28 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:28.079538+05:30",
+      "readable_time": "2026-11-04 20:35:28 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:28.007695+05:30",
+      "readable_time": "2026-11-04 20:35:28 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:27.897046+05:30",
+      "readable_time": "2026-11-04 20:35:27 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:35:27.424139+05:30",
+      "readable_time": "2026-11-04 20:35:27 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-04). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:36.282436+05:30",
+      "readable_time": "2026-11-04 20:08:36 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:36.229568+05:30",
+      "readable_time": "2026-11-04 20:08:36 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "GLOBAL_MODELS_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:36.163724+05:30",
+      "readable_time": "2026-11-04 20:08:36 India Standard Time",
+      "message": "Global models already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:36.112755+05:30",
+      "readable_time": "2026-11-04 20:08:36 India Standard Time",
+      "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
+      "error": null
+    },
+    {
+      "task_name": "UNIT_TEST_TASK",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:36.040486+05:30",
+      "readable_time": "2026-11-04 20:08:36 India Standard Time",
+      "message": "Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "task_name": "DATA_CLEANING",
+      "status": "COMPLETED",
+      "timestamp": "2026-11-04T20:08:35.602112+05:30",
+      "readable_time": "2026-11-04 20:08:35 India Standard Time",
+      "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-04). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "task_name": "STRATEGY_MODEL_TRAINING",
+      "status": "COMPLETED",
       "timestamp": "2026-11-04T17:42:18.313943+05:30",
       "readable_time": "2026-11-04 17:42:18 India Standard Time",
       "message": "Strategy model already trained up to 2026-11-01 today (2026-11-04). Training skipped.",
@@ -1467,5 +2075,5 @@
   ],
   "last_task": "STRATEGY_MODEL_TRAINING",
   "last_status": "COMPLETED",
-  "last_updated": "2026-11-04T17:42:18.313943+05:30"
+  "last_updated": "2026-11-09T15:49:39.790081+05:30"
 }

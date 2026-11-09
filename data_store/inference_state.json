@@ -1,11 +1,11 @@
 {
   "status": "COMPLETED",
-  "last_inference_date": "2026-11-04",
-  "last_inference_run_date": "2026-11-04",
-  "last_run_timestamp": "2026-11-04T17:36:19.064841+05:30",
+  "last_inference_date": "2026-11-09",
+  "last_inference_run_date": "2026-11-09",
+  "last_run_timestamp": "2026-11-09T15:03:30.794037+05:30",
   "strategy_inference": {
     "status": "COMPLETED",
-    "last_run_date": "2026-11-04",
+    "last_run_date": "2026-11-09",
     "accuracy_base": "57.8%",
     "mae_base": 1.273,
     "accuracy_refined": "66.0%",
@@ -22,13 +22,13 @@
     "base_features_count": 165,
     "refined_features_count": 115,
     "pruned_features_count": 50,
-    "duration_seconds": 1.54,
-    "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 1.5s.",
-    "updated_at": "2026-11-04T17:34:58.588218+05:30"
+    "duration_seconds": 0.66,
+    "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 0.7s.",
+    "updated_at": "2026-11-09T15:03:24.446491+05:30"
   },
   "global_inference": {
     "status": "COMPLETED",
-    "last_run_date": "2026-11-04",
+    "last_run_date": "2026-11-09",
     "mae_gain_base": 15.852,
     "mae_drop_base": 9.873,
     "mae_gain_refined": 15.819,
@@ -43,12 +43,40 @@
     "base_features_count": 137,
     "refined_features_count": 75,
     "pruned_features_count": 62,
-    "duration_seconds": 13.54,
-    "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 13.5s.",
-    "updated_at": "2026-11-04T17:36:19.064841+05:30"
+    "duration_seconds": 6.29,
+    "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 6.3s.",
+    "updated_at": "2026-11-09T15:03:30.794037+05:30"
   },
-  "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 13.5s.",
+  "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 6.3s.",
   "history": [
+    {
+      "timestamp": "2026-11-09T15:03:30.794037+05:30",
+      "section": "GLOBAL_INFERENCE",
+      "status": "COMPLETED",
+      "date": "2026-11-09",
+      "run_date": "2026-11-09",
+      "mae_gain_refined": 15.819,
+      "mae_drop_refined": 9.768,
+      "directional_accuracy": "47.7%",
+      "win_rate_pct": "49.8%",
+      "overall_pnl_pct": 222.87,
+      "duration_seconds": 6.29,
+      "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 6.3s."
+    },
+    {
+      "timestamp": "2026-11-09T15:03:24.446491+05:30",
+      "section": "STRATEGY_INFERENCE",
+      "status": "COMPLETED",
+      "date": "2026-11-09",
+      "run_date": "2026-11-09",
+      "accuracy_refined": "66.0%",
+      "win_rate_taken": "35.1%",
+      "overall_pnl_pct": 111.47,
+      "win_rate_recall": "21.6%",
+      "mae_refined": 1.249,
+      "duration_seconds": 0.66,
+      "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 0.7s."
+    },
     {
       "timestamp": "2026-11-04T17:36:19.064841+05:30",
       "section": "GLOBAL_INFERENCE",

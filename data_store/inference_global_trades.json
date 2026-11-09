@@ -1,6 +1,6 @@
 {
   "strategy": "GLOBAL_REGIME",
-  "updated_at": "2026-11-04T17:36:18.977811+05:30",
+  "updated_at": "2026-11-09T15:03:30.761027+05:30",
   "summary": {
     "total_regimes": 1744,
     "long_regimes": 1604,
@@ -14,7 +14,7 @@
     "worst_trade_pct": -14.29,
     "mae_gain_refined": 15.819,
     "mae_drop_refined": 9.768,
-    "generated_at": "2026-11-04T17:36:18.977811+05:30"
+    "generated_at": "2026-11-09T15:03:30.761027+05:30"
   },
   "total_regimes": 1744,
   "regimes": [
