@@ -393,6 +393,11 @@
                                 <td class="py-3.5 px-3 text-center font-mono text-xs">
                                     {% if trade.is_completed %}
                                     <span class="text-neutral-200">{{ trade.sale_date }}</span>
+                                    {% elif trade.is_liquidation_scheduled %}
+                                    <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30" title="Emergency Liquidation Scheduled for Market Open (09:15 IST)">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                                        <span>Scheduled 09:15</span>
+                                    </span>
                                     {% else %}
                                     <span class="text-neutral-500 font-mono">—</span>
                                     {% endif %}
@@ -1196,8 +1201,15 @@
                 const isCompleted = t.is_completed;
                 const isShort = (t.action || '').includes('SHORT') || (t.qty < 0);
 
-                // For Running trades: Sale date and exit values MUST be blank ('—')
-                const saleDateCell = isCompleted ? `<span class="text-neutral-200">${t.sale_date}</span>` : `<span class="text-neutral-500 font-mono">—</span>`;
+                // For Running trades: Sale date and exit values MUST be blank ('—') unless emergency liquidation is scheduled
+                let saleDateCell;
+                if (isCompleted) {
+                    saleDateCell = `<span class="text-neutral-200">${t.sale_date}</span>`;
+                } else if (t.is_liquidation_scheduled) {
+                    saleDateCell = `<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30" title="Emergency Liquidation Scheduled for Market Open (09:15 IST)"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span><span>Scheduled 09:15</span></span>`;
+                } else {
+                    saleDateCell = `<span class="text-neutral-500 font-mono">—</span>`;
+                }
                 const exitAmtCell = (isCompleted && t.amt_on_exit !== null) ? `<span class="text-white font-semibold">₹${t.amt_on_exit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : `<span class="text-neutral-500 font-mono">—</span>`;
 
                 let pnlPerShareCell = `<span class="text-neutral-500 font-mono">—</span>`;

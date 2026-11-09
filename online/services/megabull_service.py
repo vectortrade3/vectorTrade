@@ -638,6 +638,57 @@ class MegaBullService:
                 "product": str(po.get("product", "CNC")).upper()
             })
 
+        # 2b. Staged Off-Market Orders (Queued in MongoDB Atlas for market open)
+        try:
+            from online.db import db_manager
+            col = db_manager.staged_orders
+            if col is not None:
+                staged_docs = list(col.find({"status": {"$in": ["STAGED_OFFMARKET", "PENDING"]}}))
+                for so in staged_docs:
+                    s_sym = str(so.get("symbol", "")).upper()
+                    s_qty = int(so.get("quantity", so.get("qty", 1)))
+                    s_px = float(so.get("price", so.get("entry_price", 0.0)))
+                    s_action = str(so.get("action", so.get("type", "SELL"))).upper()
+                    s_prod = str(so.get("product", "CNC")).upper()
+                    s_reason = so.get("stage_reason", "Staged for market open (09:15 IST)")
+                    s_id = str(so.get("order_id", so.get("_id", f"STAGED_{s_sym}")))
+
+                    s_charges = self.calculate_regulatory_charges(
+                        buy_price=s_px,
+                        sell_price=s_px,
+                        quantity=s_qty,
+                        product=s_prod
+                    )
+
+                    valid_orders.append({
+                        "order_id": s_id,
+                        "symbol": s_sym,
+                        "instrument_token": str(so.get("instrument_token", self.get_instrument_token(s_sym))),
+                        "category": "PENDING",
+                        "category_label": "Pending (Staged Off-Market)",
+                        "action": s_action,
+                        "quantity": s_qty,
+                        "order_price": s_px,
+                        "ltp": s_px,
+                        "capital_put": round(s_px * s_qty, 2),
+                        "current_valuation": round(s_px * s_qty, 2),
+                        "status": "STAGED",
+                        "status_badge": "STAGED",
+                        "unrealized_pnl": 0.0,
+                        "gross_pnl": 0.0,
+                        "brokerage": s_charges["brokerage"],
+                        "taxes": s_charges["total_taxes"],
+                        "total_charges": s_charges["total_charges"],
+                        "net_pnl": 0.0,
+                        "charges_breakdown": s_charges,
+                        "pnl_pct": 0.0,
+                        "is_profit": True,
+                        "product": f"{s_prod} (Staged)",
+                        "note": s_reason
+                    })
+        except Exception as e:
+            logger.debug(f"Could not load staged offmarket orders: {e}")
+
         # 3. Completed Orders (Executed on MegaBull in current session)
         for eo in raw_orders.get("executed", []):
             st = str(eo.get("status", "EXECUTED")).upper()
@@ -1053,17 +1104,6 @@ class MegaBullService:
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
 
-        # Emergency Liquidation Guard: block any buying if emergency liquidation is scheduled
-        liq = self.get_liquidation_status()
-        if liq.get("armed") and liq.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
-            logger.warning(f"Order rejected for {sym}: Emergency liquidation is scheduled for market open.")
-            return {
-                "status": "ERROR",
-                "code": "LIQUIDATION_ACTIVE",
-                "error": "Emergency liquidation is currently scheduled for market open. Buying is halted until liquidation completes or is cancelled.",
-                "details": liq
-            }
-
         if enforce_duplicate_check:
             dup = self.is_symbol_in_portfolio(sym)
             if dup["exists"]:
@@ -1074,6 +1114,17 @@ class MegaBullService:
                     "error": f"Cannot place order: {dup['reason']}",
                     "details": dup
                 }
+
+        # Emergency Liquidation Guard: block any buying if emergency liquidation is scheduled
+        liq = self.get_liquidation_status()
+        if liq.get("armed") and liq.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
+            logger.warning(f"Order rejected for {sym}: Emergency liquidation is scheduled for market open.")
+            return {
+                "status": "ERROR",
+                "code": "LIQUIDATION_ACTIVE",
+                "error": "Emergency liquidation is currently scheduled for market open. Buying is halted until liquidation completes or is cancelled.",
+                "details": liq
+            }
 
         token = self.get_instrument_token(sym)
         target_px = round(float(target_price), 2) if target_price else round(px * (1.04 if act == "BUY" else 0.96), 2)

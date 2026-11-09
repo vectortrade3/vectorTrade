@@ -27,6 +27,14 @@ class TestOrderPlacementAndLifecycle(unittest.TestCase):
     def setUp(self):
         self.service = MegaBullService(api_key="test_api_key")
         self.client = TestClient(app, follow_redirects=False)
+        self.liq_patch = patch.object(self.service, "get_liquidation_status", return_value={"armed": False, "status": "IDLE"})
+        self.liq_patch.start()
+        self.app_liq_patch = patch("online.app.megabull_service.get_liquidation_status", return_value={"armed": False, "status": "IDLE"})
+        self.app_liq_patch.start()
+
+    def tearDown(self):
+        self.liq_patch.stop()
+        self.app_liq_patch.stop()
 
     def test_01_duplicate_rejected_when_active_holding_exists(self):
         """Verifies duplicate buy/sell is rejected if stock is already held with qty != 0."""

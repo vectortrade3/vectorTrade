@@ -518,6 +518,8 @@ class OrdersService:
             "status": "COMPLETED" if is_completed else "RUNNING",
             "action": "SELL (SHORT)" if is_short else "BUY (LONG)",
             "is_completed": is_completed,
+            "is_liquidation_scheduled": bool(trade.get("is_liquidation_scheduled", False)),
+            "scheduled_exit_action": trade.get("scheduled_exit_action"),
             "current_ltp": float(trade.get("ltp", entry))
         }
 
@@ -557,6 +559,18 @@ class OrdersService:
         journal_rows: List[Dict[str, Any]] = []
         seen_symbols = set()
 
+        # Check staged liquidation orders from MongoDB Atlas
+        staged_liquidation_map = {}
+        try:
+            col_staged = db_manager.staged_orders
+            if col_staged is not None:
+                staged_docs = list(col_staged.find({"status": "STAGED_OFFMARKET", "is_liquidation_order": True}))
+                for d in staged_docs:
+                    s_sym = str(d.get("symbol", "")).strip().upper()
+                    staged_liquidation_map[s_sym] = d
+        except Exception as e:
+            logger.debug(f"Could not load staged liquidation map: {e}")
+
         # A. Process running holdings
         for h in holdings:
             sym = str(h.get("symbol", "")).strip().upper()
@@ -565,6 +579,7 @@ class OrdersService:
             seen_symbols.add(sym)
 
             sig = signals_map.get(sym, {})
+            staged_liq = staged_liquidation_map.get(sym)
             trade_raw = {
                 "symbol": sym,
                 "buy_date": sig.get("valid_for_date", "2026-11-01"),
@@ -577,7 +592,9 @@ class OrdersService:
                 "total_charges": h.get("total_charges"),
                 "status": "RUNNING",
                 "ltp": h.get("ltp", h.get("avg_buy_price", 0.0)),
-                "action": "SELL (SHORT)" if int(h.get("qty", 1)) < 0 else "BUY (LONG)"
+                "action": "SELL (SHORT)" if int(h.get("qty", 1)) < 0 else "BUY (LONG)",
+                "is_liquidation_scheduled": bool(staged_liq),
+                "scheduled_exit_action": f"{staged_liq.get('action', 'SELL')} {staged_liq.get('quantity', abs(int(h.get('qty', 1))))} MKT" if staged_liq else None
             }
             journal_rows.append(self.calculate_trade_journal_row(trade_raw))
 
