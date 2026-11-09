@@ -93,13 +93,17 @@
                 <!-- Main Nav Tabs -->
                 <nav class="hidden md:flex items-center space-x-1">
                     <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
-                        Overview
+                        Home
                     </a>
                     <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
-                        <span>MongoDB Orders</span>
+                        <span>Orders</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             {{ stats.armed_orders_count }}
                         </span>
+                    </a>
+                    <a href="/megabull" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>MegaBull</span>
                     </a>
                 </nav>
             </div>

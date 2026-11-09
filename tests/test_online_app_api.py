@@ -147,19 +147,19 @@ class TestOnlineAppAPI(unittest.TestCase):
         )
         self.assertEqual(login_resp.status_code, 303)
 
-        # Step 2: Access Overview Page
-        overview_resp = self.client.get("/")
-        self.assertEqual(overview_resp.status_code, 200)
-        self.assertIn("Overview", overview_resp.text)
-        self.assertIn("Cloud Orders", overview_resp.text)
-        self.assertIn("root", overview_resp.text)
+        # Step 2: Access Home Page (Coming Soon)
+        home_resp = self.client.get("/")
+        self.assertEqual(home_resp.status_code, 200)
+        self.assertIn("VectorTrade Quantum", home_resp.text)
+        self.assertIn("Coming Soon", home_resp.text)
+        self.assertIn("root", home_resp.text)
 
         # Step 3: Access Dedicated MongoDB Orders Page
         orders_resp = self.client.get("/orders")
         self.assertEqual(orders_resp.status_code, 200)
         self.assertIn("Live Stock Orders", orders_resp.text)
         self.assertIn("Armed for Execution", orders_resp.text)
-        self.assertIn("MongoDB Orders", orders_resp.text)
+        self.assertIn("Orders", orders_resp.text)
 
     def test_14_logout_clears_session(self):
         """Verifies GET /logout clears session and redirects to login."""

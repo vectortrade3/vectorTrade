@@ -27,6 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from online.config import settings
 from online.db import db_manager
 from online.services.orders_service import orders_service
+from online.services.megabull_service import megabull_service
 
 logger = logging.getLogger("VectorTrade.OnlineApp")
 logger.setLevel(logging.INFO)
@@ -161,23 +162,20 @@ async def logout(request: Request):
 # ==============================================================================
 
 @app.get("/", response_class=HTMLResponse)
-async def overview_page(request: Request):
-    """Renders the Cloud Executive Overview & Gateway Dashboard."""
+async def home_page(request: Request):
+    """Renders the clean Apple HIG Coming Soon landing page with direct links to Orders and MegaBull."""
     user = request.session.get("user")
     if not user:
         return RedirectResponse(url="/login?next=/", status_code=303)
 
     stats = orders_service.get_order_summary_stats()
-    db_health = db_manager.ping()
-
     return templates.TemplateResponse(
         request=request,
-        name="overview.html",
+        name="coming_soon.html",
         context={
             "app_name": settings.app_name,
-            "stats": stats,
-            "db_health": db_health,
             "user": user,
+            "armed_orders_count": stats.get("armed_orders_count", 0),
             "env": settings.env
         }
     )
@@ -203,6 +201,29 @@ async def orders_page(request: Request):
             "db_health": db_health,
             "orders": initial_orders,
             "user": user,
+            "env": settings.env
+        }
+    )
+
+
+@app.get("/megabull", response_class=HTMLResponse)
+async def megabull_page(request: Request):
+    """Renders the dedicated MegaBull Account, Margin, Portfolio Holdings & Positions page."""
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login?next=/megabull", status_code=303)
+
+    summary = megabull_service.get_portfolio_summary()
+    stats = orders_service.get_order_summary_stats()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="megabull.html",
+        context={
+            "app_name": settings.app_name,
+            "user": user,
+            "summary": summary,
+            "armed_orders_count": stats.get("armed_orders_count", 0),
             "env": settings.env
         }
     )
@@ -271,6 +292,62 @@ async def get_order_by_id_api(order_id: str):
     return {
         "status": "SUCCESS",
         "order": order
+    }
+
+
+# ==============================================================================
+# MEGABULL REST API ENDPOINTS (READ-ONLY)
+# ==============================================================================
+
+@app.get("/api/megabull/account")
+async def get_megabull_account_api():
+    """Returns MegaBull user profile, virtual capital, and margin utilization."""
+    account = megabull_service.get_account_details()
+    return {
+        "status": "SUCCESS",
+        "data": account
+    }
+
+
+@app.get("/api/megabull/holdings")
+async def get_megabull_holdings_api():
+    """Returns MegaBull equity holdings enriched with live market LTP and P&L."""
+    holdings = megabull_service.get_holdings(enrich_ltp=True)
+    return {
+        "status": "SUCCESS",
+        "count": len(holdings),
+        "data": holdings
+    }
+
+
+@app.get("/api/megabull/positions")
+async def get_megabull_positions_api():
+    """Returns MegaBull active positions."""
+    positions = megabull_service.get_positions()
+    return {
+        "status": "SUCCESS",
+        "count": len(positions),
+        "data": positions
+    }
+
+
+@app.get("/api/megabull/orders")
+async def get_megabull_orders_api():
+    """Returns MegaBull open and executed order history."""
+    orders = megabull_service.get_orders()
+    return {
+        "status": "SUCCESS",
+        "data": orders
+    }
+
+
+@app.get("/api/megabull/summary")
+async def get_megabull_summary_api():
+    """Returns aggregated MegaBull account balance, portfolio valuation, and performance."""
+    summary = megabull_service.get_portfolio_summary()
+    return {
+        "status": "SUCCESS",
+        "data": summary
     }
 
 

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MegaBull Account & Portfolio — {{ app_name }}</title>
+    <!-- Tailwind CSS (Restrained Dark Palette) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        apple: {
+                            canvas: '#000000',
+                            card: 'rgba(28, 28, 30, 0.55)',
+                            cardHover: 'rgba(44, 44, 46, 0.65)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            blue: '#0A84FF',
+                            green: '#30D158',
+                            amber: '#FF9F0A',
+                            red: '#FF453A',
+                            purple: '#BF5AF2',
+                            subtext: '#8E8E93',
+                            mono: '#E5E5EA'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #F5F5F7;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-spring {
+            transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .hairline-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hairline-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-blue-600/30 selection:text-blue-200">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 backdrop-blur-2xl bg-black/75 hairline-bottom">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand & Main Tabs -->
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <i data-lucide="crosshair" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Nav Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
+                        Home
+                    </a>
+                    <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <span>Orders</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {{ armed_orders_count or 0 }}
+                        </span>
+                    </a>
+                    <a href="/megabull" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>MegaBull</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Controls & Session -->
+            <div class="flex items-center space-x-3">
+                <!-- Broker Connection Badge -->
+                <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-mono hairline-border bg-white/[0.02]">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-neutral-300">MegaBull: <strong class="text-emerald-400">Connected</strong></span>
+                </div>
+
+                <!-- Refresh Button -->
+                <button id="refreshBtn" onclick="refreshMegaBullData()" class="apple-spring px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-white flex items-center space-x-1.5 active:scale-95">
+                    <i data-lucide="refresh-cw" id="refreshIcon" class="w-3.5 h-3.5 text-blue-400"></i>
+                    <span>Refresh</span>
+                </button>
+
+                <!-- User Session & Logout -->
+                <div class="flex items-center space-x-2 pl-2 border-l border-white/[0.08]">
+                    <div class="px-2.5 py-1 rounded-lg hairline-border bg-white/[0.04] text-xs font-mono text-neutral-200 flex items-center space-x-1.5">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>{{ user or 'root' }}</span>
+                    </div>
+                    <a href="/logout" title="Sign Out" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-400 hover:border-rose-500/30 flex items-center space-x-1">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Sign Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Account Profile & Status Header -->
+        <section class="rounded-3xl hairline-border bg-gradient-to-r from-blue-950/20 via-black to-indigo-950/20 p-6 backdrop-blur-2xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex items-center space-x-4">
+                <div class="h-14 w-14 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold font-mono text-lg shadow-lg">
+                    VT
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2.5">
+                        <h1 class="text-xl font-bold tracking-tight text-white">{{ summary.account.full_name }}</h1>
+                        <span class="px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            {{ summary.account.premium_type }} Account
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-xs text-apple-subtext font-mono mt-1">
+                        <span>{{ summary.account.email }}</span>
+                        <span>•</span>
+                        <span>Brokerage: ₹{{ "%.2f"|format(summary.account.brokerage) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs font-mono">
+                <div class="px-3 py-2 rounded-xl hairline-border bg-white/[0.02]">
+                    <span class="text-neutral-400 block text-[10px]">API Endpoint</span>
+                    <span class="text-neutral-200">api.megabull.in</span>
+                </div>
+                <div class="px-3 py-2 rounded-xl hairline-border bg-white/[0.02]">
+                    <span class="text-neutral-400 block text-[10px]">Last Sync</span>
+                    <span id="lastSyncLabel" class="text-emerald-400">{{ summary.last_synced }}</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Executive Financial KPI Cards -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            
+            <!-- KPI 1: Total Virtual Capital -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Virtual Capital</span>
+                    <i data-lucide="coins" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-1">
+                    <span id="cardVirtualMoney" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                        ₹{{ "{:,.2f}".format(summary.account.virtual_money) }}
+                    </span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono">Total Baseline Funds</p>
+            </div>
+
+            <!-- KPI 2: Blocked Margin -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Blocked Margin</span>
+                    <i data-lucide="lock" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-1">
+                    <span id="cardBlockedMoney" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-amber-400">
+                        ₹{{ "{:,.2f}".format(summary.account.virtual_money_blocked) }}
+                    </span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono">Allocated in Holdings</p>
+            </div>
+
+            <!-- KPI 3: Available Free Cash -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Free Cash Margin</span>
+                    <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-1">
+                    <span id="cardFreeCash" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-emerald-400">
+                        ₹{{ "{:,.2f}".format(summary.account.virtual_money_left) }}
+                    </span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono">Available for New Orders</p>
+            </div>
+
+            <!-- KPI 4: Portfolio Unrealized P&L -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Portfolio Gain (P&L)</span>
+                    <i data-lucide="trending-up" class="w-4 h-4 {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-1">
+                    <span id="cardTotalPnl" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}">
+                        {{ '+' if summary.total_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(summary.total_pnl) }}
+                    </span>
+                </div>
+                <p class="mt-2 text-[11px] font-mono {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}">
+                    {{ '+' if summary.total_pnl_pct >= 0 else '' }}{{ "%.2f"|format(summary.total_pnl_pct) }}% Unrealized Edge
+                </p>
+            </div>
+        </section>
+
+        <!-- Margin Utilization Bar -->
+        <section class="rounded-2xl hairline-border bg-white/[0.02] p-4 backdrop-blur-xl space-y-2">
+            <div class="flex items-center justify-between text-xs font-mono">
+                <span class="text-apple-subtext">Margin Utilization</span>
+                <span class="text-neutral-300">
+                    Blocked: <strong class="text-amber-400">{{ "%.1f"|format(summary.account.margin_utilization_pct) }}%</strong> • 
+                    Free: <strong class="text-emerald-400">{{ "%.1f"|format(100.0 - summary.account.margin_utilization_pct) }}%</strong>
+                </span>
+            </div>
+            <div class="w-full bg-neutral-800 h-2.5 rounded-full overflow-hidden flex">
+                <div style="width: {{ summary.account.margin_utilization_pct }}%" class="bg-gradient-to-r from-amber-500 to-amber-400 h-full"></div>
+                <div style="width: {{ 100.0 - summary.account.margin_utilization_pct }}%" class="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full"></div>
+            </div>
+        </section>
+
+        <!-- Portfolio Holdings Table Section -->
+        <section class="rounded-3xl hairline-border bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl space-y-0">
+            <!-- Section Header -->
+            <div class="px-6 py-4 hairline-bottom flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <i data-lucide="layers" class="w-4 h-4 text-blue-400"></i>
+                    <h2 class="text-sm font-semibold tracking-tight text-white">Equity Portfolio Holdings</h2>
+                    <span id="holdingsCountBadge" class="px-2 py-0.5 text-[11px] font-mono rounded-full bg-white/[0.05] text-neutral-400 hairline-border">
+                        {{ summary.holdings_count }} Assets
+                    </span>
+                </div>
+                <div class="text-xs text-apple-subtext font-mono flex items-center space-x-2">
+                    <span>Valuation: <strong>₹{{ "{:,.2f}".format(summary.total_current) }}</strong></span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead>
+                        <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
+                            <th class="py-3 px-5">Instrument / Symbol</th>
+                            <th class="py-3 px-4 text-center">Type</th>
+                            <th class="py-3 px-4 text-right">Quantity</th>
+                            <th class="py-3 px-4 text-right">Avg Buy Price</th>
+                            <th class="py-3 px-4 text-right">Live LTP</th>
+                            <th class="py-3 px-4 text-right">Invested Value</th>
+                            <th class="py-3 px-4 text-right">Current Value</th>
+                            <th class="py-3 px-5 text-right">Unrealized P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody id="holdingsTableBody" class="divide-y divide-white/[0.04]">
+                        {% for h in summary.holdings %}
+                        <tr class="apple-spring hover:bg-white/[0.03]">
+                            <!-- Symbol -->
+                            <td class="py-3.5 px-5">
+                                <div class="flex items-center space-x-3">
+                                    <div class="h-8 w-8 rounded-lg bg-white/[0.06] flex items-center justify-center font-mono font-bold text-xs text-white border border-white/10">
+                                        {{ h.symbol[:2] }}
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-white tracking-tight">{{ h.symbol }}</div>
+                                        <div class="text-[10px] text-apple-subtext font-mono">Token: {{ h.instrument_token }}</div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Type -->
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold 
+                                    {{ 'bg-blue-500/15 text-blue-400 border border-blue-500/30' if h.type == 'LONG' else 'bg-purple-500/15 text-purple-400 border border-purple-500/30' }}">
+                                    {{ h.type }}
+                                </span>
+                            </td>
+
+                            <!-- Quantity -->
+                            <td class="py-3.5 px-4 text-right font-mono font-semibold text-white">
+                                {{ h.qty }}
+                            </td>
+
+                            <!-- Avg Buy Price -->
+                            <td class="py-3.5 px-4 text-right font-mono text-neutral-300">
+                                ₹{{ "%.2f"|format(h.avg_buy_price) }}
+                            </td>
+
+                            <!-- Live LTP -->
+                            <td class="py-3.5 px-4 text-right font-mono font-bold text-white">
+                                ₹{{ "%.2f"|format(h.ltp) }}
+                            </td>
+
+                            <!-- Invested Value -->
+                            <td class="py-3.5 px-4 text-right font-mono text-neutral-400">
+                                ₹{{ "{:,.2f}".format(h.invested_value) }}
+                            </td>
+
+                            <!-- Current Value -->
+                            <td class="py-3.5 px-4 text-right font-mono font-semibold text-white">
+                                ₹{{ "{:,.2f}".format(h.current_value) }}
+                            </td>
+
+                            <!-- Unrealized P&L -->
+                            <td class="py-3.5 px-5 text-right font-mono">
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold
+                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if h.unrealized_pnl >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
+                                    <span>{{ '+' if h.unrealized_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(h.unrealized_pnl) }}</span>
+                                    <span class="text-[10px]">({{ '+' if h.pnl_pct >= 0 else '' }}{{ "%.2f"|format(h.pnl_pct) }}%)</span>
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Positions & Orders Monitoring Card -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Open Positions Card -->
+            <div class="rounded-3xl hairline-border bg-white/[0.02] p-6 backdrop-blur-xl space-y-4">
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="activity" class="w-5 h-5 text-blue-400"></i>
+                        <h3 class="text-sm font-semibold text-white">Active Intraday Positions</h3>
+                    </div>
+                    <span class="px-2 py-0.5 text-xs font-mono rounded-full bg-white/[0.04] text-neutral-400 hairline-border">
+                        {{ summary.positions_count }} Open
+                    </span>
+                </div>
+                
+                {% if summary.positions_count == 0 %}
+                <div class="py-8 text-center space-y-2">
+                    <i data-lucide="check-circle-2" class="w-8 h-8 text-neutral-600 mx-auto"></i>
+                    <p class="text-xs text-apple-subtext font-mono">No active intraday positions.</p>
+                    <p class="text-[11px] text-neutral-500">All current capital is held in CNC Delivery holdings.</p>
+                </div>
+                {% else %}
+                <div class="space-y-2 font-mono text-xs">
+                    {% for p in summary.positions %}
+                    <div class="p-3 rounded-xl hairline-border bg-white/[0.02] flex items-center justify-between">
+                        <span>{{ p.symbol or p.instrumentName }}</span>
+                        <span class="text-emerald-400">Active</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Orders Activity Card -->
+            <div class="rounded-3xl hairline-border bg-white/[0.02] p-6 backdrop-blur-xl space-y-4">
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="file-text" class="w-5 h-5 text-amber-400"></i>
+                        <h3 class="text-sm font-semibold text-white">MegaBull Order Stream</h3>
+                    </div>
+                    <span class="px-2 py-0.5 text-xs font-mono rounded-full bg-white/[0.04] text-neutral-400 hairline-border">
+                        {{ summary.open_orders_count }} Pending • {{ summary.executed_orders_count }} Executed
+                    </span>
+                </div>
+
+                <div class="py-8 text-center space-y-2">
+                    <i data-lucide="inbox" class="w-8 h-8 text-neutral-600 mx-auto"></i>
+                    <p class="text-xs text-apple-subtext font-mono">Zero pending orders in queue.</p>
+                    <p class="text-[11px] text-neutral-500">Execution worker idle outside active market triggers.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Disclaimer / Safety Notice -->
+        <section class="rounded-2xl hairline-border bg-blue-500/[0.04] border-blue-500/20 p-4 text-xs text-apple-subtext flex items-center space-x-3">
+            <i data-lucide="shield-check" class="w-5 h-5 text-blue-400 shrink-0"></i>
+            <div>
+                <strong class="text-white">Read-Only Broker Telemetry:</strong>
+                <span>This page pulls live data from MegaBull Paper Trading. Order placement is currently restricted in accordance with safety instructions.</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="hairline-bottom border-t border-white/[0.08] py-6 text-center text-xs text-apple-subtext font-mono">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>VectorTrade Online Cloud Terminal • MegaBull Paper Trading REST Gateway</span>
+            <span>Session: <strong class="text-neutral-300">{{ user or 'root' }}</strong></span>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        async function refreshMegaBullData() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('animate-spin');
+
+            try {
+                const resp = await fetch('/api/megabull/summary');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const s = data.data;
+                    if (s) {
+                        document.getElementById('cardVirtualMoney').textContent = `₹${s.account.virtual_money.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        document.getElementById('cardBlockedMoney').textContent = `₹${s.account.virtual_money_blocked.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        document.getElementById('cardFreeCash').textContent = `₹${s.account.virtual_money_left.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        
+                        const pnl = s.total_pnl;
+                        document.getElementById('cardTotalPnl').textContent = `${pnl >= 0 ? '+' : ''}₹${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        document.getElementById('lastSyncLabel').textContent = s.last_synced;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to refresh MegaBull data:", err);
+            } finally {
+                setTimeout(() => icon.classList.remove('animate-spin'), 400);
+            }
+        }
+
+        // Periodic background poll every 15s
+        setInterval(refreshMegaBullData, 15000);
+    </script>
+</body>
+</html>

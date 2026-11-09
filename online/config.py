@@ -38,5 +38,10 @@ class Settings(BaseSettings):
     session_secret_key: str = os.getenv("SESSION_SECRET_KEY", "vectortrade-cloud-session-secret-2026-secure")
     session_max_age_seconds: int = int(os.getenv("SESSION_MAX_AGE_SECONDS", "604800"))  # 7 days
 
+    # MegaBull Broker Configuration
+    megabull_api_key: str = os.getenv("MEGABULL_API_KEY", "")
+    megabull_user_id: str = os.getenv("MEGABULL_USER_ID", "")
+    megabull_base_url: str = os.getenv("MEGABULL_BASE_URL", "https://api.megabull.in").rstrip("/")
+
 
 settings = Settings()
