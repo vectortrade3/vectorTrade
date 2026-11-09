@@ -76,6 +76,8 @@ class TestMegaBullAPIAndPages(unittest.TestCase):
         self.assertIn("Capital Remaining", html)
         self.assertIn("Running (Bought, Not Sold)", html)
         self.assertIn("Equity Portfolio Holdings", html)
+        self.assertIn("Transactions (Ledger)", html)
+        self.assertIn("Fee Breakdown", html)
 
     def test_05_api_megabull_account_endpoint(self):
         """Verifies GET /api/megabull/account returns structured account metadata."""
@@ -149,6 +151,21 @@ class TestMegaBullAPIAndPages(unittest.TestCase):
         for o in data["data"]:
             self.assertNotIn(o.get("status", "").upper(), ["CANCELLED", "CANCELED", "REJECTED", "FAILED"])
             self.assertIn(o.get("category"), ["RUNNING", "PENDING", "COMPLETED"])
+
+    def test_11_api_megabull_transactions_endpoint(self):
+        """Verifies GET /api/megabull/transactions returns ledger and fee totals."""
+        resp = self.client.get("/api/megabull/transactions")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("count", data)
+        self.assertIn("data", data)
+        self.assertIn("total_brokerage", data)
+        self.assertIn("total_taxes", data)
+        self.assertIn("gross_realized", data)
+        self.assertIn("net_realized", data)
+        self.assertIsInstance(data["data"], list)
+        self.assertGreaterEqual(len(data["data"]), 2)
 
 
 if __name__ == "__main__":

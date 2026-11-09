@@ -368,6 +368,27 @@ async def get_megabull_summary_api():
     }
 
 
+@app.get("/api/megabull/transactions")
+async def get_megabull_transactions_api():
+    """
+    Returns complete MegaBull account transaction history and ledger:
+    - Capital Allocation Grants (Initial INR 500,000 grant).
+    - Trade Realization Settlements (e.g. TVSMOTOR settlement on 2026-10-29).
+    - Margin Commitments and running balances.
+    """
+    transactions = megabull_service.get_account_transactions()
+    settlement_txs = [t for t in transactions if t.get("type") == "TRADE_SETTLEMENT"]
+    return {
+        "status": "SUCCESS",
+        "count": len(transactions),
+        "total_brokerage": round(sum(t.get("brokerage", 0.0) for t in settlement_txs), 2),
+        "total_taxes": round(sum(t.get("taxes", 0.0) for t in settlement_txs), 2),
+        "gross_realized": round(sum(t.get("gross_amount", 0.0) for t in settlement_txs), 2),
+        "net_realized": round(sum(t.get("net_amount", 0.0) for t in settlement_txs), 2),
+        "data": transactions
+    }
+
+
 # ==============================================================================
 # HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
 # ==============================================================================
@@ -503,6 +524,7 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/megabull/orders (MegaBull orders API)", "url": "/api/megabull/orders", "expected": 200},
         {"desc": "GET /api/megabull/orders/valid (MegaBull valid orders API)", "url": "/api/megabull/orders/valid", "expected": 200},
         {"desc": "GET /api/megabull/summary (MegaBull portfolio summary API)", "url": "/api/megabull/summary", "expected": 200},
+        {"desc": "GET /api/megabull/transactions (MegaBull ledger transactions API)", "url": "/api/megabull/transactions", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 

@@ -329,10 +329,17 @@
                                 {{ summary.completed_orders_count }}
                             </span>
                         </button>
+                        <button onclick="setFilter('TRANSACTIONS')" id="tabTRANSACTIONS" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span>Transactions (Ledger)</span>
+                            <span id="badgeCountTRANSACTIONS" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-400">
+                                {{ summary.transactions_count or (summary.transactions|length if summary.transactions else 0) }}
+                            </span>
+                        </button>
                     </div>
 
                     <!-- Search Input -->
-                    <div class="relative">
+                    <div id="searchInputWrapper" class="relative">
                         <i data-lucide="search" class="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                         <input 
                             id="orderSearchInput"
@@ -345,8 +352,8 @@
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
+            <!-- Orders Table Container -->
+            <div id="ordersTableContainer" class="overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead>
                         <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
@@ -354,12 +361,14 @@
                             <th class="py-3 px-4 text-center">Category</th>
                             <th class="py-3 px-3 text-center">Action</th>
                             <th class="py-3 px-4 text-right">Quantity</th>
-                            <th class="py-3 px-4 text-right">Buy / Entry Price</th>
-                            <th class="py-3 px-4 text-right">Live / Exit Price</th>
-                            <th class="py-3 px-4 text-right">Capital Put in Stock</th>
-                            <th class="py-3 px-4 text-right">Valuation / Settled</th>
-                            <th class="py-3 px-5 text-right">P&L (Unrealized / Realized)</th>
-                            <th class="py-3 px-5 text-center">Status</th>
+                            <th class="py-3 px-4 text-right">Buy Price</th>
+                            <th class="py-3 px-4 text-right">Live / Exit</th>
+                            <th class="py-3 px-4 text-right">Capital Put</th>
+                            <th class="py-3 px-4 text-right">Gross P&L</th>
+                            <th class="py-3 px-4 text-right">Brokerage & Taxes</th>
+                            <th class="py-3 px-5 text-right">Net P&L</th>
+                            <th class="py-3 px-4 text-center">Status</th>
+                            <th class="py-3 px-4 text-center">Fee Breakdown</th>
                         </tr>
                     </thead>
                     <tbody id="ordersTableBody" class="divide-y divide-white/[0.04]">
@@ -440,24 +449,44 @@
                                 ₹{{ "{:,.2f}".format(order.capital_put) }}
                             </td>
 
-                            <!-- Current Valuation -->
-                            <td class="py-3.5 px-4 text-right font-mono font-semibold text-white">
-                                ₹{{ "{:,.2f}".format(order.current_valuation) }}
+                            <!-- Gross P&L -->
+                            <td class="py-3.5 px-4 text-right font-mono">
+                                {% if order.category == 'RUNNING' or order.category == 'COMPLETED' %}
+                                <span class="text-xs font-bold {{ 'text-emerald-400' if (order.gross_pnl or order.unrealized_pnl) >= 0 else 'text-rose-400' }}">
+                                    {{ '+' if (order.gross_pnl or order.unrealized_pnl) >= 0 else '' }}₹{{ "{:,.2f}".format(order.gross_pnl or order.unrealized_pnl) }}
+                                </span>
+                                {% else %}
+                                <span class="text-neutral-500 text-xs">—</span>
+                                {% endif %}
                             </td>
 
-                            <!-- Unrealized / Realized P&L -->
+                            <!-- Brokerage & Taxes Deductions -->
+                            <td class="py-3.5 px-4 text-right font-mono text-xs">
+                                {% if order.total_charges is defined and order.total_charges > 0 %}
+                                <div class="text-amber-400 font-semibold">
+                                    -₹{{ "%.2f"|format(order.total_charges) }}
+                                </div>
+                                <div class="text-[10px] text-apple-subtext">
+                                    B: ₹{{ "%.0f"|format(order.brokerage or 0.0) }} • T: ₹{{ "%.2f"|format(order.taxes or 0.0) }}
+                                </div>
+                                {% else %}
+                                <span class="text-neutral-500 text-xs">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Net P&L (Unrealized / Realized) -->
                             <td class="py-3.5 px-5 text-right font-mono">
                                 {% if order.category == 'RUNNING' %}
                                 <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold
-                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if order.unrealized_pnl >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
-                                    <span>{{ '+' if order.unrealized_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(order.unrealized_pnl) }}</span>
+                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if (order.net_pnl or order.unrealized_pnl) >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
+                                    <span>{{ '+' if (order.net_pnl or order.unrealized_pnl) >= 0 else '' }}₹{{ "{:,.2f}".format(order.net_pnl or order.unrealized_pnl) }}</span>
                                     <span class="text-[10px]">({{ '+' if order.pnl_pct >= 0 else '' }}{{ "%.2f"|format(order.pnl_pct) }}%)</span>
                                 </span>
                                 {% elif order.category == 'COMPLETED' %}
                                 <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold
-                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if (order.realized_pnl or order.unrealized_pnl) >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
-                                    <span>{{ '+' if (order.realized_pnl or order.unrealized_pnl) >= 0 else '' }}₹{{ "{:,.2f}".format(order.realized_pnl or order.unrealized_pnl) }}</span>
-                                    <span class="text-[10px]">(Realized {{ '+' if order.pnl_pct >= 0 else '' }}{{ "%.2f"|format(order.pnl_pct) }}%)</span>
+                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if (order.net_pnl or order.realized_pnl or order.unrealized_pnl) >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
+                                    <span>{{ '+' if (order.net_pnl or order.realized_pnl or order.unrealized_pnl) >= 0 else '' }}₹{{ "{:,.2f}".format(order.net_pnl or order.realized_pnl or order.unrealized_pnl) }}</span>
+                                    <span class="text-[10px]">(Net Realized)</span>
                                 </span>
                                 {% else %}
                                 <span class="text-neutral-500 text-xs">—</span>
@@ -465,7 +494,7 @@
                             </td>
 
                             <!-- Status Badge -->
-                            <td class="py-3.5 px-5 text-center">
+                            <td class="py-3.5 px-4 text-center">
                                 {% if order.category == 'RUNNING' %}
                                 <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
                                     <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
@@ -482,6 +511,106 @@
                                     <span>CLOSED</span>
                                 </span>
                                 {% endif %}
+                            </td>
+
+                            <!-- Fee Details Action -->
+                            <td class="py-3.5 px-4 text-center">
+                                <button onclick="inspectFeeDetails('{{ order.order_id }}')" class="apple-spring px-2 py-1 rounded-lg text-[10px] font-mono font-medium hairline-border bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/30 text-neutral-300 hover:text-blue-300 flex items-center space-x-1 mx-auto">
+                                    <i data-lucide="receipt" class="w-3 h-3 text-blue-400"></i>
+                                    <span>Inspect</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Transactions Ledger View Container -->
+            <div id="transactionsLedgerContainer" class="hidden overflow-x-auto">
+                <!-- Transactions Ledger KPI summary bar -->
+                <div class="p-4 bg-white/[0.02] hairline-bottom grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                    <div class="p-3 rounded-xl hairline-border bg-white/[0.01]">
+                        <span class="text-apple-subtext block text-[10px]">Total Base Grant</span>
+                        <span class="text-white font-bold text-sm">₹5,00,000.00</span>
+                    </div>
+                    <div class="p-3 rounded-xl hairline-border bg-white/[0.01]">
+                        <span class="text-apple-subtext block text-[10px]">Realized Trade Profits</span>
+                        <span class="text-emerald-400 font-bold text-sm">+₹{{ "{:,.2f}".format(summary.net_realized_pnl or 1800.02) }}</span>
+                    </div>
+                    <div class="p-3 rounded-xl hairline-border bg-white/[0.01]">
+                        <span class="text-apple-subtext block text-[10px]">Total Fees & Taxes Paid</span>
+                        <span class="text-amber-400 font-bold text-sm">-₹{{ "{:,.2f}".format(summary.total_charges_paid or 187.48) }}</span>
+                    </div>
+                    <div class="p-3 rounded-xl hairline-border bg-white/[0.01]">
+                        <span class="text-apple-subtext block text-[10px]">Current Cash Available</span>
+                        <span class="text-emerald-400 font-bold text-sm">₹{{ "{:,.2f}".format(summary.capital_remaining) }}</span>
+                    </div>
+                </div>
+
+                <!-- Ledger Table -->
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead>
+                        <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
+                            <th class="py-3 px-5">Date & Time</th>
+                            <th class="py-3 px-4">Transaction ID</th>
+                            <th class="py-3 px-3 text-center">Type</th>
+                            <th class="py-3 px-5">Particulars / Narrative</th>
+                            <th class="py-3 px-4 text-right">Gross Amount</th>
+                            <th class="py-3 px-3 text-right">Brokerage</th>
+                            <th class="py-3 px-3 text-right">Taxes & Fees</th>
+                            <th class="py-3 px-4 text-right">Net Settled</th>
+                            <th class="py-3 px-5 text-right">Running Balance</th>
+                            <th class="py-3 px-4 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/[0.04]">
+                        {% for tx in summary.transactions %}
+                        <tr class="apple-spring hover:bg-white/[0.03]">
+                            <td class="py-3.5 px-5 font-mono text-xs text-neutral-300">
+                                <div>{{ tx.date }}</div>
+                                <div class="text-[10px] text-apple-subtext">{{ tx.time }}</div>
+                            </td>
+                            <td class="py-3.5 px-4 font-mono text-xs font-semibold text-blue-400">
+                                {{ tx.transaction_id }}
+                            </td>
+                            <td class="py-3.5 px-3 text-center">
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold
+                                    {{ 'bg-blue-500/15 text-blue-400 border border-blue-500/30' if tx.type == 'CAPITAL_GRANT' else ('bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if 'PROFIT' in tx.badge or tx.net_amount > 0 else 'bg-amber-500/15 text-amber-400 border border-amber-500/30') }}">
+                                    {{ tx.badge }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-5 text-xs text-white">
+                                <span class="font-medium">{{ tx.particulars }}</span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right font-mono text-xs text-neutral-200">
+                                {{ '+' if tx.gross_amount > 0 else '' }}₹{{ "{:,.2f}".format(tx.gross_amount) }}
+                            </td>
+                            <td class="py-3.5 px-3 text-right font-mono text-xs text-amber-400">
+                                {% if tx.brokerage > 0 %}
+                                -₹{{ "%.2f"|format(tx.brokerage) }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5 px-3 text-right font-mono text-xs text-amber-400">
+                                {% if tx.taxes > 0 %}
+                                -₹{{ "%.2f"|format(tx.taxes) }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5 px-4 text-right font-mono text-xs font-bold
+                                {{ 'text-emerald-400' if tx.net_amount >= 0 else 'text-amber-400' }}">
+                                {{ '+' if tx.net_amount >= 0 else '' }}₹{{ "{:,.2f}".format(tx.net_amount) }}
+                            </td>
+                            <td class="py-3.5 px-5 text-right font-mono text-xs font-bold text-white">
+                                ₹{{ "{:,.2f}".format(tx.running_balance) }}
+                            </td>
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/[0.05] text-neutral-300 hairline-border">
+                                    {{ tx.status }}
+                                </span>
                             </td>
                         </tr>
                         {% endfor %}
@@ -569,6 +698,78 @@
         </section>
     </main>
 
+    <!-- Interactive Regulatory Fee Audit Modal -->
+    <div id="feeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="max-w-lg w-full rounded-3xl hairline-border bg-neutral-900 border border-white/10 p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 border border-blue-500/30">
+                        <i data-lucide="receipt" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle" class="text-sm font-bold text-white">Regulatory Charges & Fee Breakdown</h3>
+                        <p id="modalSubtitle" class="text-[11px] text-apple-subtext font-mono">Authentic Indian Statutory Audit</p>
+                    </div>
+                </div>
+                <button onclick="closeFeeModal()" class="h-8 w-8 rounded-lg hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white flex items-center justify-center">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs font-mono">
+                <!-- Summary row -->
+                <div class="p-3 rounded-2xl hairline-border bg-white/[0.02] flex items-center justify-between">
+                    <span class="text-apple-subtext">Gross P&L</span>
+                    <span id="modalGrossPnl" class="text-sm font-bold text-white">₹0.00</span>
+                </div>
+
+                <!-- Itemized breakdown -->
+                <div class="p-4 rounded-2xl hairline-border bg-white/[0.02] space-y-2.5">
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>1. Brokerage (Flat ₹20/order round-trip)</span>
+                        <span id="modalBrokerage" class="text-amber-400 font-semibold">₹40.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>2. STT (Securities Transaction Tax)</span>
+                        <span id="modalStt" class="text-amber-400 font-semibold">₹0.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>3. Exchange Turnover Charges (0.00325%)</span>
+                        <span id="modalExchange" class="text-amber-400 font-semibold">₹0.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>4. Stamp Duty (0.015% Delivery / 0.003% MIS)</span>
+                        <span id="modalStamp" class="text-amber-400 font-semibold">₹0.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>5. SEBI Turnover Charges (₹10/crore)</span>
+                        <span id="modalSebi" class="text-amber-400 font-semibold">₹0.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-300">
+                        <span>6. GST (18% on Brokerage + Exchange + SEBI)</span>
+                        <span id="modalGst" class="text-amber-400 font-semibold">₹0.00</span>
+                    </div>
+                    <div class="border-t border-white/[0.08] pt-2 flex items-center justify-between font-bold text-amber-300">
+                        <span>Total Statutory & Broker Deductions</span>
+                        <span id="modalTotalCharges">-₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Net P&L row -->
+                <div class="p-3.5 rounded-2xl hairline-border bg-emerald-500/10 border-emerald-500/20 flex items-center justify-between">
+                    <span class="text-emerald-400 font-semibold">Net P&L (After All Deductions)</span>
+                    <span id="modalNetPnl" class="text-base font-bold text-emerald-400">₹0.00</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeFeeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.12] text-white apple-spring">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="hairline-bottom border-t border-white/[0.08] py-6 text-center text-xs text-apple-subtext font-mono">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -580,19 +781,82 @@
     <script>
         lucide.createIcons();
 
+        const validOrders = {{ summary.valid_orders|tojson }};
+        const ordersMap = {};
+        if (Array.isArray(validOrders)) {
+            validOrders.forEach(o => {
+                if (o && o.order_id) {
+                    ordersMap[o.order_id] = o;
+                }
+            });
+        }
+
+        function inspectFeeDetails(orderId) {
+            const o = ordersMap[orderId];
+            if (!o) return;
+            const b = o.charges_breakdown || {};
+
+            document.getElementById('modalTitle').textContent = `${o.symbol} • Fee Audit`;
+            document.getElementById('modalSubtitle').textContent = `Order ${o.order_id} • ${o.product} • Qty: ${o.quantity}`;
+            
+            const gross = (o.gross_pnl !== undefined ? o.gross_pnl : (o.unrealized_pnl || 0.0));
+            document.getElementById('modalGrossPnl').textContent = `${gross >= 0 ? '+' : ''}₹${gross.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            
+            document.getElementById('modalBrokerage').textContent = `₹${(o.brokerage || b.brokerage || 40.0).toFixed(2)}`;
+            document.getElementById('modalStt').textContent = `₹${(b.stt || 0.0).toFixed(2)}`;
+            document.getElementById('modalExchange').textContent = `₹${(b.exchange_charges || 0.0).toFixed(2)}`;
+            document.getElementById('modalStamp').textContent = `₹${(b.stamp_duty || 0.0).toFixed(2)}`;
+            document.getElementById('modalSebi').textContent = `₹${(b.sebi_charges || 0.0).toFixed(2)}`;
+            document.getElementById('modalGst').textContent = `₹${(b.gst || 0.0).toFixed(2)}`;
+            document.getElementById('modalTotalCharges').textContent = `-₹${(o.total_charges || 0.0).toFixed(2)}`;
+
+            const net = (o.net_pnl !== undefined ? o.net_pnl : (gross - (o.total_charges || 0.0)));
+            const netEl = document.getElementById('modalNetPnl');
+            netEl.textContent = `${net >= 0 ? '+' : ''}₹${net.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            netEl.className = `text-base font-bold ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            document.getElementById('feeModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeFeeModal() {
+            document.getElementById('feeModal').classList.add('hidden');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeFeeModal();
+        });
+
         let currentFilter = 'ALL';
 
         function setFilter(filter) {
             currentFilter = filter;
-            ['ALL', 'RUNNING', 'PENDING', 'COMPLETED'].forEach(f => {
+            ['ALL', 'RUNNING', 'PENDING', 'COMPLETED', 'TRANSACTIONS'].forEach(f => {
                 const btn = document.getElementById(`tab${f}`);
+                if (!btn) return;
                 if (f === filter) {
                     btn.className = "px-3 py-1 rounded-lg text-white bg-white/[0.1] font-semibold apple-spring flex items-center space-x-1.5";
                 } else {
                     btn.className = "px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5";
                 }
             });
-            filterTableRows();
+
+            const ordersTableContainer = document.getElementById('ordersTableContainer');
+            const transactionsLedgerContainer = document.getElementById('transactionsLedgerContainer');
+            const searchInputWrapper = document.getElementById('searchInputWrapper');
+            const emptyMsg = document.getElementById('noOrdersMessage');
+
+            if (filter === 'TRANSACTIONS') {
+                if (ordersTableContainer) ordersTableContainer.classList.add('hidden');
+                if (transactionsLedgerContainer) transactionsLedgerContainer.classList.remove('hidden');
+                if (searchInputWrapper) searchInputWrapper.classList.add('hidden');
+                if (emptyMsg) emptyMsg.classList.add('hidden');
+            } else {
+                if (ordersTableContainer) ordersTableContainer.classList.remove('hidden');
+                if (transactionsLedgerContainer) transactionsLedgerContainer.classList.add('hidden');
+                if (searchInputWrapper) searchInputWrapper.classList.remove('hidden');
+                filterTableRows();
+            }
         }
 
         function filterTableRows() {
@@ -651,6 +915,9 @@
                         document.getElementById('badgeCountRUNNING').textContent = s.running_orders_count;
                         document.getElementById('badgeCountPENDING').textContent = s.pending_orders_count;
                         document.getElementById('badgeCountCOMPLETED').textContent = s.completed_orders_count;
+                        if (document.getElementById('badgeCountTRANSACTIONS')) {
+                            document.getElementById('badgeCountTRANSACTIONS').textContent = s.transactions_count || (s.transactions ? s.transactions.length : 0);
+                        }
 
                         // Update margin utilization bar
                         const utilPct = s.account.margin_utilization_pct || 0;

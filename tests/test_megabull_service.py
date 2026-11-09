@@ -176,6 +176,51 @@ class TestMegaBullService(unittest.TestCase):
                         # Net Worth = 100,000 cash + 420,000 holdings = 520,000
                         self.assertEqual(summary["net_worth"], 520000.0)
                         self.assertEqual(summary["holdings_count"], 1)
+                        self.assertIn("transactions", summary)
+                        self.assertIn("total_brokerage_paid", summary)
+                        self.assertIn("total_taxes_paid", summary)
+                        self.assertIn("gross_realized_pnl", summary)
+                        self.assertIn("net_realized_pnl", summary)
+
+    def test_09_calculate_regulatory_charges(self):
+        """Verifies statutory regulatory charge calculation logic."""
+        charges = self.service.calculate_regulatory_charges(
+            buy_price=1000.0,
+            sell_price=1100.0,
+            quantity=10,
+            product="CNC"
+        )
+        # Brokerage should be flat ₹40 round-trip (₹20 buy + ₹20 sell)
+        self.assertEqual(charges["brokerage"], 40.0)
+        # Gross P&L: (1100 - 1000) * 10 = 1000.0
+        self.assertEqual(charges["gross_pnl"], 1000.0)
+        # Net P&L: Gross - Total Charges
+        self.assertEqual(charges["net_pnl"], round(1000.0 - charges["total_charges"], 2))
+        self.assertGreater(charges["stt"], 0.0)
+        self.assertGreater(charges["gst"], 0.0)
+
+    def test_10_account_transactions_ledger(self):
+        """Verifies account transactions ledger contains initial grant and running balance tracking."""
+        transactions = self.service.get_account_transactions()
+        self.assertIsInstance(transactions, list)
+        self.assertGreaterEqual(len(transactions), 2)
+
+        # First transaction should be base capital grant
+        first = transactions[0]
+        self.assertEqual(first["transaction_id"], "TX_INIT_500000")
+        self.assertEqual(first["type"], "CAPITAL_GRANT")
+        self.assertEqual(first["gross_amount"], 500000.0)
+        self.assertEqual(first["running_balance"], 500000.0)
+
+        # Should contain settled trade transaction (TVSMOTOR)
+        settled = [t for t in transactions if t["type"] == "TRADE_SETTLEMENT"]
+        self.assertGreaterEqual(len(settled), 1)
+        tvsmotor = [t for t in settled if "TVSMOTOR" in t["symbol"]][0]
+        self.assertEqual(tvsmotor["gross_amount"], 1987.5)
+        self.assertEqual(tvsmotor["brokerage"], 40.0)
+        self.assertEqual(tvsmotor["taxes"], 147.48)
+        self.assertEqual(tvsmotor["net_amount"], 1800.02)
+        self.assertEqual(tvsmotor["running_balance"], 501800.02)
 
 
 if __name__ == "__main__":
