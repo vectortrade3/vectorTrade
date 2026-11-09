@@ -1327,6 +1327,16 @@ class MegaBullService:
                     {"$set": self._liquidation_state},
                     upsert=True
                 )
+            col_staged = db_manager.staged_orders
+            if col_staged is not None:
+                col_staged.update_many(
+                    {"is_liquidation_order": True, "status": "STAGED_OFFMARKET"},
+                    {"$set": {
+                        "status": "CANCELLED",
+                        "cancel_reason": "Emergency Liquidation cancelled by user",
+                        "cancelled_at": timestamp_str
+                    }}
+                )
         except Exception as e:
             logger.debug(f"Could not persist liquidation cancellation to MongoDB: {e}")
 
@@ -1500,6 +1510,29 @@ class MegaBullService:
                         {"$set": self._liquidation_state},
                         upsert=True
                     )
+                col_staged = db_manager.staged_orders
+                if col_staged is not None:
+                    for s in snapshot:
+                        staged_order_doc = {
+                            "symbol": s["symbol"],
+                            "action": s["exit_action"],
+                            "quantity": s["exit_qty"],
+                            "price": s["ltp"],
+                            "entry_price": s["ltp"],
+                            "order_type": "MARKET",
+                            "product": s["duration"],
+                            "instrument_token": s["instrument_token"],
+                            "strategy": "Emergency Liquidation",
+                            "status": "STAGED_OFFMARKET",
+                            "stage_reason": "Emergency Liquidation - Scheduled to sell at market open (09:15 IST)",
+                            "is_liquidation_order": True,
+                            "created_at": timestamp_str
+                        }
+                        col_staged.update_one(
+                            {"symbol": s["symbol"], "is_liquidation_order": True, "status": "STAGED_OFFMARKET"},
+                            {"$set": staged_order_doc},
+                            upsert=True
+                        )
             except Exception as e:
                 logger.debug(f"Could not persist liquidation state to MongoDB: {e}")
 
