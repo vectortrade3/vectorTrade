@@ -354,5 +354,282 @@ class OrdersService:
                 "last_sync_timestamp": ""
             }
 
+    @staticmethod
+    def calculate_trade_journal_row(trade: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculates all 17 trading ledger columns from the 4 primary inputs
+        (Stock Name, Entry, Stoploss, Target):
+        1. Stock Name
+        2. Buy Date
+        3. Strategy Name
+        4. TF (Timeframe: Daily)
+        5. QTY (Quantity)
+        6. Entry
+        7. Stoploss
+        8. RISK per share (|Entry - Stoploss|)
+        9. Sale Date (blank until trade is completed)
+        10. Target 1:2 (Entry +/- 2*Risk)
+        11. Target 1:3 (Entry +/- 3*Risk)
+        12. AMT. Invested (QTY * Entry)
+        13. EXTRA P&L (Charges / dividend, negative regulatory fees)
+        14. AMT. On Exit (blank until trade is completed)
+        15. P/L Per Share (blank until trade is completed)
+        16. P/L Per Share % (blank until trade is completed)
+        17. NET P/L (blank until trade is completed)
+        """
+        symbol = str(trade.get("symbol", trade.get("stock_name", "UNKNOWN"))).strip().upper()
+
+        # 2. Buy Date
+        buy_date = str(trade.get("buy_date", trade.get("valid_for_date", trade.get("date", trade.get("created_at", "2026-11-01"))))).strip()[:10]
+        if not buy_date or buy_date == "None":
+            buy_date = "2026-11-01"
+
+        # 3. Strategy Name
+        strategy = str(trade.get("strategy_name", trade.get("strategy", trade.get("strategy_id", "50 MA Setup")))).strip()
+        if strategy in ("50MA_PULLBACK", "50_MA_SETUP"):
+            strategy = "50 MA Setup"
+        elif strategy == "GLOBAL_FORECAST":
+            strategy = "Global Forecast"
+        elif not strategy:
+            strategy = "50 MA Setup"
+
+        # 4. Timeframe (TF)
+        tf = str(trade.get("tf", "Daily")).strip() or "Daily"
+
+        # 5. QTY
+        raw_qty = trade.get("quantity", trade.get("qty", 1))
+        try:
+            qty = abs(int(raw_qty))
+        except (ValueError, TypeError):
+            qty = 1
+        if qty == 0:
+            qty = 1
+
+        is_short = int(raw_qty) < 0 or "SHORT" in str(trade.get("action", "")).upper() or str(trade.get("action", "")).upper() == "SELL"
+
+        # 6. Entry
+        try:
+            entry = round(float(trade.get("entry", trade.get("entry_price", trade.get("buy_trigger", trade.get("order_price", trade.get("avg_buy_price", trade.get("price", 0.0))))))), 2)
+        except (ValueError, TypeError):
+            entry = 0.0
+
+        # 7. Stoploss
+        raw_sl = trade.get("stoploss", trade.get("sl_price", trade.get("sl")))
+        if raw_sl is not None and float(raw_sl) > 0:
+            stoploss = round(float(raw_sl), 2)
+        else:
+            # Default 2% stoploss geometry if not provided
+            stoploss = round(entry * 1.02, 2) if is_short else round(entry * 0.98, 2)
+
+        # 8. RISK per share
+        risk_per_share = round(abs(entry - stoploss), 2)
+        if risk_per_share <= 0:
+            risk_per_share = max(round(entry * 0.02, 2), 1.0)
+
+        # 10. Target 1:2 & 11. Target 1:3
+        raw_tgt = trade.get("target", trade.get("target_price", trade.get("target_1_2")))
+        if is_short:
+            target_1_2 = round(entry - (2.0 * risk_per_share), 2)
+            target_1_3 = round(entry - (3.0 * risk_per_share), 2)
+        else:
+            target_1_2 = round(entry + (2.0 * risk_per_share), 2)
+            target_1_3 = round(entry + (3.0 * risk_per_share), 2)
+
+        # 12. AMT. Invested
+        amt_invested = round(qty * entry, 2)
+
+        # 13. EXTRA P&L (Charges / dividend)
+        raw_charges = trade.get("total_charges", trade.get("charges", trade.get("brokerage_and_taxes")))
+        if raw_charges is not None and float(raw_charges) > 0:
+            charges_val = round(float(raw_charges), 2)
+        else:
+            from online.services.megabull_service import megabull_service
+            charges_calc = megabull_service.calculate_regulatory_charges(
+                buy_price=entry,
+                sell_price=entry if not is_short else entry,
+                quantity=qty,
+                product="MIS" if is_short else "CNC"
+            )
+            charges_val = charges_calc.get("total_charges", 40.0)
+        extra_pnl = -round(charges_val, 2)
+
+        # Status Check: Running vs Completed
+        status = str(trade.get("status", "RUNNING")).strip().upper()
+        category = str(trade.get("category", "")).strip().upper()
+        is_completed = (
+            status in ("COMPLETED", "CLOSED", "TARGET_HIT", "SL_HIT", "RESOLVED")
+            or category == "COMPLETED"
+            or bool(trade.get("closed_date"))
+        )
+
+        if is_completed:
+            # 9. Sale Date
+            sale_date = str(trade.get("closed_date", trade.get("sale_date", trade.get("exit_date", "2026-10-29")))).strip()[:10]
+            if not sale_date or sale_date == "None":
+                sale_date = "2026-10-29"
+
+            # 14. AMT. On Exit
+            exit_price = float(trade.get("exit_price", trade.get("ltp", entry)))
+            amt_on_exit = round(qty * exit_price, 2)
+
+            # 15. P/L Per Share
+            if is_short:
+                pnl_per_share = round(entry - exit_price, 2)
+            else:
+                pnl_per_share = round(exit_price - entry, 2)
+
+            # 16. P/L Per Share %
+            pnl_per_share_pct = round((pnl_per_share / entry * 100), 2) if entry > 0 else 0.0
+
+            # 17. NET P/L
+            gross_pnl = round(qty * pnl_per_share, 2)
+            net_pnl = round(gross_pnl + extra_pnl, 2)
+        else:
+            # RUNNING trade: Sale date and exit parameters MUST be blank until trade is completed
+            sale_date = ""
+            amt_on_exit = None
+            pnl_per_share = None
+            pnl_per_share_pct = None
+            net_pnl = None
+
+        return {
+            "stock_name": symbol,
+            "symbol": symbol,
+            "buy_date": buy_date,
+            "strategy_name": strategy,
+            "strategy": strategy,
+            "tf": tf,
+            "qty": qty,
+            "quantity": qty,
+            "entry": entry,
+            "entry_price": entry,
+            "stoploss": stoploss,
+            "sl_price": stoploss,
+            "risk_per_share": risk_per_share,
+            "sale_date": sale_date,
+            "target_1_2": target_1_2,
+            "target_1_3": target_1_3,
+            "amt_invested": amt_invested,
+            "extra_pnl": extra_pnl,
+            "amt_on_exit": amt_on_exit,
+            "pnl_per_share": pnl_per_share,
+            "pnl_per_share_pct": pnl_per_share_pct,
+            "net_pnl": net_pnl,
+            "status": "COMPLETED" if is_completed else "RUNNING",
+            "action": "SELL (SHORT)" if is_short else "BUY (LONG)",
+            "is_completed": is_completed,
+            "current_ltp": float(trade.get("ltp", entry))
+        }
+
+    def get_trade_journal(self, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieves all running holdings and completed trades, cross-references
+        MongoDB Atlas signals for exact 4 parameters (Stock Name, Entry, SL, Target),
+        and dynamically computes all 17 journal columns.
+        """
+        from online.services.megabull_service import megabull_service
+
+        # 1. Gather all running holdings from MegaBull
+        holdings = megabull_service.get_holdings(enrich_ltp=True)
+        # 2. Gather completed trades from MegaBull report ledger
+        completed = megabull_service.get_historical_completed_trades()
+        # 3. Gather staged / tracked orders from MongoDB
+        staged = []
+        try:
+            col = db_manager.staged_orders
+            if col is not None:
+                staged = list(col.find({"status": {"$in": ["ACTIVE", "COMPLETED", "PLACED"]}}))
+        except Exception as e:
+            logger.debug(f"Could not query staged_orders: {e}")
+
+        # Build symbol lookup from MongoDB signals_watchlist
+        signals_map: Dict[str, Any] = {}
+        try:
+            sig_col = db_manager.signals_watchlist
+            if sig_col is not None:
+                for doc in sig_col.find({}):
+                    sym = str(doc.get("symbol", "")).strip().upper()
+                    if sym and sym not in signals_map:
+                        signals_map[sym] = doc
+        except Exception as e:
+            logger.debug(f"Could not build signals map: {e}")
+
+        journal_rows: List[Dict[str, Any]] = []
+        seen_symbols = set()
+
+        # A. Process running holdings
+        for h in holdings:
+            sym = str(h.get("symbol", "")).strip().upper()
+            if not sym or int(h.get("qty", 0)) == 0:
+                continue
+            seen_symbols.add(sym)
+
+            sig = signals_map.get(sym, {})
+            trade_raw = {
+                "symbol": sym,
+                "buy_date": sig.get("valid_for_date", "2026-11-01"),
+                "strategy": sig.get("strategy", "50 MA Setup"),
+                "tf": "Daily",
+                "qty": h.get("qty", 1),
+                "entry": h.get("avg_buy_price", sig.get("buy_trigger", 0.0)),
+                "stoploss": sig.get("sl_price"),
+                "target": sig.get("target_price"),
+                "total_charges": h.get("total_charges"),
+                "status": "RUNNING",
+                "ltp": h.get("ltp", h.get("avg_buy_price", 0.0)),
+                "action": "SELL (SHORT)" if int(h.get("qty", 1)) < 0 else "BUY (LONG)"
+            }
+            journal_rows.append(self.calculate_trade_journal_row(trade_raw))
+
+        # B. Process historical completed trades
+        for c in completed:
+            sym = str(c.get("symbol", "")).strip().upper()
+            sig = signals_map.get(sym, {})
+            trade_raw = {
+                "symbol": sym,
+                "buy_date": sig.get("valid_for_date", "2026-10-28"),
+                "strategy": sig.get("strategy", "50 MA Setup"),
+                "tf": "Daily",
+                "qty": c.get("quantity", 1),
+                "entry": c.get("order_price", sig.get("buy_trigger", 0.0)),
+                "stoploss": sig.get("sl_price"),
+                "target": sig.get("target_price"),
+                "total_charges": c.get("total_charges"),
+                "status": "COMPLETED",
+                "closed_date": c.get("closed_date", "2026-10-29"),
+                "exit_price": c.get("exit_price", 0.0),
+                "action": c.get("action", "BUY & SELL (CLOSED)")
+            }
+            journal_rows.append(self.calculate_trade_journal_row(trade_raw))
+
+        # C. Process any completed / active staged orders not yet seen
+        for s in staged:
+            sym = str(s.get("symbol", "")).strip().upper()
+            if sym in seen_symbols and s.get("status") != "COMPLETED":
+                continue
+            trade_raw = {
+                "symbol": sym,
+                "buy_date": str(s.get("created_at", "2026-11-01"))[:10],
+                "strategy": s.get("strategy", "50 MA Setup"),
+                "tf": "Daily",
+                "qty": s.get("quantity", 1),
+                "entry": s.get("entry_price", s.get("price", 0.0)),
+                "stoploss": s.get("sl_price"),
+                "target": s.get("target_price"),
+                "status": s.get("status", "RUNNING"),
+                "closed_date": str(s.get("completed_at", ""))[:10],
+                "exit_price": s.get("target_price", s.get("price", 0.0))
+            }
+            journal_rows.append(self.calculate_trade_journal_row(trade_raw))
+
+        if status_filter:
+            sf = status_filter.strip().upper()
+            if sf in ("RUNNING", "ACTIVE"):
+                journal_rows = [r for r in journal_rows if not r["is_completed"]]
+            elif sf in ("COMPLETED", "CLOSED"):
+                journal_rows = [r for r in journal_rows if r["is_completed"]]
+
+        return journal_rows
+
 
 orders_service = OrdersService()

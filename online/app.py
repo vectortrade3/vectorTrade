@@ -192,6 +192,7 @@ async def orders_page(request: Request):
     stats = orders_service.get_order_summary_stats()
     db_health = db_manager.ping()
     initial_orders = orders_service.get_orders(limit=100)
+    trade_journal = orders_service.get_trade_journal()
 
     return templates.TemplateResponse(
         request=request,
@@ -201,6 +202,7 @@ async def orders_page(request: Request):
             "stats": stats,
             "db_health": db_health,
             "orders": initial_orders,
+            "trade_journal": trade_journal,
             "user": user,
             "env": settings.env
         }
@@ -293,6 +295,21 @@ async def get_order_by_id_api(order_id: str):
     return {
         "status": "SUCCESS",
         "order": order
+    }
+
+
+@app.get("/api/trades/journal")
+@app.get("/api/orders/tradebook")
+async def get_trades_journal_api(status: Optional[str] = Query(None, description="Filter by status: RUNNING, COMPLETED, ALL")):
+    """
+    Returns the complete Trade Book / Journal of stocks bought (running) and completed trades,
+    with all 17 columns calculated dynamically from MongoDB setup geometry and broker executions.
+    """
+    trades = orders_service.get_trade_journal(status_filter=status)
+    return {
+        "status": "SUCCESS",
+        "count": len(trades),
+        "trades": trades
     }
 
 
@@ -602,6 +619,7 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/megabull/summary (MegaBull portfolio summary API)", "url": "/api/megabull/summary", "expected": 200},
         {"desc": "GET /api/megabull/transactions (MegaBull ledger transactions API)", "url": "/api/megabull/transactions", "expected": 200},
         {"desc": "GET /api/megabull/portfolio-symbols (MegaBull portfolio symbols API)", "url": "/api/megabull/portfolio-symbols", "expected": 200},
+        {"desc": "GET /api/trades/journal (Trade book 17-column journal API)", "url": "/api/trades/journal", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 

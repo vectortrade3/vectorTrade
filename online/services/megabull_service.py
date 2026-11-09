@@ -674,6 +674,15 @@ class MegaBullService:
                 valid_orders.append(ho)
                 existing_ids.add(ho["order_id"])
 
+        # Enrich all valid orders with 17 trade journal calculation fields
+        try:
+            from online.services.orders_service import orders_service
+            for vo in valid_orders:
+                j_row = orders_service.calculate_trade_journal_row(vo)
+                vo.update(j_row)
+        except Exception as e:
+            logger.debug(f"Could not enrich valid orders with journal row: {e}")
+
         return valid_orders
 
     def get_account_transactions(self) -> List[Dict[str, Any]]:
