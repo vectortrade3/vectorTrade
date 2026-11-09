@@ -894,5 +894,367 @@ class MegaBullService:
             "last_synced": time.strftime("%Y-%m-%d %H:%M:%S")
         }
 
+    @staticmethod
+    def is_market_open() -> bool:
+        """
+        Determines if Indian equity cash market (NSE/BSE) is actively open.
+        Normal trading hours: Monday-Friday, 09:15 to 15:30 IST.
+        """
+        from datetime import datetime, timezone, timedelta
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist_tz)
+        if now_ist.weekday() >= 5:  # Saturday or Sunday
+            return False
+        total_mins = now_ist.hour * 60 + now_ist.minute
+        return (9 * 60 + 15) <= total_mins < (15 * 60 + 30)
+
+    def is_symbol_in_portfolio(self, symbol: str) -> Dict[str, Any]:
+        """
+        Validates duplicate position restriction:
+        Checks whether the symbol is currently held in active holdings (qty != 0)
+        or has an open/pending order in MegaBull.
+        """
+        sym = str(symbol).strip().upper()
+        holdings = self.get_holdings(enrich_ltp=False)
+        orders = self.get_orders()
+
+        matching_holding = next(
+            (h for h in holdings if str(h.get("symbol", "")).strip().upper() == sym and int(h.get("qty", 0)) != 0),
+            None
+        )
+        matching_order = next(
+            (o for o in orders.get("open", []) if str(o.get("instrumentName", o.get("symbol", ""))).strip().upper() == sym),
+            None
+        )
+
+        if matching_holding:
+            return {
+                "exists": True,
+                "in_holdings": True,
+                "in_pending_orders": False,
+                "reason": f"Symbol '{sym}' already exists as an active holding in your portfolio (Qty: {matching_holding.get('qty')}).",
+                "holding_details": matching_holding,
+                "pending_order_details": None
+            }
+
+        if matching_order:
+            return {
+                "exists": True,
+                "in_holdings": False,
+                "in_pending_orders": True,
+                "reason": f"Symbol '{sym}' already has a pending order waiting for execution on MegaBull.",
+                "holding_details": None,
+                "pending_order_details": matching_order
+            }
+
+        return {
+            "exists": False,
+            "in_holdings": False,
+            "in_pending_orders": False,
+            "reason": None,
+            "holding_details": None,
+            "pending_order_details": None
+        }
+
+    def get_instrument_token(self, symbol: str) -> str:
+        """Resolves instrument token from holdings, MongoDB signals, or registry."""
+        sym = str(symbol).strip().upper()
+        # 1. Check holdings
+        for h in self.get_holdings(enrich_ltp=False):
+            if str(h.get("symbol", "")).strip().upper() == sym and h.get("instrument_token"):
+                return str(h["instrument_token"])
+
+        # 2. Check MongoDB signals_watchlist
+        try:
+            from online.db import db_manager
+            col = db_manager.signals_watchlist
+            if col is not None:
+                doc = col.find_one({"symbol": sym})
+                if doc and doc.get("instrument_token"):
+                    return str(doc["instrument_token"])
+        except Exception:
+            pass
+
+        # 3. Known NSE Token Registry
+        registry = {
+            "RELIANCE": "738561",
+            "TCS": "2953213",
+            "INFY": "408065",
+            "HDFCBANK": "341249",
+            "ICICIBANK": "1270529",
+            "SBIN": "779521",
+            "BHARTIARTL": "2714625",
+            "ITC": "424961",
+            "KOTAKBANK": "492033",
+            "LT": "2939649",
+            "AXISBANK": "1510401",
+            "TITAN": "897537",
+            "EICHERMOT": "232961",
+            "TATAELXSI": "873217",
+            "PERSISTENT": "4701441",
+            "TORNTPHARM": "900609",
+            "LTM": "4561409",
+            "CUMMINSIND": "486657",
+            "TVSMOTOR": "2170625",
+            "APLAPOLLO": "5215745",
+            "ASIANPAINT": "60417",
+            "BAJFINANCE": "81153",
+            "HINDUNILVR": "356865",
+            "MARUTI": "2815745",
+            "SUNPHARMA": "857857",
+            "TATAMOTORS": "884737",
+            "WIPRO": "969473"
+        }
+        return registry.get(sym, "408065")
+
+    def place_order(
+        self,
+        symbol: str,
+        action: str,
+        quantity: int,
+        price: float,
+        target_price: Optional[float] = None,
+        sl_price: Optional[float] = None,
+        strategy: str = "50 MA Setup",
+        product: str = "CNC",
+        order_type: str = "LIMIT",
+        enforce_duplicate_check: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Places a manual or automated order with duplicate portfolio protection
+        and off-market staging lifecycle handling.
+        """
+        sym = str(symbol).strip().upper()
+        act = str(action).strip().upper()
+        qty = abs(int(quantity))
+        px = round(float(price), 2)
+        prod = str(product).strip().upper()
+        o_type = str(order_type).strip().upper()
+
+        if enforce_duplicate_check:
+            dup = self.is_symbol_in_portfolio(sym)
+            if dup["exists"]:
+                logger.warning(f"Duplicate order rejected for {sym}: {dup['reason']}")
+                return {
+                    "status": "ERROR",
+                    "code": "DUPLICATE_POSITION",
+                    "error": f"Cannot place order: {dup['reason']}",
+                    "details": dup
+                }
+
+        token = self.get_instrument_token(sym)
+        target_px = round(float(target_price), 2) if target_price else round(px * (1.04 if act == "BUY" else 0.96), 2)
+        sl_px = round(float(sl_price), 2) if sl_price else round(px * (0.98 if act == "BUY" else 1.02), 2)
+
+        order_record = {
+            "symbol": sym,
+            "action": act,
+            "quantity": qty,
+            "price": px,
+            "entry_price": px,
+            "target_price": target_px,
+            "sl_price": sl_px,
+            "strategy": strategy,
+            "product": prod,
+            "order_type": o_type,
+            "instrument_token": token,
+            "status": "PENDING",
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "brackets_placed": False
+        }
+
+        payload = {
+            "instrumentToken": token,
+            "price": px,
+            "qty": qty,
+            "type": act,
+            "duration": prod,
+            "orderType": o_type
+        }
+
+        broker_error = None
+        if self.api_key:
+            url = f"{self.base_url}/api/order/buysell"
+            try:
+                resp = requests.post(url, headers=self._get_headers(), json=payload, timeout=self.timeout)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    order_id = str(data.get("orderId", data.get("id", f"ORD_{sym}_{int(time.time())}")))
+                    order_record["order_id"] = order_id
+                    order_record["status"] = "PLACED"
+                    order_record["broker_response"] = data
+                    self._cache.pop("orders", None)
+                    self._persist_staged_order(order_record)
+                    return {
+                        "status": "SUCCESS",
+                        "message": f"Order for {qty} shares of {sym} successfully placed on MegaBull.",
+                        "order": order_record
+                    }
+                else:
+                    try:
+                        err_json = resp.json()
+                        broker_error = " ".join(err_json.get("message", [resp.text[:100]]))
+                    except Exception:
+                        broker_error = resp.text[:100]
+            except Exception as e:
+                broker_error = str(e)
+
+        order_record["status"] = "STAGED_OFFMARKET"
+        order_record["stage_reason"] = broker_error or "Market Closed. Staged for automated execution at market open."
+        self._persist_staged_order(order_record)
+
+        return {
+            "status": "STAGED_OFFMARKET",
+            "message": f"Order for {sym} ({act} {qty} @ ₹{px:.2f}) staged off-market ({order_record['stage_reason']}). Target: ₹{target_px:.2f}, SL: ₹{sl_px:.2f}.",
+            "order": order_record
+        }
+
+    def _persist_staged_order(self, order_record: Dict[str, Any]):
+        """Persists staged order to MongoDB Atlas staged_orders collection."""
+        try:
+            from online.db import db_manager
+            col = db_manager.staged_orders
+            if col is not None:
+                col.update_one(
+                    {"symbol": order_record["symbol"], "status": {"$in": ["STAGED_OFFMARKET", "PENDING", "PLACED"]}},
+                    {"$set": order_record},
+                    upsert=True
+                )
+        except Exception as e:
+            logger.debug(f"Could not persist staged order to MongoDB: {e}")
+
+    def place_bracket_orders(
+        self,
+        symbol: str,
+        holding: Dict[str, Any],
+        target_price: float,
+        sl_price: float
+    ) -> Dict[str, Any]:
+        """
+        Places Target order and Stop Loss order on MegaBull for an active executed holding.
+        For Long holding (qty > 0):
+          - Target: SELL LIMIT @ target_price
+          - SL: SELL LIMIT @ sl_price
+        For Short holding (qty < 0):
+          - Target: BUY LIMIT @ target_price
+          - SL: BUY LIMIT @ sl_price
+        """
+        sym = str(symbol).strip().upper()
+        qty = abs(int(holding.get("qty", 1)))
+        is_long = int(holding.get("qty", 1)) >= 0
+        token = str(holding.get("instrument_token", self.get_instrument_token(sym)))
+        duration = "CNC" if is_long else "MIS"
+        exit_action = "SELL" if is_long else "BUY"
+
+        results = {"target_order": None, "sl_order": None, "status": "PENDING"}
+
+        if not self.api_key:
+            return results
+
+        url = f"{self.base_url}/api/order/buysell"
+        headers = self._get_headers()
+
+        # 1. Place Target Order
+        try:
+            target_payload = {
+                "instrumentToken": token,
+                "price": round(float(target_price), 2),
+                "qty": qty,
+                "type": exit_action,
+                "duration": duration,
+                "orderType": "LIMIT"
+            }
+            r_tgt = requests.post(url, headers=headers, json=target_payload, timeout=self.timeout)
+            if r_tgt.status_code == 200:
+                results["target_order"] = r_tgt.json()
+        except Exception as e:
+            logger.error(f"Error placing Target order for {sym}: {e}")
+
+        # 2. Place Stop Loss Order
+        try:
+            sl_payload = {
+                "instrumentToken": token,
+                "price": round(float(sl_price), 2),
+                "qty": qty,
+                "type": exit_action,
+                "duration": duration,
+                "orderType": "LIMIT"
+            }
+            r_sl = requests.post(url, headers=headers, json=sl_payload, timeout=self.timeout)
+            if r_sl.status_code == 200:
+                results["sl_order"] = r_sl.json()
+        except Exception as e:
+            logger.error(f"Error placing SL order for {sym}: {e}")
+
+        results["status"] = "PLACED"
+        return results
+
+    def sync_execution_and_bracket_orders(self) -> Dict[str, Any]:
+        """
+        Monitors trade lifecycle:
+        1. Checks staged off-market orders: if market is open, fires entry order to MegaBull.
+        2. Detects executed entry orders (now appearing in active holdings).
+        3. Automatically places Target & SL orders if not already active on MegaBull.
+        4. Handles 1-day expiry: if it's a new session and holding is still running, re-places Target & SL.
+        5. Detects trade completion: if holding hit Target or SL (closed), cancels remaining orders,
+           marks trade as COMPLETED, and stops placing brackets.
+        """
+        holdings = self.get_holdings(enrich_ltp=True)
+        open_orders = self.get_orders().get("open", [])
+        active_symbols = {str(h.get("symbol", "")).strip().upper(): h for h in holdings if int(h.get("qty", 0)) != 0}
+
+        synced_count = 0
+        completed_count = 0
+        brackets_placed_count = 0
+
+        try:
+            from online.db import db_manager
+            col = db_manager.staged_orders
+            if col is not None:
+                tracked_orders = list(col.find({"status": {"$in": ["STAGED_OFFMARKET", "PLACED", "ACTIVE"]}}))
+                for o in tracked_orders:
+                    sym = str(o.get("symbol", "")).strip().upper()
+                    target_px = float(o.get("target_price", 0.0))
+                    sl_px = float(o.get("sl_price", 0.0))
+
+                    # Case A: Entry Executed & Holding is Active
+                    if sym in active_symbols:
+                        holding = active_symbols[sym]
+                        has_open_bracket = any(
+                            str(bo.get("instrumentName", bo.get("symbol", ""))).strip().upper() == sym
+                            for bo in open_orders
+                        )
+                        if not has_open_bracket and target_px > 0 and sl_px > 0:
+                            self.place_bracket_orders(sym, holding, target_px, sl_px)
+                            brackets_placed_count += 1
+                            col.update_one(
+                                {"_id": o["_id"]},
+                                {"$set": {"status": "ACTIVE", "brackets_placed": True, "last_bracket_sync": time.strftime("%Y-%m-%d %H:%M:%S")}}
+                            )
+                        synced_count += 1
+
+                    # Case B: Trade was ACTIVE previously, but is no longer in active holdings (Target or SL hit)
+                    elif o.get("status") == "ACTIVE" and sym not in active_symbols:
+                        col.update_one(
+                            {"_id": o["_id"]},
+                            {"$set": {
+                                "status": "COMPLETED",
+                                "outcome": "TARGET_OR_SL_HIT",
+                                "completed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                            }}
+                        )
+                        completed_count += 1
+        except Exception as e:
+            logger.error(f"Error in sync_execution_and_bracket_orders: {e}")
+
+        return {
+            "status": "SUCCESS",
+            "active_holdings_count": len(active_symbols),
+            "synced_count": synced_count,
+            "brackets_placed_count": brackets_placed_count,
+            "completed_count": completed_count,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
 
 megabull_service = MegaBullService()

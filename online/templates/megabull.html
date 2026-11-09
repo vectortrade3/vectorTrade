@@ -99,6 +99,18 @@
                     <span class="text-neutral-300">MegaBull: <strong class="text-emerald-400">Connected</strong></span>
                 </div>
 
+                <!-- Place Order Button -->
+                <button onclick="openManualOrderModal()" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/20 active:scale-95">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>Place Order</span>
+                </button>
+
+                <!-- Sync Brackets Button -->
+                <button id="syncBracketsBtn" onclick="triggerSyncBrackets()" title="Sync Target & Stop Loss Bracket Orders on MegaBull" class="apple-spring px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1.5 active:scale-95">
+                    <i data-lucide="shield-check" id="syncBracketsIcon" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">Sync Brackets</span>
+                </button>
+
                 <!-- Refresh Button -->
                 <button id="refreshBtn" onclick="refreshMegaBullData()" class="apple-spring px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-white flex items-center space-x-1.5 active:scale-95">
                     <i data-lucide="refresh-cw" id="refreshIcon" class="w-3.5 h-3.5 text-blue-400"></i>
@@ -770,6 +782,113 @@
         </div>
     </div>
 
+    <!-- Manual Order Modal (Any Symbol) -->
+    <div id="manualOrderModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-lg w-full p-6 shadow-2xl text-left space-y-5 border border-white/10 apple-spring">
+            <!-- Header -->
+            <div class="flex items-center justify-between hairline-bottom pb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="h-10 w-10 rounded-xl bg-purple-500/20 text-purple-400 font-mono font-bold text-sm flex items-center justify-center border border-purple-500/30">
+                        MAN
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white tracking-tight">Manual Order Dispatch</h3>
+                        <p class="text-xs text-apple-subtext">Direct MegaBull Execution with Duplicate Protection</p>
+                    </div>
+                </div>
+                <button onclick="closeManualOrderModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Duplicate Position Alert Banner (hidden by default) -->
+            <div id="manualOrderDuplicateWarning" class="hidden rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300 flex items-start space-x-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"></i>
+                <div>
+                    <span class="font-bold">Duplicate Position Warning:</span>
+                    <p id="manualOrderDuplicateText" class="mt-0.5 text-neutral-300">This stock is already held in portfolio or has an active order.</p>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <div class="space-y-4 text-xs font-mono">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Symbol (NSE)</label>
+                        <input type="text" id="manualSymbol" placeholder="e.g. RELIANCE, INFY" oninput="this.value = this.value.toUpperCase(); checkManualSymbolDuplicate();" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold uppercase focus:outline-none focus:border-purple-500/50">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Strategy</label>
+                        <select id="manualStrategy" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-purple-500/50">
+                            <option value="50 MA Setup">50 MA Setup</option>
+                            <option value="Global Forecast">Global Forecast</option>
+                            <option value="Custom Discretionary">Custom Discretionary</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Action</label>
+                        <div class="flex rounded-lg hairline-border bg-black/40 p-1 space-x-1">
+                            <button type="button" id="manualBtnBuy" onclick="setManualAction('BUY')" class="flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30">BUY</button>
+                            <button type="button" id="manualBtnSell" onclick="setManualAction('SELL')" class="flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400">SELL</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Product Duration</label>
+                        <select id="manualProduct" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-purple-500/50">
+                            <option value="CNC">CNC (Delivery Long)</option>
+                            <option value="MIS">MIS (Intraday)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Order Price (₹)</label>
+                        <input type="number" step="0.05" id="manualPrice" placeholder="0.00" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-purple-500/50" oninput="calculateManualCapital()">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">Quantity (Shares)</label>
+                        <input type="number" min="1" id="manualQty" value="1" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-purple-500/50" oninput="calculateManualCapital()">
+                    </div>
+                </div>
+
+                <!-- Target and Stop Loss -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-xl hairline-border bg-emerald-500/[0.04] p-3 border-emerald-500/20">
+                        <label class="text-[10px] text-emerald-400 font-sans uppercase font-semibold block mb-1">Target Price (₹)</label>
+                        <input type="number" step="0.05" id="manualTarget" placeholder="Auto 1:2 R:R" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500/50">
+                    </div>
+                    <div class="rounded-xl hairline-border bg-rose-500/[0.04] p-3 border-rose-500/20">
+                        <label class="text-[10px] text-rose-400 font-sans uppercase font-semibold block mb-1">Stop Loss Price (₹)</label>
+                        <input type="number" step="0.05" id="manualSL" placeholder="Stop Loss" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-rose-400 font-bold focus:outline-none focus:border-rose-500/50">
+                    </div>
+                </div>
+
+                <div class="rounded-xl hairline-border bg-white/[0.02] p-3 flex items-center justify-between text-xs">
+                    <span class="text-apple-subtext">Estimated Capital Required:</span>
+                    <span id="manualCapitalDisplay" class="font-bold text-white text-sm">₹0.00</span>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="pt-2 flex items-center justify-end space-x-3">
+                <button type="button" onclick="closeManualOrderModal()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                    Cancel
+                </button>
+                <button type="button" id="btnConfirmManualOrder" onclick="submitManualOrder()" class="apple-spring px-5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white flex items-center space-x-1.5 shadow-lg shadow-purple-600/30">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>Place Order</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
     <!-- Footer -->
     <footer class="hairline-bottom border-t border-white/[0.08] py-6 text-center text-xs text-apple-subtext font-mono">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -937,6 +1056,219 @@
 
         // Periodic background poll every 15s
         setInterval(refreshMegaBullData, 15000);
+
+        // ==========================================
+        // PORTFOLIO SYMBOLS & DUPLICATE CHECK ENGINE
+        // ==========================================
+        let portfolioSymbols = new Set();
+        async function fetchPortfolioSymbols() {
+            try {
+                const res = await fetch('/api/megabull/portfolio-symbols');
+                if (res.ok) {
+                    const data = await res.json();
+                    portfolioSymbols = new Set((data.all_portfolio_symbols || []).map(s => s.toUpperCase()));
+                }
+            } catch (e) {
+                console.error("Error fetching portfolio symbols:", e);
+            }
+        }
+
+        // ==========================================
+        // MANUAL ORDER DISPATCH MODAL
+        // ==========================================
+        let manualOrderAction = 'BUY';
+
+        function setManualAction(act) {
+            manualOrderAction = act;
+            const btnBuy = document.getElementById('manualBtnBuy');
+            const btnSell = document.getElementById('manualBtnSell');
+            if (act === 'BUY') {
+                btnBuy.className = 'flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30';
+                btnSell.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400';
+            } else {
+                btnSell.className = 'flex-1 py-1 rounded text-center font-bold text-rose-400 bg-rose-500/20 border border-rose-500/30';
+                btnBuy.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-emerald-400';
+            }
+        }
+
+        function calculateManualCapital() {
+            const px = parseFloat(document.getElementById('manualPrice').value) || 0;
+            const qty = parseInt(document.getElementById('manualQty').value) || 0;
+            const total = px * qty;
+            document.getElementById('manualCapitalDisplay').textContent = `₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function checkManualSymbolDuplicate() {
+            const sym = document.getElementById('manualSymbol').value.trim().toUpperCase();
+            const warnBox = document.getElementById('manualOrderDuplicateWarning');
+            const confirmBtn = document.getElementById('btnConfirmManualOrder');
+            if (sym && portfolioSymbols.has(sym)) {
+                document.getElementById('manualOrderDuplicateText').textContent = `Symbol '${sym}' is already active in your portfolio or has a pending order. Duplicate orders are restricted.`;
+                warnBox.classList.remove('hidden');
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                warnBox.classList.add('hidden');
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function openManualOrderModal() {
+            document.getElementById('manualSymbol').value = '';
+            document.getElementById('manualPrice').value = '';
+            document.getElementById('manualQty').value = '1';
+            document.getElementById('manualTarget').value = '';
+            document.getElementById('manualSL').value = '';
+            setManualAction('BUY');
+            document.getElementById('manualOrderDuplicateWarning').classList.add('hidden');
+            const confirmBtn = document.getElementById('btnConfirmManualOrder');
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            calculateManualCapital();
+            document.getElementById('manualOrderModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeManualOrderModal() {
+            document.getElementById('manualOrderModal').classList.add('hidden');
+        }
+
+        async function submitManualOrder() {
+            const sym = document.getElementById('manualSymbol').value.trim().toUpperCase();
+            if (!sym) {
+                showToast('Validation Error', 'Please enter a valid stock symbol.', false);
+                return;
+            }
+            const px = parseFloat(document.getElementById('manualPrice').value);
+            if (!px || px <= 0) {
+                showToast('Validation Error', 'Please enter a valid order price.', false);
+                return;
+            }
+            const qty = parseInt(document.getElementById('manualQty').value) || 1;
+            const tgt = parseFloat(document.getElementById('manualTarget').value) || null;
+            const sl = parseFloat(document.getElementById('manualSL').value) || null;
+            const strat = document.getElementById('manualStrategy').value || '50 MA Setup';
+            const prod = document.getElementById('manualProduct').value || 'CNC';
+
+            const btn = document.getElementById('btnConfirmManualOrder');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Placing...</span>`;
+            lucide.createIcons();
+
+            const payload = {
+                symbol: sym,
+                action: manualOrderAction,
+                quantity: qty,
+                price: px,
+                target_price: tgt,
+                sl_price: sl,
+                strategy: strat,
+                product: prod,
+                order_type: 'LIMIT',
+                enforce_duplicate_check: true
+            };
+
+            try {
+                const res = await fetch('/api/megabull/orders/place', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    closeManualOrderModal();
+                    const msg = result.data?.message || 'Order successfully processed.';
+                    showToast('Order Submitted', msg, true);
+                    await fetchPortfolioSymbols();
+                    await refreshMegaBullData();
+                } else {
+                    showToast('Order Rejected', result.detail || 'Failed to place order.', false);
+                }
+            } catch (err) {
+                showToast('Network Error', err.message, false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Place Order</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        // ==========================================
+        // TARGET & STOP LOSS BRACKET SYNC
+        // ==========================================
+        async function triggerSyncBrackets() {
+            const btn = document.getElementById('syncBracketsBtn');
+            const icon = document.getElementById('syncBracketsIcon');
+            icon.classList.add('animate-spin');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/megabull/orders/sync-brackets', {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const rep = data.data || {};
+                    showToast(
+                        'Bracket Sync Complete',
+                        `Active Holdings: ${rep.active_holdings_count || 0} | Placed: ${rep.brackets_placed_count || 0} | Completed: ${rep.completed_count || 0}`,
+                        true
+                    );
+                    await refreshMegaBullData();
+                } else {
+                    showToast('Sync Failed', data.detail || 'Could not sync bracket orders.', false);
+                }
+            } catch (err) {
+                showToast('Sync Error', err.message, false);
+            } finally {
+                setTimeout(() => {
+                    icon.classList.remove('animate-spin');
+                    btn.disabled = false;
+                }, 500);
+            }
+        }
+
+        // ==========================================
+        // TOAST NOTIFICATION UTILITY
+        // ==========================================
+        function showToast(title, message, isSuccess = true) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto rounded-2xl hairline-border px-4 py-3 shadow-2xl backdrop-blur-xl flex items-start space-x-3 transition-all duration-300 max-w-sm ${
+                isSuccess ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-200' : 'bg-rose-950/90 border-rose-500/30 text-rose-200'
+            }`;
+            toast.innerHTML = `
+                <div class="mt-0.5 flex-shrink-0">
+                    <i data-lucide="${isSuccess ? 'check-circle' : 'alert-circle'}" class="w-4 h-4 ${isSuccess ? 'text-emerald-400' : 'text-rose-400'}"></i>
+                </div>
+                <div class="flex-1 text-xs">
+                    <div class="font-bold text-white">${title}</div>
+                    <div class="text-neutral-300 mt-0.5 leading-relaxed">${message}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 350);
+            }, 5000);
+        }
+
+        // Escape key handling
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeFeeModal();
+                closeManualOrderModal();
+            }
+        });
+        document.getElementById('manualOrderModal')?.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('manualOrderModal')) closeManualOrderModal();
+        });
+
+        // Initialize symbol duplicate cache
+        fetchPortfolioSymbols();
     </script>
 </body>
 </html>

@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from urllib.parse import parse_qs
+from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, Request, Query, HTTPException, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -389,6 +390,81 @@ async def get_megabull_transactions_api():
     }
 
 
+class PlaceOrderRequest(BaseModel):
+    symbol: str = Field(..., description="NSE Stock Symbol e.g. SBIN, INFY")
+    action: str = Field("BUY", description="BUY or SELL")
+    quantity: int = Field(1, ge=1, description="Number of shares")
+    price: float = Field(..., gt=0, description="Order / Trigger price in INR")
+    target_price: Optional[float] = Field(None, description="Profit target price in INR")
+    sl_price: Optional[float] = Field(None, description="Stop loss price in INR")
+    strategy: Optional[str] = Field("50 MA Setup", description="Strategy name e.g. 50 MA Setup")
+    product: Optional[str] = Field("CNC", description="CNC (Delivery) or MIS (Intraday)")
+    order_type: Optional[str] = Field("LIMIT", description="LIMIT or MARKET")
+    enforce_duplicate_check: Optional[bool] = Field(True, description="Strictly prevent duplicate portfolio orders")
+
+
+@app.post("/api/megabull/orders/place")
+async def place_megabull_order_api(order_req: PlaceOrderRequest):
+    """
+    Places an order on MegaBull or stages it off-market when market is closed.
+    Strictly prevents duplicate orders for stocks already active in portfolio or pending.
+    """
+    result = megabull_service.place_order(
+        symbol=order_req.symbol,
+        action=order_req.action,
+        quantity=order_req.quantity,
+        price=order_req.price,
+        target_price=order_req.target_price,
+        sl_price=order_req.sl_price,
+        strategy=order_req.strategy or "50 MA Setup",
+        product=order_req.product or "CNC",
+        order_type=order_req.order_type or "LIMIT",
+        enforce_duplicate_check=order_req.enforce_duplicate_check
+    )
+
+    if result.get("status") == "ERROR":
+        if result.get("code") == "DUPLICATE_POSITION":
+            raise HTTPException(status_code=400, detail=result.get("error", "Duplicate position rejected."))
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to place order."))
+
+    return {
+        "status": "SUCCESS",
+        "data": result
+    }
+
+
+@app.post("/api/megabull/orders/sync-brackets")
+async def sync_megabull_brackets_api():
+    """
+    Runs automated bracket order lifecycle check:
+    1. Detects executed entry orders and automatically places Target and SL orders.
+    2. Re-arms expired 1-day brackets for running holdings.
+    3. Detects target or SL hit, marks trades COMPLETED, and prevents further orders.
+    """
+    report = megabull_service.sync_execution_and_bracket_orders()
+    return {
+        "status": "SUCCESS",
+        "data": report
+    }
+
+
+@app.get("/api/megabull/portfolio-symbols")
+async def get_portfolio_symbols_api():
+    """Returns symbols currently held or pending in MegaBull to prevent duplicates."""
+    holdings = megabull_service.get_holdings(enrich_ltp=False)
+    orders = megabull_service.get_orders()
+
+    held = [str(h.get("symbol", "")).strip().upper() for h in holdings if int(h.get("qty", 0)) != 0]
+    pending = [str(o.get("instrumentName", o.get("symbol", ""))).strip().upper() for o in orders.get("open", [])]
+
+    return {
+        "status": "SUCCESS",
+        "held_symbols": sorted(list(set(held))),
+        "pending_symbols": sorted(list(set(pending))),
+        "all_portfolio_symbols": sorted(list(set(held + pending)))
+    }
+
+
 # ==============================================================================
 # HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
 # ==============================================================================
@@ -525,6 +601,7 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/megabull/orders/valid (MegaBull valid orders API)", "url": "/api/megabull/orders/valid", "expected": 200},
         {"desc": "GET /api/megabull/summary (MegaBull portfolio summary API)", "url": "/api/megabull/summary", "expected": 200},
         {"desc": "GET /api/megabull/transactions (MegaBull ledger transactions API)", "url": "/api/megabull/transactions", "expected": 200},
+        {"desc": "GET /api/megabull/portfolio-symbols (MegaBull portfolio symbols API)", "url": "/api/megabull/portfolio-symbols", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 

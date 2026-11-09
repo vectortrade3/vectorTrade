@@ -122,6 +122,12 @@
                     <span>Updated: <span id="lastSyncTime" class="text-neutral-200">{{ stats.last_sync_timestamp[:19].replace('T', ' ') if stats.last_sync_timestamp else 'Ready' }}</span></span>
                 </div>
 
+                <!-- Actions: New Order & Refresh -->
+                <button onclick="openManualOrderModal()" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/20 active:scale-95">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>Place Order</span>
+                </button>
+
                 <!-- Refresh Button -->
                 <button id="refreshBtn" onclick="fetchOrdersAndStats()" class="apple-spring px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-white flex items-center space-x-1.5 active:scale-95">
                     <i data-lucide="refresh-cw" id="refreshIcon" class="w-3.5 h-3.5 text-blue-400"></i>
@@ -295,9 +301,9 @@
                             <th class="py-3 px-4 text-right">Stop Loss (SL)</th>
                             <th class="py-3 px-4 text-right">Target (1:2 R:R)</th>
                             <th class="py-3 px-4 text-center">AI Expectancy</th>
-                            <th class="py-3 px-4 text-center">Setup Type</th>
+                            <th class="py-3 px-4 text-center">Strategy</th>
                             <th class="py-3 px-4 text-center">Status</th>
-                            <th class="py-3 px-5 text-right">Action / Rationale</th>
+                            <th class="py-3 px-5 text-right">Execution / Actions</th>
                         </tr>
                     </thead>
                     <tbody id="ordersTableBody" class="divide-y divide-white/[0.04]">
@@ -359,10 +365,13 @@
                                 </span>
                             </td>
 
-                            <!-- Setup Type -->
-                            <td class="py-3.5 px-4 text-center">
-                                <span class="px-2 py-0.5 rounded text-[11px] font-medium hairline-border bg-white/[0.04] text-neutral-300">
-                                    Setup {{ order.setup_num }}
+                            <!-- Strategy -->
+                            <td class="py-3.5 px-4 text-center font-mono">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/[0.04] text-neutral-200 hairline-border inline-block">
+                                    {{ order.strategy }}
+                                </span>
+                                <span class="text-[10px] text-apple-subtext block mt-0.5">
+                                    {{ order.setup_subclass or ('Setup ' ~ order.setup_num) }}
                                 </span>
                             </td>
 
@@ -393,11 +402,24 @@
                                 {% endif %}
                             </td>
 
-                            <!-- Action / Details Button -->
-                            <td class="py-3.5 px-5 text-right">
-                                <button onclick="openOrderDetailModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200">
-                                    Inspect
-                                </button>
+                            <!-- Execution / Actions -->
+                            <td class="py-3.5 px-5 text-right font-mono">
+                                <div class="flex items-center justify-end space-x-2">
+                                    {% if order.is_in_portfolio %}
+                                    <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                        <i data-lucide="shield-check" class="w-3 h-3"></i>
+                                        <span>In Portfolio</span>
+                                    </span>
+                                    {% else %}
+                                    <button onclick="openPlaceOrderModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
+                                        <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
+                                        <span>Place Order</span>
+                                    </button>
+                                    {% endif %}
+                                    <button onclick="openOrderDetailModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200">
+                                        Inspect
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -510,7 +532,213 @@
                 </div>
             </div>
         </div>
+
+        <!-- Order Placement Modal (for Watchlist Row) -->
+        <div id="placeOrderModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-lg w-full p-6 shadow-2xl text-left space-y-5 border border-white/10 apple-spring">
+                <!-- Header -->
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <div id="placeOrderBadge" class="h-10 w-10 rounded-xl bg-blue-500/20 text-blue-400 font-mono font-bold text-sm flex items-center justify-center border border-blue-500/30">
+                            ORD
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 id="placeOrderSymbol" class="text-lg font-bold text-white tracking-tight">SYMBOL</h3>
+                                <span id="placeOrderStrategyBadge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.06] text-neutral-300 hairline-border">50 MA Setup</span>
+                            </div>
+                            <p id="placeOrderSubtext" class="text-xs text-apple-subtext">Automated Off-Market Staging &amp; Dynamic Bracket Management</p>
+                        </div>
+                    </div>
+                    <button onclick="closePlaceOrderModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Duplicate Position Alert Banner (hidden by default) -->
+                <div id="placeOrderDuplicateWarning" class="hidden rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300 flex items-start space-x-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold">Duplicate Position Warning:</span>
+                        <p id="placeOrderDuplicateText" class="mt-0.5 text-neutral-300">This stock is already held in portfolio or has an active order.</p>
+                    </div>
+                </div>
+
+                <!-- Parameters Form -->
+                <div class="space-y-4 text-xs font-mono">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Action</label>
+                            <div class="flex rounded-lg hairline-border bg-black/40 p-1 space-x-1">
+                                <button type="button" id="placeBtnBuy" onclick="setPlaceOrderAction('BUY')" class="flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30">BUY</button>
+                                <button type="button" id="placeBtnSell" onclick="setPlaceOrderAction('SELL')" class="flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400">SELL</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Product Duration</label>
+                            <select id="placeOrderProduct" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50">
+                                <option value="CNC">CNC (Delivery Long)</option>
+                                <option value="MIS">MIS (Intraday)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Order / Trigger Price (₹)</label>
+                            <input type="number" step="0.05" id="placeOrderPrice" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-blue-500/50" oninput="calculatePlaceOrderCapital()">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Quantity (Shares)</label>
+                            <input type="number" min="1" id="placeOrderQty" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-blue-500/50" oninput="calculatePlaceOrderCapital()">
+                        </div>
+                    </div>
+
+                    <!-- Target and Stop Loss -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl hairline-border bg-emerald-500/[0.04] p-3 border-emerald-500/20">
+                            <label class="text-[10px] text-emerald-400 font-sans uppercase font-semibold block mb-1">Target Price (₹)</label>
+                            <input type="number" step="0.05" id="placeOrderTarget" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500/50">
+                            <span class="text-[9px] text-neutral-400 block mt-1">Automatic 1:2 R:R Exit</span>
+                        </div>
+                        <div class="rounded-xl hairline-border bg-rose-500/[0.04] p-3 border-rose-500/20">
+                            <label class="text-[10px] text-rose-400 font-sans uppercase font-semibold block mb-1">Stop Loss Price (₹)</label>
+                            <input type="number" step="0.05" id="placeOrderSL" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-rose-400 font-bold focus:outline-none focus:border-rose-500/50">
+                            <span class="text-[9px] text-neutral-400 block mt-1">Automatic Capital Guard</span>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl hairline-border bg-white/[0.02] p-3 flex items-center justify-between text-xs">
+                        <span class="text-apple-subtext">Estimated Capital Required:</span>
+                        <span id="placeOrderCapitalDisplay" class="font-bold text-white text-sm">₹0.00</span>
+                    </div>
+
+                    <div class="rounded-xl hairline-border bg-blue-500/[0.05] border-blue-500/20 p-3 text-[11px] text-blue-300 font-sans leading-relaxed">
+                        <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400 inline mr-1"></i>
+                        <span><strong>Off-Market Protocol:</strong> If market is closed, order will be staged off-market in MongoDB. Once entry executes on MegaBull, Target and SL bracket orders are automatically placed each session until hit.</span>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-2 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closePlaceOrderModal()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                        Cancel
+                    </button>
+                    <button type="button" id="btnConfirmPlaceOrder" onclick="submitPlacedOrder()" class="apple-spring px-5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/30">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Confirm &amp; Place</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Order Modal (Any Symbol) -->
+        <div id="manualOrderModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-lg w-full p-6 shadow-2xl text-left space-y-5 border border-white/10 apple-spring">
+                <!-- Header -->
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="h-10 w-10 rounded-xl bg-purple-500/20 text-purple-400 font-mono font-bold text-sm flex items-center justify-center border border-purple-500/30">
+                            MAN
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">Manual Order Dispatch</h3>
+                            <p class="text-xs text-apple-subtext">Direct MegaBull Execution with Duplicate Protection</p>
+                        </div>
+                    </div>
+                    <button onclick="closeManualOrderModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Duplicate Position Alert Banner (hidden by default) -->
+                <div id="manualOrderDuplicateWarning" class="hidden rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300 flex items-start space-x-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold">Duplicate Position Warning:</span>
+                        <p id="manualOrderDuplicateText" class="mt-0.5 text-neutral-300">This stock is already held in portfolio or has an active order.</p>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="space-y-4 text-xs font-mono">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Symbol (NSE)</label>
+                            <input type="text" id="manualSymbol" placeholder="e.g. RELIANCE, INFY" oninput="this.value = this.value.toUpperCase(); checkManualSymbolDuplicate();" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold uppercase focus:outline-none focus:border-purple-500/50">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Strategy</label>
+                            <select id="manualStrategy" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-purple-500/50">
+                                <option value="50 MA Setup">50 MA Setup</option>
+                                <option value="Global Forecast">Global Forecast</option>
+                                <option value="Custom Discretionary">Custom Discretionary</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Action</label>
+                            <div class="flex rounded-lg hairline-border bg-black/40 p-1 space-x-1">
+                                <button type="button" id="manualBtnBuy" onclick="setManualAction('BUY')" class="flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30">BUY</button>
+                                <button type="button" id="manualBtnSell" onclick="setManualAction('SELL')" class="flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400">SELL</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Product Duration</label>
+                            <select id="manualProduct" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-purple-500/50">
+                                <option value="CNC">CNC (Delivery Long)</option>
+                                <option value="MIS">MIS (Intraday)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Order Price (₹)</label>
+                            <input type="number" step="0.05" id="manualPrice" placeholder="0.00" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-purple-500/50" oninput="calculateManualCapital()">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-apple-subtext font-sans block mb-1">Quantity (Shares)</label>
+                            <input type="number" min="1" id="manualQty" value="1" class="w-full bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-white font-bold focus:outline-none focus:border-purple-500/50" oninput="calculateManualCapital()">
+                        </div>
+                    </div>
+
+                    <!-- Target and Stop Loss -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl hairline-border bg-emerald-500/[0.04] p-3 border-emerald-500/20">
+                            <label class="text-[10px] text-emerald-400 font-sans uppercase font-semibold block mb-1">Target Price (₹)</label>
+                            <input type="number" step="0.05" id="manualTarget" placeholder="Auto 1:2 R:R" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500/50">
+                        </div>
+                        <div class="rounded-xl hairline-border bg-rose-500/[0.04] p-3 border-rose-500/20">
+                            <label class="text-[10px] text-rose-400 font-sans uppercase font-semibold block mb-1">Stop Loss Price (₹)</label>
+                            <input type="number" step="0.05" id="manualSL" placeholder="Stop Loss" class="w-full bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-rose-400 font-bold focus:outline-none focus:border-rose-500/50">
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl hairline-border bg-white/[0.02] p-3 flex items-center justify-between text-xs">
+                        <span class="text-apple-subtext">Estimated Capital Required:</span>
+                        <span id="manualCapitalDisplay" class="font-bold text-white text-sm">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-2 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeManualOrderModal()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                        Cancel
+                    </button>
+                    <button type="button" id="btnConfirmManualOrder" onclick="submitManualOrder()" class="apple-spring px-5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white flex items-center space-x-1.5 shadow-lg shadow-purple-600/30">
+                        <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                        <span>Place Order</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
     <!-- Footer -->
     <footer class="hairline-bottom border-t border-white/[0.08] py-6 text-center text-xs text-apple-subtext font-mono">
@@ -680,18 +908,34 @@
                             +${o.predicted_r.toFixed(2)} R
                         </span>
                     </td>
-                    <td class="py-3.5 px-4 text-center">
-                        <span class="px-2 py-0.5 rounded text-[11px] font-medium hairline-border bg-white/[0.04] text-neutral-300">
-                            Setup ${o.setup_num}
+                    <td class="py-3.5 px-4 text-center font-mono">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/[0.04] text-neutral-200 hairline-border inline-block">
+                            ${o.strategy || '50 MA Setup'}
+                        </span>
+                        <span class="text-[10px] text-apple-subtext block mt-0.5">
+                            ${o.setup_subclass || ('Setup ' + o.setup_num)}
                         </span>
                     </td>
                     <td class="py-3.5 px-4 text-center">
                         ${statusBadge}
                     </td>
-                    <td class="py-3.5 px-5 text-right">
-                        <button onclick="openOrderDetailModal('${o.id}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200">
-                            Inspect
-                        </button>
+                    <td class="py-3.5 px-5 text-right font-mono">
+                        <div class="flex items-center justify-end space-x-2">
+                            ${o.is_in_portfolio ? `
+                                <span title="${o.portfolio_reason || 'Already in portfolio'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                    <i data-lucide="shield-check" class="w-3 h-3"></i>
+                                    <span>In Portfolio</span>
+                                </span>
+                            ` : `
+                                <button onclick="openPlaceOrderModal('${o.id}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
+                                    <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
+                                    <span>Place Order</span>
+                                </button>
+                            `}
+                            <button onclick="openOrderDetailModal('${o.id}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200">
+                                Inspect
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 `;
@@ -747,6 +991,282 @@
             }
         }
 
+        // ==========================================
+        // PORTFOLIO SYMBOLS & DUPLICATE CHECK ENGINE
+        // ==========================================
+        let portfolioSymbols = new Set();
+        async function fetchPortfolioSymbols() {
+            try {
+                const res = await fetch('/api/megabull/portfolio-symbols');
+                if (res.ok) {
+                    const data = await res.json();
+                    portfolioSymbols = new Set((data.all_portfolio_symbols || []).map(s => s.toUpperCase()));
+                }
+            } catch (e) {
+                console.error("Error fetching portfolio symbols:", e);
+            }
+        }
+
+        // ==========================================
+        // ROW ORDER PLACEMENT MODAL
+        // ==========================================
+        let currentPlacedOrder = null;
+        let placedOrderAction = 'BUY';
+
+        function setPlaceOrderAction(act) {
+            placedOrderAction = act;
+            const btnBuy = document.getElementById('placeBtnBuy');
+            const btnSell = document.getElementById('placeBtnSell');
+            if (act === 'BUY') {
+                btnBuy.className = 'flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30';
+                btnSell.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400';
+            } else {
+                btnSell.className = 'flex-1 py-1 rounded text-center font-bold text-rose-400 bg-rose-500/20 border border-rose-500/30';
+                btnBuy.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-emerald-400';
+            }
+        }
+
+        function calculatePlaceOrderCapital() {
+            const px = parseFloat(document.getElementById('placeOrderPrice').value) || 0;
+            const qty = parseInt(document.getElementById('placeOrderQty').value) || 0;
+            const total = px * qty;
+            document.getElementById('placeOrderCapitalDisplay').textContent = `₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function openPlaceOrderModal(orderId) {
+            const o = allOrders.find(item => item.id === orderId);
+            if (!o) return;
+            currentPlacedOrder = o;
+            placedOrderAction = (o.action || '').includes('SELL') ? 'SELL' : 'BUY';
+
+            document.getElementById('placeOrderBadge').textContent = (o.symbol || '').substring(0, 2);
+            document.getElementById('placeOrderSymbol').textContent = o.symbol;
+            document.getElementById('placeOrderStrategyBadge').textContent = o.strategy || '50 MA Setup';
+            setPlaceOrderAction(placedOrderAction);
+
+            document.getElementById('placeOrderProduct').value = 'CNC';
+            document.getElementById('placeOrderPrice').value = o.buy_trigger.toFixed(2);
+            document.getElementById('placeOrderQty').value = o.quantity || 1;
+            document.getElementById('placeOrderTarget').value = o.target_price.toFixed(2);
+            document.getElementById('placeOrderSL').value = o.sl_price.toFixed(2);
+            calculatePlaceOrderCapital();
+
+            const sym = (o.symbol || '').toUpperCase();
+            const isDup = o.is_in_portfolio || portfolioSymbols.has(sym);
+            const warnBox = document.getElementById('placeOrderDuplicateWarning');
+            const confirmBtn = document.getElementById('btnConfirmPlaceOrder');
+            if (isDup) {
+                document.getElementById('placeOrderDuplicateText').textContent = o.portfolio_reason || `Symbol '${sym}' is already active in your portfolio or has a pending order. Duplicate orders are restricted.`;
+                warnBox.classList.remove('hidden');
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                warnBox.classList.add('hidden');
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            document.getElementById('placeOrderModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closePlaceOrderModal() {
+            document.getElementById('placeOrderModal').classList.add('hidden');
+        }
+
+        async function submitPlacedOrder() {
+            if (!currentPlacedOrder) return;
+            const btn = document.getElementById('btnConfirmPlaceOrder');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Placing...</span>`;
+            lucide.createIcons();
+
+            const payload = {
+                symbol: currentPlacedOrder.symbol,
+                action: placedOrderAction,
+                quantity: parseInt(document.getElementById('placeOrderQty').value) || 1,
+                price: parseFloat(document.getElementById('placeOrderPrice').value) || currentPlacedOrder.buy_trigger,
+                target_price: parseFloat(document.getElementById('placeOrderTarget').value) || currentPlacedOrder.target_price,
+                sl_price: parseFloat(document.getElementById('placeOrderSL').value) || currentPlacedOrder.sl_price,
+                strategy: currentPlacedOrder.strategy || '50 MA Setup',
+                product: document.getElementById('placeOrderProduct').value || 'CNC',
+                order_type: 'LIMIT',
+                enforce_duplicate_check: true
+            };
+
+            try {
+                const res = await fetch('/api/megabull/orders/place', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    closePlaceOrderModal();
+                    const msg = result.data?.message || 'Order successfully processed.';
+                    showToast('Order Submitted', msg, true);
+                    await fetchPortfolioSymbols();
+                    await fetchOrdersAndStats();
+                } else {
+                    showToast('Order Rejected', result.detail || 'Failed to place order.', false);
+                }
+            } catch (err) {
+                showToast('Network Error', err.message, false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="send" class="w-3.5 h-3.5"></i><span>Confirm &amp; Place</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        // ==========================================
+        // MANUAL ORDER DISPATCH MODAL
+        // ==========================================
+        let manualOrderAction = 'BUY';
+
+        function setManualAction(act) {
+            manualOrderAction = act;
+            const btnBuy = document.getElementById('manualBtnBuy');
+            const btnSell = document.getElementById('manualBtnSell');
+            if (act === 'BUY') {
+                btnBuy.className = 'flex-1 py-1 rounded text-center font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30';
+                btnSell.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-rose-400';
+            } else {
+                btnSell.className = 'flex-1 py-1 rounded text-center font-bold text-rose-400 bg-rose-500/20 border border-rose-500/30';
+                btnBuy.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-emerald-400';
+            }
+        }
+
+        function calculateManualCapital() {
+            const px = parseFloat(document.getElementById('manualPrice').value) || 0;
+            const qty = parseInt(document.getElementById('manualQty').value) || 0;
+            const total = px * qty;
+            document.getElementById('manualCapitalDisplay').textContent = `₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function checkManualSymbolDuplicate() {
+            const sym = document.getElementById('manualSymbol').value.trim().toUpperCase();
+            const warnBox = document.getElementById('manualOrderDuplicateWarning');
+            const confirmBtn = document.getElementById('btnConfirmManualOrder');
+            if (sym && portfolioSymbols.has(sym)) {
+                document.getElementById('manualOrderDuplicateText').textContent = `Symbol '${sym}' is already active in your portfolio or has a pending order. Duplicate orders are restricted.`;
+                warnBox.classList.remove('hidden');
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                warnBox.classList.add('hidden');
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function openManualOrderModal() {
+            document.getElementById('manualSymbol').value = '';
+            document.getElementById('manualPrice').value = '';
+            document.getElementById('manualQty').value = '1';
+            document.getElementById('manualTarget').value = '';
+            document.getElementById('manualSL').value = '';
+            setManualAction('BUY');
+            document.getElementById('manualOrderDuplicateWarning').classList.add('hidden');
+            const confirmBtn = document.getElementById('btnConfirmManualOrder');
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            calculateManualCapital();
+            document.getElementById('manualOrderModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeManualOrderModal() {
+            document.getElementById('manualOrderModal').classList.add('hidden');
+        }
+
+        async function submitManualOrder() {
+            const sym = document.getElementById('manualSymbol').value.trim().toUpperCase();
+            if (!sym) {
+                showToast('Validation Error', 'Please enter a valid stock symbol.', false);
+                return;
+            }
+            const px = parseFloat(document.getElementById('manualPrice').value);
+            if (!px || px <= 0) {
+                showToast('Validation Error', 'Please enter a valid order price.', false);
+                return;
+            }
+            const qty = parseInt(document.getElementById('manualQty').value) || 1;
+            const tgt = parseFloat(document.getElementById('manualTarget').value) || null;
+            const sl = parseFloat(document.getElementById('manualSL').value) || null;
+            const strat = document.getElementById('manualStrategy').value || '50 MA Setup';
+            const prod = document.getElementById('manualProduct').value || 'CNC';
+
+            const btn = document.getElementById('btnConfirmManualOrder');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Placing...</span>`;
+            lucide.createIcons();
+
+            const payload = {
+                symbol: sym,
+                action: manualOrderAction,
+                quantity: qty,
+                price: px,
+                target_price: tgt,
+                sl_price: sl,
+                strategy: strat,
+                product: prod,
+                order_type: 'LIMIT',
+                enforce_duplicate_check: true
+            };
+
+            try {
+                const res = await fetch('/api/megabull/orders/place', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    closeManualOrderModal();
+                    const msg = result.data?.message || 'Order successfully processed.';
+                    showToast('Order Submitted', msg, true);
+                    await fetchPortfolioSymbols();
+                    await fetchOrdersAndStats();
+                } else {
+                    showToast('Order Rejected', result.detail || 'Failed to place order.', false);
+                }
+            } catch (err) {
+                showToast('Network Error', err.message, false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Place Order</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        // ==========================================
+        // TOAST NOTIFICATION UTILITY
+        // ==========================================
+        function showToast(title, message, isSuccess = true) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto rounded-2xl hairline-border px-4 py-3 shadow-2xl backdrop-blur-xl flex items-start space-x-3 transition-all duration-300 max-w-sm ${
+                isSuccess ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-200' : 'bg-rose-950/90 border-rose-500/30 text-rose-200'
+            }`;
+            toast.innerHTML = `
+                <div class="mt-0.5 flex-shrink-0">
+                    <i data-lucide="${isSuccess ? 'check-circle' : 'alert-circle'}" class="w-4 h-4 ${isSuccess ? 'text-emerald-400' : 'text-rose-400'}"></i>
+                </div>
+                <div class="flex-1 text-xs">
+                    <div class="font-bold text-white">${title}</div>
+                    <div class="text-neutral-300 mt-0.5 leading-relaxed">${message}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 350);
+            }, 5000);
+        }
+
         function openOrderDetailModal(orderId) {
             const o = allOrders.find(item => item.id === orderId);
             if (!o) return;
@@ -783,16 +1303,29 @@
 
         // Close on ESC key or outside click
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                closePlaceOrderModal();
+                closeManualOrderModal();
+            }
         });
         document.getElementById('orderModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('orderModal')) closeModal();
+        });
+        document.getElementById('placeOrderModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('placeOrderModal')) closePlaceOrderModal();
+        });
+        document.getElementById('manualOrderModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('manualOrderModal')) closeManualOrderModal();
         });
 
         // Background polling every 12 seconds
         function startPolling() {
             setInterval(fetchOrdersAndStats, 12000);
         }
+
+        // Initialize symbol duplicate cache
+        fetchPortfolioSymbols();
     </script>
 </body>
 </html>

@@ -130,7 +130,10 @@ class OrdersService:
             "dist_low_ma50": float(doc.get("dist_low_ma50", 0.0)),
             "is_latest": bool(doc.get("is_latest", True)),
             "valid_for_date": date,
-            "synced_at": str(doc.get("synced_at", ""))
+            "synced_at": str(doc.get("synced_at", "")),
+            "is_in_portfolio": bool(doc.get("is_in_portfolio", False)),
+            "portfolio_status": str(doc.get("portfolio_status", "NONE")),
+            "portfolio_reason": doc.get("portfolio_reason")
         }
 
     def get_orders(
@@ -188,6 +191,36 @@ class OrdersService:
             cursor = col.find(query).limit(limit)
             raw_docs = list(cursor)
             orders = [self.normalize_order(doc) for doc in raw_docs]
+
+            # Enrich orders with live MegaBull portfolio presence (duplicate check)
+            try:
+                from online.services.megabull_service import megabull_service
+                holdings = megabull_service.get_holdings(enrich_ltp=False)
+                open_orders = megabull_service.get_orders().get("open", [])
+
+                held_symbols = {str(h.get("symbol", "")).strip().upper(): h for h in holdings if int(h.get("qty", 0)) != 0}
+                pending_symbols = {str(o.get("instrumentName", o.get("symbol", ""))).strip().upper(): o for o in open_orders}
+
+                for o in orders:
+                    sym = o.get("symbol", "").upper()
+                    if sym in held_symbols:
+                        o["is_in_portfolio"] = True
+                        o["portfolio_status"] = "RUNNING_HOLDING"
+                        o["portfolio_reason"] = f"Symbol '{sym}' is already active in your portfolio holdings (Qty: {held_symbols[sym].get('qty')})."
+                    elif sym in pending_symbols:
+                        o["is_in_portfolio"] = True
+                        o["portfolio_status"] = "ORDER_PENDING"
+                        o["portfolio_reason"] = f"Symbol '{sym}' already has a pending order waiting on MegaBull."
+                    else:
+                        o["is_in_portfolio"] = False
+                        o["portfolio_status"] = "NONE"
+                        o["portfolio_reason"] = None
+            except Exception as e:
+                logger.debug(f"Could not enrich orders with portfolio status: {e}")
+                for o in orders:
+                    o["is_in_portfolio"] = False
+                    o["portfolio_status"] = "NONE"
+                    o["portfolio_reason"] = None
 
             # Sorting: ARMED first, then by predicted_r desc, then symbol
             def sort_key(o):
