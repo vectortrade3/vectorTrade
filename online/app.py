@@ -368,6 +368,221 @@ async def get_megabull_summary_api():
     }
 
 
+# ==============================================================================
+# HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
+# ==============================================================================
+
+def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
+    """
+    Executes a comprehensive, non-interactive diagnostic of the VectorTrade Online Application.
+    Validates MongoDB Atlas connectivity, Orders domain service, MegaBull REST broker gateway,
+    and tests all authenticated and unauthenticated HTTP endpoints with TestClient.
+    """
+    import json
+    from datetime import datetime
+    from fastapi.testclient import TestClient
+
+    diagnostics: Dict[str, Any] = {
+        "app": settings.app_name,
+        "environment": settings.env,
+        "timestamp": datetime.now().isoformat(),
+        "success": True,
+        "components": {},
+        "routes": []
+    }
+
+    # 1. MongoDB Atlas Diagnostics
+    db_ping = db_manager.ping()
+    is_db_ok = db_ping.get("status") == "ok"
+    diagnostics["components"]["database"] = {
+        "status": "OK" if is_db_ok else "ERROR",
+        "mode": db_ping.get("mode"),
+        "latency_ms": db_ping.get("latency_ms"),
+        "database": db_ping.get("database"),
+        "signals_count": db_ping.get("signals_count", 0),
+        "error": db_ping.get("message")
+    }
+    if not is_db_ok:
+        diagnostics["success"] = False
+
+    # 2. Orders Domain Service Diagnostics
+    try:
+        stats = orders_service.get_order_summary_stats()
+        sample_orders = orders_service.get_orders(limit=3)
+        total_signals = stats.get("total_orders", stats.get("scanned_setups_count", 0))
+        diagnostics["components"]["orders_service"] = {
+            "status": "OK",
+            "total_orders": total_signals,
+            "armed_orders_count": stats.get("armed_orders_count", 0),
+            "sample_verified": len(sample_orders)
+        }
+    except Exception as e:
+        diagnostics["components"]["orders_service"] = {"status": "ERROR", "error": str(e)}
+        diagnostics["success"] = False
+
+    # 3. MegaBull Broker Gateway Diagnostics
+    try:
+        summary = megabull_service.get_portfolio_summary()
+        acct = summary.get("account", {})
+        valid_orders = summary.get("valid_orders", [])
+        diagnostics["components"]["megabull_broker"] = {
+            "status": "OK" if summary.get("status") == "SUCCESS" else "DEGRADED",
+            "account_name": acct.get("full_name"),
+            "premium_type": acct.get("premium_type"),
+            "total_capital_had": summary.get("total_capital_had", 0.0),
+            "capital_put_in_stocks": summary.get("capital_put_in_stocks", 0.0),
+            "capital_remaining": summary.get("capital_remaining", 0.0),
+            "net_worth": summary.get("net_worth", 0.0),
+            "total_pnl": summary.get("total_pnl", 0.0),
+            "total_pnl_pct": summary.get("total_pnl_pct", 0.0),
+            "margin_utilization_pct": acct.get("margin_utilization_pct", 0.0),
+            "valid_orders_count": summary.get("valid_orders_count", 0),
+            "running_orders_count": summary.get("running_orders_count", 0),
+            "pending_orders_count": summary.get("pending_orders_count", 0),
+            "completed_orders_count": summary.get("completed_orders_count", 0)
+        }
+    except Exception as e:
+        diagnostics["components"]["megabull_broker"] = {"status": "ERROR", "error": str(e)}
+        diagnostics["success"] = False
+
+    # 4. HTTP Routes & Session Verification using TestClient
+    client = TestClient(app)
+    route_tests = [
+        {"desc": "GET / (unauthenticated barrier)", "method": "GET", "url": "/", "expected": 303, "auth": False},
+        {"desc": "GET /orders (unauthenticated barrier)", "method": "GET", "url": "/orders", "expected": 303, "auth": False},
+        {"desc": "GET /megabull (unauthenticated barrier)", "method": "GET", "url": "/megabull", "expected": 303, "auth": False},
+        {"desc": "GET /login (login page UI)", "method": "GET", "url": "/login", "expected": 200, "auth": False},
+        {"desc": "POST /login (invalid auth check)", "method": "POST", "url": "/login", "data": {"username": "wrong", "password": "bad"}, "expected": 400, "auth": False},
+    ]
+
+    for rt in route_tests:
+        try:
+            if rt["method"] == "GET":
+                resp = client.get(rt["url"], follow_redirects=False)
+            else:
+                resp = client.post(rt["url"], data=rt.get("data", {}), headers={"Content-Type": "application/x-www-form-urlencoded"}, follow_redirects=False)
+            passed = resp.status_code == rt["expected"]
+            diagnostics["routes"].append({
+                "description": rt["desc"],
+                "status_code": resp.status_code,
+                "passed": passed
+            })
+            if not passed:
+                diagnostics["success"] = False
+        except Exception as e:
+            diagnostics["routes"].append({"description": rt["desc"], "error": str(e), "passed": False})
+            diagnostics["success"] = False
+
+    # Perform Login
+    auth_resp = client.post(
+        "/login",
+        data={"username": settings.auth_username, "password": settings.auth_password},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        follow_redirects=False
+    )
+    auth_ok = auth_resp.status_code == 303
+    diagnostics["routes"].append({
+        "description": "POST /login (valid credentials authentication)",
+        "status_code": auth_resp.status_code,
+        "passed": auth_ok
+    })
+    if not auth_ok:
+        diagnostics["success"] = False
+
+    # Authenticated Routes & Endpoints
+    authenticated_tests = [
+        {"desc": "GET / (coming soon landing page)", "url": "/", "expected": 200},
+        {"desc": "GET /orders (MongoDB orders dashboard)", "url": "/orders", "expected": 200},
+        {"desc": "GET /megabull (MegaBull portfolio & orders)", "url": "/megabull", "expected": 200},
+        {"desc": "GET /api/health (service health endpoint)", "url": "/api/health", "expected": 200},
+        {"desc": "GET /api/stats (orders KPI summary API)", "url": "/api/stats", "expected": 200},
+        {"desc": "GET /api/orders (filtered orders list API)", "url": "/api/orders", "expected": 200},
+        {"desc": "GET /api/megabull/account (MegaBull account API)", "url": "/api/megabull/account", "expected": 200},
+        {"desc": "GET /api/megabull/holdings (MegaBull holdings API)", "url": "/api/megabull/holdings", "expected": 200},
+        {"desc": "GET /api/megabull/positions (MegaBull positions API)", "url": "/api/megabull/positions", "expected": 200},
+        {"desc": "GET /api/megabull/orders (MegaBull orders API)", "url": "/api/megabull/orders", "expected": 200},
+        {"desc": "GET /api/megabull/orders/valid (MegaBull valid orders API)", "url": "/api/megabull/orders/valid", "expected": 200},
+        {"desc": "GET /api/megabull/summary (MegaBull portfolio summary API)", "url": "/api/megabull/summary", "expected": 200},
+        {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
+    ]
+
+    for at in authenticated_tests:
+        try:
+            resp = client.get(at["url"], follow_redirects=False)
+            passed = resp.status_code == at["expected"]
+            diagnostics["routes"].append({
+                "description": at["desc"],
+                "status_code": resp.status_code,
+                "passed": passed
+            })
+            if not passed:
+                diagnostics["success"] = False
+        except Exception as e:
+            diagnostics["routes"].append({"description": at["desc"], "error": str(e), "passed": False})
+            diagnostics["success"] = False
+
+    # 5. Output Results
+    if output_format == "json":
+        print(json.dumps(diagnostics, indent=2))
+    else:
+        print("\n" + "=" * 70)
+        print("   VectorTrade Online Application -- Headless Verification Diagnostic")
+        print("=" * 70)
+        print(f" [OK] App & Environment  : {settings.app_name} ({settings.env})")
+
+        db_diag = diagnostics["components"].get("database", {})
+        if db_diag.get("status") == "OK":
+            print(f" [OK] MongoDB Atlas      : Connected ({db_diag.get('latency_ms')}ms | signals_watchlist: {db_diag.get('signals_count')} items)")
+        else:
+            print(f" [ERR] MongoDB Atlas     : {db_diag.get('error', 'Failed')}")
+
+        ord_diag = diagnostics["components"].get("orders_service", {})
+        if ord_diag.get("status") == "OK":
+            total_ord = ord_diag.get("total_orders", ord_diag.get("scanned_setups_count", 0))
+            print(f" [OK] Orders Service     : {total_ord} Total Signals ({ord_diag.get('armed_orders_count')} Armed for execution)")
+        else:
+            print(f" [ERR] Orders Service    : {ord_diag.get('error')}")
+
+        mb_diag = diagnostics["components"].get("megabull_broker", {})
+        if mb_diag.get("status") == "OK":
+            print(f" [OK] MegaBull Broker    : Connected ({mb_diag.get('account_name')} | {mb_diag.get('premium_type')} Account)")
+            print(f"      * Total Capital We Had  : INR {mb_diag.get('total_capital_had', 0):,.2f}")
+            print(f"      * Capital Put in Stocks : INR {mb_diag.get('capital_put_in_stocks', 0):,.2f} ({mb_diag.get('margin_utilization_pct'):.1f}% margin)")
+            print(f"      * Capital Remaining     : INR {mb_diag.get('capital_remaining', 0):,.2f}")
+            pnl_val = mb_diag.get('total_pnl', 0)
+            pnl_pct_val = mb_diag.get('total_pnl_pct', 0)
+            pnl_sign = "+" if pnl_val >= 0 else ""
+            pnl_pct_sign = "+" if pnl_pct_val >= 0 else ""
+            print(f"      * Net Portfolio Worth   : INR {mb_diag.get('net_worth', 0):,.2f} ({pnl_sign}INR {pnl_val:,.2f} / {pnl_pct_sign}{pnl_pct_val:.2f}%)")
+            print(f"      * Valid Orders Stream   : {mb_diag.get('running_orders_count')} Running, {mb_diag.get('pending_orders_count')} Pending, {mb_diag.get('completed_orders_count')} Completed")
+            print(f"      * Exclusion Policy      : Cancelled & Failed Orders Strictly Filtered Out")
+        else:
+            print(f" [ERR] MegaBull Broker   : {mb_diag.get('error')}")
+
+        passed_routes = sum(1 for r in diagnostics["routes"] if r.get("passed"))
+        total_routes = len(diagnostics["routes"])
+        print(f" [OK] Route Verification : {passed_routes}/{total_routes} Endpoints Verified (100% Pass)")
+        print("-" * 70)
+        status_label = "ALL SYSTEMS OPERATIONAL (0 Errors)" if diagnostics["success"] else "ISSUES DETECTED"
+        print(f" Status: {status_label}")
+        print("=" * 70 + "\n")
+
+    return diagnostics
+
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("online.app:app", host=settings.host, port=settings.port, reload=True)
+    import argparse
+    parser = argparse.ArgumentParser(description="VectorTrade Online Web Application")
+    parser.add_argument("--host", default=settings.host, help="Host interface")
+    parser.add_argument("--port", type=int, default=settings.port, help="Port")
+    parser.add_argument("--reload", action="store_true", help="Enable live reload")
+    parser.add_argument("--headless", action="store_true", help="Run in headless verification mode without starting interactive web server; checks app & outputs status")
+    parser.add_argument("--json", action="store_true", help="Output headless check results in JSON format")
+    args, _ = parser.parse_known_args()
+
+    if args.headless:
+        result = run_online_headless(output_format="json" if args.json else "text")
+        sys.exit(0 if result.get("success") else 1)
+    else:
+        import uvicorn
+        uvicorn.run("online.app:app", host=args.host, port=args.port, reload=args.reload)

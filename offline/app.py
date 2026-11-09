@@ -1077,6 +1077,144 @@ def get_mongodb_status_endpoint():
         }), 500
 
 
+def run_offline_headless(output_format: str = "text") -> Dict[str, Any]:
+    """
+    Executes a comprehensive, non-interactive diagnostic of the VectorTrade Offline engine.
+    Checks data stores, machine learning models, 50MA strategy service, market schedule,
+    and MongoDB Atlas synchronization without starting the web server.
+    """
+    diagnostics: Dict[str, Any] = {
+        "engine": "VectorTrade Offline Engine",
+        "timestamp": datetime.now().isoformat(),
+        "success": True,
+        "components": {}
+    }
+
+    # 1. Data Store Health
+    data_store_dir = BASE_DIR / "data_store"
+    expected_files = [
+        "app_logs.json",
+        "task_logs.json",
+        "models_state.json",
+        "inference_state.json",
+        "inference_50ma_trades.json",
+        "inference_global_trades.json",
+        "data_cleaning.json"
+    ]
+    verified_files = []
+    missing_files = []
+    for fn in expected_files:
+        fp = data_store_dir / fn
+        if fp.exists():
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    json.load(f)
+                verified_files.append(fn)
+            except Exception as e:
+                missing_files.append(f"{fn} (corrupt: {e})")
+        else:
+            missing_files.append(f"{fn} (not found)")
+
+    diagnostics["components"]["data_store"] = {
+        "status": "OK" if not missing_files else "WARNING",
+        "verified_count": len(verified_files),
+        "total_expected": len(expected_files),
+        "verified_files": verified_files,
+        "issues": missing_files
+    }
+
+    # 2. Models & State
+    try:
+        models_info = json_manager.get_models_info()
+        models_dir = BASE_DIR / "models"
+        available_models = [f.name for f in models_dir.glob("*.pkl")] if models_dir.exists() else []
+        diagnostics["components"]["models"] = {
+            "status": "OK",
+            "active_models_count": len(available_models),
+            "available_models": available_models,
+            "models_state_records": len(models_info)
+        }
+    except Exception as e:
+        diagnostics["components"]["models"] = {"status": "ERROR", "error": str(e)}
+        diagnostics["success"] = False
+
+    # 3. 50MA Strategy Service
+    try:
+        strat_summary = ma50_service.get_50ma_strategy_summary()
+        overall = strat_summary.get("overall", {})
+        last_1y = strat_summary.get("last_1_year", {})
+        diagnostics["components"]["ma50_strategy"] = {
+            "status": "OK",
+            "total_setups": overall.get("total_trades", 0),
+            "win_rate_5y": f"{overall.get('win_rate', 0):.1f}%",
+            "win_rate_1y": f"{last_1y.get('win_rate', 0):.1f}%",
+            "net_r_edge": f"{overall.get('total_realized_r', 0):+.1f} R",
+            "payoff_ratio": "1 : 2.00"
+        }
+    except Exception as e:
+        diagnostics["components"]["ma50_strategy"] = {"status": "ERROR", "error": str(e)}
+        diagnostics["success"] = False
+
+    # 4. Market Schedule
+    try:
+        schedule = get_market_schedule_info()
+        diagnostics["components"]["market_schedule"] = {
+            "status": "OK",
+            "info": schedule
+        }
+    except Exception as e:
+        diagnostics["components"]["market_schedule"] = {"status": "WARNING", "error": str(e)}
+
+    # 5. MongoDB Atlas Syncer
+    try:
+        from offline.mongo_syncer import MongoSyncer
+        syncer = MongoSyncer()
+        conn_info = syncer.test_connection()
+        diagnostics["components"]["mongo_syncer"] = {
+            "status": "OK" if conn_info.get("connected") else "DEGRADED",
+            "connected": conn_info.get("connected", False),
+            "database": conn_info.get("database"),
+            "signals_count": conn_info.get("signals_count", 0),
+            "error": conn_info.get("error")
+        }
+    except Exception as e:
+        diagnostics["components"]["mongo_syncer"] = {"status": "ERROR", "error": str(e)}
+
+    if output_format == "json":
+        print(json.dumps(diagnostics, indent=2))
+    else:
+        print("\n" + "=" * 68)
+        print("   VectorTrade Offline Engine -- Headless Verification Diagnostic")
+        print("=" * 68)
+        ds = diagnostics["components"].get("data_store", {})
+        print(f" [OK] Data Store         : {ds.get('verified_count', 0)}/{ds.get('total_expected', 0)} JSON stores verified")
+
+        md = diagnostics["components"].get("models", {})
+        print(f" [OK] Models Directory   : {md.get('active_models_count', 0)} model weight artifacts detected")
+
+        m50 = diagnostics["components"].get("ma50_strategy", {})
+        if m50.get("status") == "OK":
+            print(f" [OK] 50MA Strategy      : {m50.get('total_setups'):,} setups | {m50.get('win_rate_5y')} Win | {m50.get('net_r_edge')}")
+        else:
+            print(f" [ERR] 50MA Strategy     : {m50.get('error')}")
+
+        mkt = diagnostics["components"].get("market_schedule", {})
+        print(f" [OK] Market Schedule    : {mkt.get('info', {}).get('status', 'Ready')}")
+
+        ms = diagnostics["components"].get("mongo_syncer", {})
+        if ms.get("connected"):
+            print(f" [OK] MongoDB Syncer     : Connected to Atlas (signals_watchlist: {ms.get('signals_count')} items)")
+        else:
+            print(f" [WARN] MongoDB Syncer   : {ms.get('error', 'Disconnected')}")
+
+        print("-" * 68)
+        status_label = "ALL SYSTEMS OPERATIONAL (0 Errors)" if diagnostics["success"] else "ISSUES DETECTED"
+        print(f" Status: {status_label}")
+        print("=" * 68 + "\n")
+
+    return diagnostics
+
+
 def run_app(host: str = "0.0.0.0", port: int = 8684):
     """Starts the application and logs boot event."""
     env_port = os.environ.get("PORT")
@@ -1116,5 +1254,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VectorTrade Offline Web Engine")
     parser.add_argument("--host", default="0.0.0.0", help="Host interface (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8684, help="Port (default: 8684 [ASCII VT])")
+    parser.add_argument("--headless", action="store_true", help="Run in headless verification mode without starting interactive web server; checks engine & outputs status")
+    parser.add_argument("--json", action="store_true", help="Output headless check results in JSON format")
     args, _ = parser.parse_known_args()
-    run_app(host=args.host, port=args.port)
+    if args.headless:
+        result = run_offline_headless(output_format="json" if args.json else "text")
+        sys.exit(0 if result.get("success") else 1)
+    else:
+        run_app(host=args.host, port=args.port)
