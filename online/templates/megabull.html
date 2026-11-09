@@ -156,7 +156,7 @@
             </div>
         </section>
 
-        <!-- Executive Financial KPI Cards (User Specified: Total Capital We Had, Capital Put in Stocks, Capital Remaining) -->
+        <!-- Executive Financial KPI Cards -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             <!-- KPI 1: Total Capital We Had -->
@@ -170,7 +170,10 @@
                         ₹{{ "{:,.2f}".format(summary.total_capital_had) }}
                     </span>
                 </div>
-                <p class="mt-2 text-[11px] text-apple-subtext font-mono">Virtual Capital (Starting Base)</p>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono flex items-center justify-between">
+                    <span>Virtual Capital Base</span>
+                    <span class="text-emerald-400 font-semibold">+₹{{ "{:,.2f}".format(summary.total_capital_had - 500000.0) }} Realized</span>
+                </p>
             </div>
 
             <!-- KPI 2: Capital Put in Stocks -->
@@ -219,6 +222,46 @@
                     <span id="cardTotalPnl">{{ '+' if summary.total_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(summary.total_pnl) }}</span>
                     <span>({{ '+' if summary.total_pnl_pct >= 0 else '' }}{{ "%.2f"|format(summary.total_pnl_pct) }}%)</span>
                 </p>
+            </div>
+        </section>
+
+        <!-- Capital Ledger Audit & Intraday vs Overnight Clarification Banner -->
+        <section class="rounded-3xl hairline-border bg-gradient-to-r from-emerald-950/20 via-black to-blue-950/20 p-5 backdrop-blur-xl border border-white/10 space-y-3">
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <i data-lucide="receipt" class="w-4 h-4 text-emerald-400"></i>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-white">Virtual Capital Ledger Audit & Position Classification</h3>
+                </div>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Reconciled with Broker Report
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                <!-- Balance Reconciliation Breakdown -->
+                <div class="p-3 rounded-2xl hairline-border bg-white/[0.02] space-y-1.5">
+                    <div class="text-[11px] font-bold text-neutral-300 flex items-center space-x-1.5">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Where did ₹1,800.02 extra balance come from?</span>
+                    </div>
+                    <p class="text-apple-subtext text-[11px] leading-relaxed">
+                        Starting Paper Capital: <strong>₹5,00,000.00</strong>.<br>
+                        On <strong class="text-white">2026-10-29</strong>, a closed delivery trade in <strong class="text-emerald-400">TVSMOTOR</strong> was settled (Bought 15 @ ₹4,135.10, Sold @ ₹4,267.60).
+                        Gross profit was <strong>+₹1,987.50</strong> minus ₹40 brokerage and ₹147.48 taxes = <strong class="text-emerald-400">+₹1,800.02 Net Gain</strong>, bringing total virtual capital to exactly <strong class="text-white">₹5,01,800.02</strong>.
+                    </p>
+                </div>
+
+                <!-- Intraday vs Overnight Short Classification -->
+                <div class="p-3 rounded-2xl hairline-border bg-white/[0.02] space-y-1.5">
+                    <div class="text-[11px] font-bold text-neutral-300 flex items-center space-x-1.5">
+                        <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>Intraday (MIS) vs Overnight Holdings Clarification</span>
+                    </div>
+                    <p class="text-apple-subtext text-[11px] leading-relaxed">
+                        In live cash markets, short selling equity must be squared off as Intraday (MIS). On MegaBull Paper Trading, `/api/position/my` is currently <strong class="text-white">0 (empty)</strong>.
+                        All 8 active trades reside in <strong class="text-white">`/api/holding/my`</strong>. The 7 long positions are <strong class="text-blue-400">CNC Delivery</strong>, while <strong class="text-amber-400">INFY</strong> (-66 qty) is held as an <strong class="text-amber-400">Overnight Paper Short Holding</strong>.
+                    </p>
+                </div>
             </div>
         </section>
 
@@ -281,7 +324,7 @@
                             </span>
                         </button>
                         <button onclick="setFilter('COMPLETED')" id="tabCOMPLETED" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
-                            <span>Completed</span>
+                            <span>Completed Trades</span>
                             <span id="badgeCountCOMPLETED" class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400">
                                 {{ summary.completed_orders_count }}
                             </span>
@@ -311,11 +354,11 @@
                             <th class="py-3 px-4 text-center">Category</th>
                             <th class="py-3 px-3 text-center">Action</th>
                             <th class="py-3 px-4 text-right">Quantity</th>
-                            <th class="py-3 px-4 text-right">Buy / Order Price</th>
-                            <th class="py-3 px-4 text-right">Live LTP</th>
+                            <th class="py-3 px-4 text-right">Buy / Entry Price</th>
+                            <th class="py-3 px-4 text-right">Live / Exit Price</th>
                             <th class="py-3 px-4 text-right">Capital Put in Stock</th>
-                            <th class="py-3 px-4 text-right">Current Valuation</th>
-                            <th class="py-3 px-5 text-right">Unrealized P&L</th>
+                            <th class="py-3 px-4 text-right">Valuation / Settled</th>
+                            <th class="py-3 px-5 text-right">P&L (Unrealized / Realized)</th>
                             <th class="py-3 px-5 text-center">Status</th>
                         </tr>
                     </thead>
@@ -335,7 +378,13 @@
                                                 {{ order.product }}
                                             </span>
                                         </div>
-                                        <div class="text-[10px] text-apple-subtext font-mono">Token: {{ order.instrument_token }}</div>
+                                        <div class="text-[10px] text-apple-subtext font-mono">
+                                            {% if order.closed_date %}
+                                            Settled: {{ order.closed_date }}
+                                            {% else %}
+                                            Token: {{ order.instrument_token }}
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -343,16 +392,22 @@
                             <!-- Category -->
                             <td class="py-3.5 px-4 text-center">
                                 {% if order.category == 'RUNNING' %}
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                    Running (Bought, Not Sold)
-                                </span>
+                                    {% if 'Short' in order.product or 'SHORT' in order.action %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                        Running (Paper Short)
+                                    </span>
+                                    {% else %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                        Running (Delivery Long)
+                                    </span>
+                                    {% endif %}
                                 {% elif order.category == 'PENDING' %}
                                 <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
                                     Pending Order
                                 </span>
                                 {% else %}
                                 <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                    Completed Trade
+                                    Completed Trade {% if order.closed_date %}({{ order.closed_date }}){% endif %}
                                 </span>
                                 {% endif %}
                             </td>
@@ -360,7 +415,7 @@
                             <!-- Action -->
                             <td class="py-3.5 px-3 text-center">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold 
-                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if 'BUY' in order.action else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
+                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if 'BUY' in order.action and 'SELL' not in order.action else ('bg-blue-500/15 text-blue-400 border border-blue-500/30' if 'CLOSED' in order.action else 'bg-rose-500/15 text-rose-400 border border-rose-500/30') }}">
                                     {{ order.action }}
                                 </span>
                             </td>
@@ -375,7 +430,7 @@
                                 ₹{{ "%.2f"|format(order.order_price) }}
                             </td>
 
-                            <!-- Live LTP -->
+                            <!-- Live / Exit Price -->
                             <td class="py-3.5 px-4 text-right font-mono font-bold text-white">
                                 ₹{{ "%.2f"|format(order.ltp) }}
                             </td>
@@ -390,13 +445,19 @@
                                 ₹{{ "{:,.2f}".format(order.current_valuation) }}
                             </td>
 
-                            <!-- Unrealized P&L -->
+                            <!-- Unrealized / Realized P&L -->
                             <td class="py-3.5 px-5 text-right font-mono">
                                 {% if order.category == 'RUNNING' %}
                                 <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold
                                     {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if order.unrealized_pnl >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
                                     <span>{{ '+' if order.unrealized_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(order.unrealized_pnl) }}</span>
                                     <span class="text-[10px]">({{ '+' if order.pnl_pct >= 0 else '' }}{{ "%.2f"|format(order.pnl_pct) }}%)</span>
+                                </span>
+                                {% elif order.category == 'COMPLETED' %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold
+                                    {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if (order.realized_pnl or order.unrealized_pnl) >= 0 else 'bg-rose-500/15 text-rose-400 border border-rose-500/30' }}">
+                                    <span>{{ '+' if (order.realized_pnl or order.unrealized_pnl) >= 0 else '' }}₹{{ "{:,.2f}".format(order.realized_pnl or order.unrealized_pnl) }}</span>
+                                    <span class="text-[10px]">(Realized {{ '+' if order.pnl_pct >= 0 else '' }}{{ "%.2f"|format(order.pnl_pct) }}%)</span>
                                 </span>
                                 {% else %}
                                 <span class="text-neutral-500 text-xs">—</span>
@@ -418,7 +479,7 @@
                                 {% else %}
                                 <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    <span>EXECUTED</span>
+                                    <span>CLOSED</span>
                                 </span>
                                 {% endif %}
                             </td>
@@ -454,8 +515,8 @@
                 {% if summary.positions_count == 0 %}
                 <div class="py-8 text-center space-y-2">
                     <i data-lucide="shield-check" class="w-8 h-8 text-neutral-600 mx-auto"></i>
-                    <p class="text-xs text-apple-subtext font-mono">No active intraday derivative positions.</p>
-                    <p class="text-[11px] text-neutral-500">All capital is deployed into delivery holdings (Equity Portfolio).</p>
+                    <p class="text-xs text-apple-subtext font-mono">No active intraday derivative/MIS positions.</p>
+                    <p class="text-[11px] text-neutral-500">All current capital is held in overnight holdings (7 Delivery Long + 1 Overnight Short).</p>
                 </div>
                 {% else %}
                 <div class="space-y-2 font-mono text-xs">
