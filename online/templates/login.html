@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — {{ app_name }}</title>
+    <!-- Tailwind CSS (Restrained Dark Palette) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        apple: {
+                            canvas: '#000000',
+                            card: 'rgba(28, 28, 30, 0.55)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            blue: '#0A84FF',
+                            green: '#30D158',
+                            amber: '#FF9F0A',
+                            red: '#FF453A',
+                            subtext: '#8E8E93'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #F5F5F7;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-spring {
+            transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .hairline-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 selection:bg-blue-600/30 selection:text-blue-200">
+
+    <!-- Ambient Subtle Glow -->
+    <div class="fixed inset-0 pointer-events-none flex items-center justify-center">
+        <div class="w-[500px] h-[500px] bg-blue-500/[0.04] rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Login Container Card -->
+    <div class="relative w-full max-w-md rounded-3xl hairline-border bg-white/[0.03] backdrop-blur-2xl p-8 sm:p-10 shadow-2xl shadow-black space-y-7 border border-white/10 apple-spring">
+        
+        <!-- Header Branding -->
+        <div class="text-center space-y-3">
+            <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 mx-auto flex items-center justify-center text-white shadow-xl shadow-blue-500/25">
+                <i data-lucide="crosshair" class="w-7 h-7"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white">VectorTrade Online</h1>
+                <p class="text-xs text-apple-subtext font-mono mt-1">Cloud Orders & Execution Terminal</p>
+            </div>
+        </div>
+
+        <!-- Error Alert (Conditional) -->
+        {% if error %}
+        <div id="errorAlert" class="rounded-xl hairline-border bg-rose-500/10 border-rose-500/20 px-4 py-3 flex items-center space-x-3 text-xs text-rose-300 apple-spring">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 shrink-0"></i>
+            <span class="flex-1">{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Login Form -->
+        <form method="POST" action="/login" class="space-y-4">
+            <!-- Next redirect preserved -->
+            <input type="hidden" name="next" value="{{ next or '/orders' }}">
+
+            <!-- Username Field -->
+            <div class="space-y-1.5">
+                <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-apple-subtext">
+                    Username
+                </label>
+                <div class="relative">
+                    <i data-lucide="user" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="username" name="username" required autofocus autocomplete="username"
+                           value="{{ default_user or '' }}"
+                           placeholder="Enter username (root)"
+                           class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
+                </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-apple-subtext">
+                        Password
+                    </label>
+                </div>
+                <div class="relative">
+                    <i data-lucide="lock" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="password" id="password" name="password" required autocomplete="current-password"
+                           placeholder="Enter password (root)"
+                           class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-11 py-2.5 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
+                    <button type="button" onclick="togglePasswordVisibility()" 
+                            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-apple-subtext hover:text-white apple-spring">
+                        <i data-lucide="eye" id="eyeIcon" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Remember Session -->
+            <div class="flex items-center justify-between pt-1">
+                <label class="flex items-center space-x-2 text-xs text-apple-subtext cursor-pointer select-none">
+                    <input type="checkbox" name="remember" checked class="rounded border-white/20 bg-black/60 text-blue-500 focus:ring-0">
+                    <span>Remember on this browser</span>
+                </label>
+                <span class="text-[11px] text-neutral-500 font-mono">v2.0</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full rounded-xl bg-white text-black font-semibold text-sm py-2.5 hover:bg-neutral-200 active:scale-[0.98] apple-spring shadow-lg flex items-center justify-center space-x-2">
+                <span>Sign In</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+
+        <!-- Credentials Hint / Environment Note -->
+        <div class="pt-2 border-t border-white/[0.06] text-center space-y-1.5">
+            <p class="text-[11px] text-apple-subtext font-mono">
+                Default: <span class="text-neutral-300 font-bold">root</span> / <span class="text-neutral-300 font-bold">root</span>
+            </p>
+            <p class="text-[10px] text-neutral-500">
+                Configured via <code class="text-neutral-400">AUTH_USERNAME</code> & <code class="text-neutral-400">AUTH_PASSWORD</code> in <code class="text-neutral-400">.env</code>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function togglePasswordVisibility() {
+            const pwdInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                eyeIcon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                pwdInput.type = 'password';
+                eyeIcon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>

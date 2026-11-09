@@ -76,18 +76,32 @@
     <!-- Top Navigation Header -->
     <header class="sticky top-0 z-40 backdrop-blur-2xl bg-black/75 hairline-bottom">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <!-- Brand -->
-            <div class="flex items-center space-x-3">
-                <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                    <i data-lucide="crosshair" class="w-5 h-5"></i>
-                </div>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
-                        <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Online Cloud</span>
+            <!-- Brand & Nav Tabs -->
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <i data-lucide="crosshair" class="w-5 h-5"></i>
                     </div>
-                    <p class="text-xs text-apple-subtext font-mono">Live MongoDB Atlas Execution Terminal</p>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Online Cloud</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Main Nav Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
+                        Overview
+                    </a>
+                    <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
+                        <span>MongoDB Orders</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {{ stats.armed_orders_count }}
+                        </span>
+                    </a>
+                </nav>
             </div>
 
             <!-- Header Controls & Telemetry -->
@@ -109,6 +123,18 @@
                     <i data-lucide="refresh-cw" id="refreshIcon" class="w-3.5 h-3.5 text-blue-400"></i>
                     <span>Refresh</span>
                 </button>
+
+                <!-- User Profile & Sign Out -->
+                <div class="flex items-center space-x-2 pl-2 border-l border-white/[0.08]">
+                    <div class="px-2.5 py-1 rounded-lg hairline-border bg-white/[0.04] text-xs font-mono text-neutral-200 flex items-center space-x-1.5">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>{{ user or 'root' }}</span>
+                    </div>
+                    <a href="/logout" title="Sign Out" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-400 hover:border-rose-500/30 flex items-center space-x-1">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Sign Out</span>
+                    </a>
+                </div>
             </div>
         </div>
     </header>

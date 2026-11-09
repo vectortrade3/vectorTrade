@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overview — {{ app_name }}</title>
+    <!-- Tailwind CSS (Restrained Dark Palette) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        apple: {
+                            canvas: '#000000',
+                            card: 'rgba(28, 28, 30, 0.55)',
+                            cardHover: 'rgba(44, 44, 46, 0.65)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            blue: '#0A84FF',
+                            green: '#30D158',
+                            amber: '#FF9F0A',
+                            red: '#FF453A',
+                            purple: '#BF5AF2',
+                            subtext: '#8E8E93',
+                            mono: '#E5E5EA'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #F5F5F7;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-spring {
+            transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .hairline-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hairline-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-blue-600/30 selection:text-blue-200">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 backdrop-blur-2xl bg-black/75 hairline-bottom">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand & Navigation -->
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <i data-lucide="crosshair" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Online Cloud</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Nav Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring">
+                        Overview
+                    </a>
+                    <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <span>MongoDB Orders</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {{ stats.armed_orders_count }}
+                        </span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Header Controls & User Session -->
+            <div class="flex items-center space-x-3">
+                <!-- Atlas Status -->
+                <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-mono hairline-border bg-white/[0.02]">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-neutral-300">Atlas: <span class="text-emerald-400 font-semibold">{{ db_health.latency_ms if db_health.latency_ms > 0 else 'Connected' }} ms</span></span>
+                </div>
+
+                <!-- User Profile & Logout -->
+                <div class="flex items-center space-x-2 pl-2 border-l border-white/[0.08]">
+                    <div class="px-2.5 py-1 rounded-lg hairline-border bg-white/[0.04] text-xs font-mono text-neutral-200 flex items-center space-x-1.5">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>{{ user or 'root' }}</span>
+                    </div>
+                    <a href="/logout" title="Sign Out" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-400 hover:border-rose-500/30 flex items-center space-x-1">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Sign Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Welcome Banner -->
+        <section class="rounded-3xl hairline-border bg-gradient-to-r from-blue-950/20 via-black to-indigo-950/20 p-6 sm:p-8 backdrop-blur-2xl border border-white/10 relative overflow-hidden">
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="space-y-2">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-mono bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                        <span class="h-1.5 w-1.5 rounded-full bg-blue-400 animate-ping"></span>
+                        <span>Synchronized with MongoDB Atlas</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">Cloud Orders & Execution Terminal</h1>
+                    <p class="text-sm text-apple-subtext max-w-2xl leading-relaxed">
+                        Continuous synchronization of scanned market setups, strict 1:2.00 Risk:Reward geometries,
+                        and calibrated XGBoost expectancy multiples.
+                    </p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <a href="/orders" class="apple-spring px-5 py-3 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-neutral-200 active:scale-95 shadow-xl flex items-center justify-center space-x-2">
+                        <span>View Synced Orders ({{ stats.armed_orders_count }})</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Executive KPI Metrics -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Metric 1: Armed Setups -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Armed for Market</span>
+                    <i data-lucide="shield-alert" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold font-mono tracking-tight text-white">{{ stats.armed_orders_count }}</span>
+                    <span class="text-xs text-neutral-400 font-normal">of {{ stats.total_orders }} Setups</span>
+                </div>
+                <p class="mt-2 text-[11px] text-emerald-400/90 font-medium">Ready for Buy Trigger Hit</p>
+            </div>
+
+            <!-- Metric 2: AI Expectancy -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>AI Model Expectancy</span>
+                    <i data-lucide="sparkles" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold font-mono tracking-tight text-blue-400">+{{ "%.2f"|format(stats.avg_predicted_r) }} R</span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-normal">Calibrated XGBoost Payoff Edge</p>
+            </div>
+
+            <!-- Metric 3: Strict Geometry -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Payoff Geometry</span>
+                    <i data-lucide="scale" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold font-mono tracking-tight text-white">1 : 2.00</span>
+                    <span class="text-xs text-neutral-400 font-mono">R:R</span>
+                </div>
+                <div class="mt-2 text-[11px] text-neutral-300 font-mono flex items-center justify-between">
+                    <span>Avg Profit: <span class="text-emerald-400 font-semibold">+{{ "%.2f"|format(stats.avg_profit_pct) }}%</span></span>
+                    <span>Risk: <span class="text-rose-400 font-semibold">-{{ "%.2f"|format(stats.avg_loss_pct) }}%</span></span>
+                </div>
+            </div>
+
+            <!-- Metric 4: Total Capital -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Total Armed Capital</span>
+                    <i data-lucide="wallet" class="w-4 h-4 text-purple-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span class="text-2xl lg:text-3xl font-bold font-mono tracking-tight text-white">₹{{ "{:,.0f}".format(stats.total_capital_required) }}</span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono">
+                    Total Risk: <span class="text-neutral-300 font-semibold">₹{{ "{:,.0f}".format(stats.total_risk_budget) }}</span>
+                </p>
+            </div>
+        </section>
+
+        <!-- Strategy Breakdown & Architecture Section -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 50 MA Setup Card -->
+            <div class="rounded-3xl hairline-border bg-white/[0.02] p-6 backdrop-blur-xl space-y-4">
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 font-bold font-mono">
+                            50M
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-white">50 MA Pullback Strategy</h3>
+                            <p class="text-xs text-apple-subtext font-mono">Daily Trend & Bollinger Envelope Setups</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                        {{ stats.strategies_breakdown.get('50 MA Setup', 0) }} Setups
+                    </span>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <div>
+                            <span class="font-semibold text-white block">Setup 1 • Confluence Zone</span>
+                            <span class="text-apple-subtext">-10 to +30 MA50 Proximity</span>
+                        </div>
+                        <span class="font-mono font-bold text-neutral-200">{{ stats.setups_breakdown.get('50MA Setup 1 (Confluence Zone)', 0) }} Setups</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <div>
+                            <span class="font-semibold text-white block">Setup 2 • Extended Trend</span>
+                            <span class="text-apple-subtext">> +30 MA50 Proximity</span>
+                        </div>
+                        <span class="font-mono font-bold text-neutral-200">{{ stats.setups_breakdown.get('50MA Setup 2 (Extended Trend)', 0) }} Setups</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <div>
+                            <span class="font-semibold text-white block">Setup 3 • Mean-Reverting</span>
+                            <span class="text-apple-subtext">< -10 MA50 Proximity</span>
+                        </div>
+                        <span class="font-mono font-bold text-neutral-200">{{ stats.setups_breakdown.get('50MA Setup 3 (Mean-Reverting)', 0) }} Setups</span>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex items-center justify-between text-xs text-apple-subtext font-mono">
+                    <span>Rules: Buy = High + ₹1.00</span>
+                    <span>SL = Low - ₹1.00</span>
+                </div>
+            </div>
+
+            <!-- MongoDB Atlas Cluster Telemetry Card -->
+            <div class="rounded-3xl hairline-border bg-white/[0.02] p-6 backdrop-blur-xl space-y-4">
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                            <i data-lucide="database" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-white">MongoDB Atlas Synchronization</h3>
+                            <p class="text-xs text-apple-subtext font-mono">Realtime Signals & Mailbox Bus</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        Operational
+                    </span>
+                </div>
+
+                <div class="space-y-3 text-xs font-mono">
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <span class="text-neutral-400">Database Name:</span>
+                        <span class="text-white font-semibold">{{ db_health.database }}</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <span class="text-neutral-400">Total Synced Signals:</span>
+                        <span class="text-white font-semibold">{{ stats.total_orders }} documents</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <span class="text-neutral-400">Last Offline Sync:</span>
+                        <span class="text-emerald-400 font-semibold">{{ stats.last_sync_timestamp[:19].replace('T', ' ') if stats.last_sync_timestamp else 'Ready' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl hairline-border bg-white/[0.02]">
+                        <span class="text-neutral-400">Atlas Ping Latency:</span>
+                        <span class="text-blue-400 font-semibold">{{ db_health.latency_ms if db_health.latency_ms > 0 else 0 }} ms</span>
+                    </div>
+                </div>
+
+                <div class="pt-2 text-right">
+                    <a href="/orders" class="apple-spring inline-flex items-center space-x-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium">
+                        <span>Go to Orders Board</span>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="hairline-bottom border-t border-white/[0.08] py-6 text-center text-xs text-apple-subtext font-mono">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>VectorTrade Online Cloud Terminal • Strict 1:2.00 Risk:Reward Geometry</span>
+            <span>MongoDB Atlas Cluster • Authenticated Session: <strong class="text-neutral-300">{{ user or 'root' }}</strong></span>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

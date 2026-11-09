@@ -1,7 +1,7 @@
 """
 VectorTrade - Online Cloud Orders & Trading Execution Dashboard
 FastAPI Application serving real-time MongoDB Atlas trade setups,
-orders monitoring board, and executive analytics.
+session authentication, executive overview, and dedicated orders board.
 """
 
 import os
@@ -9,12 +9,14 @@ import sys
 import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from urllib.parse import parse_qs
 
-from fastapi import FastAPI, Request, Query, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request, Query, HTTPException, Depends
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 # Resolve project paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -38,6 +40,14 @@ app = FastAPI(
     redoc_url="/api/redoc"
 )
 
+# Enable signed session cookies for authentication
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret_key,
+    session_cookie="vt_online_session",
+    max_age=settings.session_max_age_seconds
+)
+
 # Enable CORS for cross-origin integration
 app.add_middleware(
     CORSMiddleware,
@@ -57,14 +67,129 @@ templates_dir.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
+async def parse_request_data(request: Request) -> Dict[str, Any]:
+    """Helper to parse both JSON and URL-encoded form submissions without third-party multipart."""
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            return await request.json()
+        except Exception:
+            return {}
+    body_bytes = await request.body()
+    body_str = body_bytes.decode("utf-8")
+    parsed = parse_qs(body_str)
+    return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+
+
 # ==============================================================================
-# UI ROUTES
+# AUTHENTICATION ROUTES
+# ==============================================================================
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Renders the Apple HIG login screen or redirects if already authenticated."""
+    if request.session.get("user"):
+        next_url = request.query_params.get("next", "/orders")
+        return RedirectResponse(url=next_url, status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "app_name": settings.app_name,
+            "error": None,
+            "next": request.query_params.get("next", "/orders"),
+            "default_user": "root"
+        }
+    )
+
+
+@app.post("/login")
+async def login_submit(request: Request):
+    """Handles username & password validation against environment settings."""
+    data = await parse_request_data(request)
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", "")).strip()
+    next_url = str(data.get("next", "/orders")).strip()
+
+    if not next_url or not next_url.startswith("/"):
+        next_url = "/orders"
+
+    # Authenticate against configured environment variables
+    if username == settings.auth_username and password == settings.auth_password:
+        request.session["user"] = username
+        logger.info(f"User '{username}' authenticated successfully.")
+
+        # If requesting JSON API
+        accept_hdr = request.headers.get("accept", "")
+        if "application/json" in accept_hdr and "text/html" not in accept_hdr:
+            return JSONResponse({"status": "SUCCESS", "user": username, "redirect": next_url})
+
+        return RedirectResponse(url=next_url, status_code=303)
+    else:
+        logger.warning(f"Failed login attempt for username: '{username}'")
+        accept_hdr = request.headers.get("accept", "")
+        if "application/json" in accept_hdr and "text/html" not in accept_hdr:
+            return JSONResponse({"status": "ERROR", "message": "Invalid username or password"}, status_code=401)
+
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "app_name": settings.app_name,
+                "error": "Invalid username or password. Please verify your credentials.",
+                "next": next_url,
+                "default_user": username
+            },
+            status_code=400
+        )
+
+
+@app.get("/logout")
+@app.post("/logout")
+async def logout(request: Request):
+    """Clears user session and redirects to login."""
+    user = request.session.get("user")
+    if user:
+        logger.info(f"User '{user}' signed out.")
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
+
+# ==============================================================================
+# UI DASHBOARD ROUTES
 # ==============================================================================
 
 @app.get("/", response_class=HTMLResponse)
+async def overview_page(request: Request):
+    """Renders the Cloud Executive Overview & Gateway Dashboard."""
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login?next=/", status_code=303)
+
+    stats = orders_service.get_order_summary_stats()
+    db_health = db_manager.ping()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="overview.html",
+        context={
+            "app_name": settings.app_name,
+            "stats": stats,
+            "db_health": db_health,
+            "user": user,
+            "env": settings.env
+        }
+    )
+
+
 @app.get("/orders", response_class=HTMLResponse)
 async def orders_page(request: Request):
-    """Renders the clean, restrained Apple HIG + Linear design Orders Board."""
+    """Renders the dedicated MongoDB Synced Orders & Execution Board."""
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login?next=/orders", status_code=303)
+
     stats = orders_service.get_order_summary_stats()
     db_health = db_manager.ping()
     initial_orders = orders_service.get_orders(limit=100)
@@ -77,6 +202,7 @@ async def orders_page(request: Request):
             "stats": stats,
             "db_health": db_health,
             "orders": initial_orders,
+            "user": user,
             "env": settings.env
         }
     )
@@ -150,5 +276,4 @@ async def get_order_by_id_api(order_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    # Local direct debugging runner only
     uvicorn.run("online.app:app", host=settings.host, port=settings.port, reload=True)
