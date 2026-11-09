@@ -704,6 +704,20 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
         duration_seconds=round(total_duration, 2)
     )
 
+    # Synchronize Finalized Setups to MongoDB Atlas for Online App
+    mongo_sync_result = {"status": "SKIPPED", "synced_count": 0}
+    try:
+        from offline.mongo_syncer import MongoSyncer
+        syncer = MongoSyncer()
+        mongo_sync_result = syncer.sync_trades(finalized_trades, session_date=market_session_date)
+        if mongo_sync_result.get("status") == "SUCCESS":
+            logger.info(f"MongoDB Sync: {mongo_sync_result.get('message')}")
+        else:
+            logger.warning(f"MongoDB Sync status: {mongo_sync_result.get('status')} - {mongo_sync_result.get('message')}")
+    except Exception as sync_e:
+        logger.warning(f"Optional MongoDB sync skipped due to error: {sync_e}")
+        mongo_sync_result = {"status": "ERROR", "message": str(sync_e), "synced_count": 0}
+
     json_manager.update_daily_analysis_progress(
         status="COMPLETED",
         heading="Analysis Ready",
@@ -740,6 +754,7 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
         "finalized_trades": finalized_trades,
         "strategies_breakdown": strategy_counts,
         "outcomes_breakdown": outcome_counts,
+        "mongo_sync": mongo_sync_result,
         "duration_seconds": round(total_duration, 2),
         "message": completion_msg
     }

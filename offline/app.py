@@ -1043,6 +1043,40 @@ def get_market_schedule_endpoint():
     })
 
 
+@app.route("/api/sync_mongodb", methods=["POST"])
+def sync_mongodb_endpoint():
+    """Synchronizes daily finalized trade setups into MongoDB Atlas signals_watchlist collection."""
+    try:
+        from offline.mongo_syncer import MongoSyncer
+        syncer = MongoSyncer()
+        res = syncer.sync_from_json_file()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({
+            "status": "ERROR",
+            "message": f"Sync trigger failed: {str(e)}",
+            "synced_count": 0
+        }), 500
+
+
+@app.route("/api/sync_mongodb/status", methods=["GET"])
+def get_mongodb_status_endpoint():
+    """Returns connection diagnostics and signals count from MongoDB Atlas."""
+    try:
+        from offline.mongo_syncer import MongoSyncer
+        syncer = MongoSyncer()
+        info = syncer.test_connection()
+        return jsonify({
+            "status": "SUCCESS" if info.get("connected") else "DISCONNECTED",
+            "info": info
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "ERROR",
+            "message": str(e)
+        }), 500
+
+
 def run_app(host: str = "0.0.0.0", port: int = 8684):
     """Starts the application and logs boot event."""
     env_port = os.environ.get("PORT")
