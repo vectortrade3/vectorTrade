@@ -193,6 +193,8 @@ async def orders_page(request: Request):
     db_health = db_manager.ping()
     initial_orders = orders_service.get_orders(limit=100)
     trade_journal = orders_service.get_trade_journal()
+    liquidation_status = megabull_service.get_liquidation_status()
+    is_market_open = megabull_service.is_market_open()
 
     return templates.TemplateResponse(
         request=request,
@@ -203,6 +205,8 @@ async def orders_page(request: Request):
             "db_health": db_health,
             "orders": initial_orders,
             "trade_journal": trade_journal,
+            "liquidation_status": liquidation_status,
+            "is_market_open": is_market_open,
             "user": user,
             "env": settings.env
         }
@@ -218,6 +222,8 @@ async def megabull_page(request: Request):
 
     summary = megabull_service.get_portfolio_summary()
     stats = orders_service.get_order_summary_stats()
+    liquidation_status = megabull_service.get_liquidation_status()
+    is_market_open = megabull_service.is_market_open()
 
     return templates.TemplateResponse(
         request=request,
@@ -227,6 +233,8 @@ async def megabull_page(request: Request):
             "user": user,
             "summary": summary,
             "armed_orders_count": stats.get("armed_orders_count", 0),
+            "liquidation_status": liquidation_status,
+            "is_market_open": is_market_open,
             "env": settings.env
         }
     )
@@ -482,6 +490,46 @@ async def get_portfolio_symbols_api():
     }
 
 
+class LiquidateAllRequest(BaseModel):
+    force_market_open: Optional[bool] = Field(None, description="Optional override for market open status (testing/simulation)")
+
+
+@app.get("/api/megabull/liquidation-status")
+async def get_liquidation_status_api():
+    """Returns current emergency portfolio liquidation status and scheduled execution state."""
+    return {
+        "status": "SUCCESS",
+        "data": megabull_service.get_liquidation_status()
+    }
+
+
+@app.post("/api/megabull/liquidate-all")
+async def liquidate_all_api(req: Optional[LiquidateAllRequest] = None):
+    """
+    Emergency Liquidate / Square Off All Positions:
+    Case 1 (Market Open): Immediately sends MARKET exit orders to MegaBull to sell all holdings,
+    cancels all open orders and pending staged buy orders.
+    Case 2 (Market Closed): Stages liquidation in MongoDB Atlas for automated execution at market open (09:15 IST),
+    cancels all buy orders, and arms persistent warning banner with cancel capability.
+    """
+    force_mo = req.force_market_open if req else None
+    result = megabull_service.liquidate_all_positions(force_market_open=force_mo)
+    return {
+        "status": "SUCCESS",
+        "data": result
+    }
+
+
+@app.post("/api/megabull/cancel-liquidation")
+async def cancel_liquidation_api():
+    """Cancels the scheduled off-market emergency liquidation and restores normal operations."""
+    result = megabull_service.cancel_scheduled_liquidation()
+    return {
+        "status": "SUCCESS",
+        "data": result
+    }
+
+
 # ==============================================================================
 # HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
 # ==============================================================================
@@ -620,6 +668,7 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/megabull/transactions (MegaBull ledger transactions API)", "url": "/api/megabull/transactions", "expected": 200},
         {"desc": "GET /api/megabull/portfolio-symbols (MegaBull portfolio symbols API)", "url": "/api/megabull/portfolio-symbols", "expected": 200},
         {"desc": "GET /api/trades/journal (Trade book 17-column journal API)", "url": "/api/trades/journal", "expected": 200},
+        {"desc": "GET /api/megabull/liquidation-status (Liquidation status API)", "url": "/api/megabull/liquidation-status", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 

@@ -159,6 +159,10 @@ class DatabaseManager:
         return self.get_collection("staged_orders")
 
     @property
+    def system_state(self):
+        return self.get_collection("system_state")
+
+    @property
     def system_audit(self):
         return self.get_collection("system_audit")
 

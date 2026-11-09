@@ -99,6 +99,12 @@
                     <span class="text-neutral-300">MegaBull: <strong class="text-emerald-400">Connected</strong></span>
                 </div>
 
+                <!-- Square Off All Button -->
+                <button onclick="openLiquidateAllModal()" id="btnLiquidateAll" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white flex items-center space-x-1.5 shadow-lg shadow-rose-600/20 active:scale-95 border border-rose-500/40" title="Emergency Liquidate All: Square off all holdings at market price">
+                    <i data-lucide="flame" class="w-3.5 h-3.5 text-rose-200"></i>
+                    <span>Square Off All</span>
+                </button>
+
                 <!-- Place Order Button -->
                 <button onclick="openManualOrderModal()" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/20 active:scale-95">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
@@ -131,6 +137,30 @@
             </div>
         </div>
     </header>
+
+    <!-- Persistent Emergency Liquidation Banner (Case 2 - Off-Market Scheduled) -->
+    <div id="liquidationBanner" class="{% if not liquidation_status or not liquidation_status.armed or liquidation_status.status != 'SCHEDULED_FOR_MARKET_OPEN' %}hidden{% endif %} bg-gradient-to-r from-rose-950/90 via-red-950/80 to-rose-950/90 border-b border-rose-500/40 px-4 py-3 backdrop-blur-2xl transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center space-x-3 text-rose-100">
+                <span class="flex h-3 w-3 relative flex-shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                </span>
+                <div class="leading-tight">
+                    <span class="font-bold tracking-wide uppercase text-rose-300">Scheduled Portfolio Liquidation Armed:</span>
+                    <span class="text-rose-100 ml-1">
+                        All portfolio stocks are scheduled to be sold at market open (09:15 IST). All buy orders are cancelled and new buying is halted.
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 flex-shrink-0">
+                <button onclick="cancelScheduledLiquidation()" id="btnCancelLiquidationBanner" class="apple-spring px-3.5 py-1.5 rounded-xl font-bold bg-white text-rose-950 hover:bg-neutral-100 active:scale-95 shadow-md flex items-center space-x-1.5 cursor-pointer">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5 text-rose-700"></i>
+                    <span>Cancel Scheduled Exit</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Workspace -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -886,6 +916,68 @@
         </div>
     </div>
 
+    <!-- Emergency Liquidate All Confirmation Modal -->
+    <div id="liquidateAllModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+        <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-xl w-full p-6 sm:p-8 shadow-2xl text-left space-y-5 border border-rose-500/40 apple-spring">
+            <!-- Header -->
+            <div class="flex items-center justify-between hairline-bottom pb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="h-11 w-11 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30 shadow-lg">
+                        <i data-lucide="flame" class="w-6 h-6 text-rose-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white tracking-tight">Square Off All Holdings</h3>
+                        <p class="text-xs text-rose-300 font-mono">Emergency Market Liquidation Protocol</p>
+                    </div>
+                </div>
+                <button onclick="closeLiquidateAllModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Market Status Callout -->
+            <div id="liquidateModalMarketNotice" class="p-3.5 rounded-2xl hairline-border text-xs font-mono space-y-1">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Warning Points Box -->
+            <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-xs space-y-2 text-rose-100">
+                <div class="flex items-center space-x-2 font-bold text-rose-300 uppercase tracking-wide">
+                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                    <span>Liquidation Safeguards &amp; Behavior:</span>
+                </div>
+                <ul class="list-disc pl-5 space-y-1.5 text-rose-200">
+                    <li><strong>Long Holdings</strong>: Liquidated via MARKET SELL orders at prevailing price.</li>
+                    <li><strong>Short Holdings</strong>: Squared off via MARKET BUY (cover) orders.</li>
+                    <li><strong>Order Cancellation</strong>: Cancels all pending/open broker orders and staged buy setups.</li>
+                    <li><strong>No New Buying</strong>: Halts all subsequent buying until liquidation finishes or is cancelled.</li>
+                </ul>
+            </div>
+
+            <!-- Holdings List -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs text-apple-subtext font-mono">
+                    <span>Active Portfolio Holdings to Exit:</span>
+                    <span id="liquidateHoldingsCount" class="text-white font-semibold">Loading...</span>
+                </div>
+                <div id="liquidateHoldingsList" class="max-h-44 overflow-y-auto hairline-border rounded-xl bg-black/60 p-2.5 space-y-1.5 font-mono text-xs">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="pt-2 flex items-center justify-end space-x-3">
+                <button type="button" onclick="closeLiquidateAllModal()" class="px-4 py-2.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                    Keep Holdings (Abort)
+                </button>
+                <button type="button" id="btnConfirmLiquidateAll" onclick="executeLiquidateAll()" class="apple-spring px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center space-x-2 shadow-lg shadow-rose-600/30">
+                    <i data-lucide="flame" class="w-4 h-4"></i>
+                    <span id="btnConfirmLiquidateText">Confirm Square Off All</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
@@ -1261,14 +1353,189 @@
             if (e.key === 'Escape') {
                 closeFeeModal();
                 closeManualOrderModal();
+                closeLiquidateAllModal();
             }
         });
         document.getElementById('manualOrderModal')?.addEventListener('click', (e) => {
             if (e.target === document.getElementById('manualOrderModal')) closeManualOrderModal();
         });
+        document.getElementById('liquidateAllModal')?.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('liquidateAllModal')) closeLiquidateAllModal();
+        });
 
-        // Initialize symbol duplicate cache
+        // ==========================================
+        // EMERGENCY LIQUIDATE ALL & BANNER CONTROLS
+        // ==========================================
+        let liquidationState = {{ liquidation_status|tojson|safe if liquidation_status else 'null' }};
+        let isMarketOpenNow = {{ 'true' if is_market_open else 'false' }};
+
+        async function openLiquidateAllModal() {
+            const modal = document.getElementById('liquidateAllModal');
+            const noticeEl = document.getElementById('liquidateModalMarketNotice');
+            const listEl = document.getElementById('liquidateHoldingsList');
+            const countEl = document.getElementById('liquidateHoldingsCount');
+            const confirmBtnText = document.getElementById('btnConfirmLiquidateText');
+
+            listEl.innerHTML = '<div class="text-center py-4 text-apple-subtext">Fetching live holdings...</div>';
+            modal.classList.remove('hidden');
+
+            try {
+                const [statusResp, holdingsResp] = await Promise.all([
+                    fetch('/api/megabull/liquidation-status').then(r => r.json()),
+                    fetch('/api/megabull/holdings').then(r => r.json())
+                ]);
+
+                if (statusResp && statusResp.data) {
+                    liquidationState = statusResp.data;
+                    isMarketOpenNow = statusResp.data.is_market_open_now;
+                }
+
+                if (isMarketOpenNow) {
+                    noticeEl.className = "p-3.5 rounded-2xl hairline-border bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono space-y-1";
+                    noticeEl.innerHTML = `
+                        <div class="flex items-center space-x-2 font-bold text-emerald-200">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>CASE 1: LIVE MARKET OPEN (09:15 – 15:30 IST)</span>
+                        </div>
+                        <p class="text-emerald-100 text-[11px]">Clicking confirm will immediately transmit MARKET exit orders to MegaBull to sell all holdings at prevailing prices. All pending orders will be cancelled instantly.</p>
+                    `;
+                    confirmBtnText.textContent = "Execute Market Square Off Now";
+                } else {
+                    noticeEl.className = "p-3.5 rounded-2xl hairline-border bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono space-y-1";
+                    noticeEl.innerHTML = `
+                        <div class="flex items-center space-x-2 font-bold text-amber-200">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                            <span>CASE 2: MARKET CURRENTLY CLOSED</span>
+                        </div>
+                        <p class="text-amber-100 text-[11px]">MegaBull market is closed. Clicking confirm will STAGE emergency liquidation in MongoDB. All stocks will be sold automatically as soon as the market opens (09:15 IST). All buy orders are cancelled, and a persistent banner with a Cancel button will appear.</p>
+                    `;
+                    confirmBtnText.textContent = "Arm Liquidation for Market Open";
+                }
+
+                const holdings = (holdingsResp && holdingsResp.data) ? holdingsResp.data : [];
+                const active = holdings.filter(h => (parseInt(h.qty) || 0) !== 0);
+                countEl.textContent = `${active.length} active positions`;
+
+                if (active.length === 0) {
+                    listEl.innerHTML = '<div class="text-center py-4 text-apple-subtext">No active holdings in portfolio.</div>';
+                } else {
+                    listEl.innerHTML = active.map(h => {
+                        const qty = parseInt(h.qty) || 0;
+                        const isLong = qty > 0;
+                        const actionText = isLong ? 'SELL' : 'BUY (COVER)';
+                        const badgeColor = isLong ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+                        return `
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] hairline-border">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-bold text-white">${h.symbol}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono border ${badgeColor}">${actionText} ${Math.abs(qty)}</span>
+                                </div>
+                                <div class="text-right text-[11px]">
+                                    <span class="text-neutral-400">LTP:</span> <span class="text-white font-semibold">₹${Number(h.ltp || h.avg_buy_price).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                lucide.createIcons();
+            } catch (err) {
+                listEl.innerHTML = `<div class="text-center py-4 text-rose-400 text-xs">Failed to load holdings: ${err.message}</div>`;
+            }
+        }
+
+        function closeLiquidateAllModal() {
+            document.getElementById('liquidateAllModal').classList.add('hidden');
+        }
+
+        async function executeLiquidateAll() {
+            const btn = document.getElementById('btnConfirmLiquidateAll');
+            const btnText = document.getElementById('btnConfirmLiquidateText');
+            btn.disabled = true;
+            btnText.textContent = 'Transmitting Order...';
+
+            try {
+                const res = await fetch('/api/megabull/liquidate-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+
+                if (res.ok && data.status === 'SUCCESS') {
+                    closeLiquidateAllModal();
+                    const detail = data.data || {};
+                    if (detail.case === 'CASE_1_MARKET_OPEN') {
+                        showToast('Immediate Liquidation Complete', `Squared off ${detail.holdings_squared_off} holdings at market price. All orders cancelled.`, true);
+                    } else {
+                        document.getElementById('liquidationBanner').classList.remove('hidden');
+                        showToast('Emergency Liquidation Scheduled', `All ${detail.holdings_count} stocks will be sold at market open (09:15 IST). All buy orders cancelled.`, false);
+                    }
+                    await refreshMegaBullData();
+                    pollLiquidationStatus();
+                } else {
+                    alert('Error executing liquidation: ' + (data.detail || data.message || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error executing liquidation: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Confirm Square Off All';
+            }
+        }
+
+        async function cancelScheduledLiquidation() {
+            if (!confirm('Are you sure you want to CANCEL the scheduled emergency liquidation and restore normal trading operations?')) {
+                return;
+            }
+
+            const btn = document.getElementById('btnCancelLiquidationBanner');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/megabull/cancel-liquidation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (res.ok && data.status === 'SUCCESS') {
+                    document.getElementById('liquidationBanner').classList.add('hidden');
+                    showToast('Liquidation Cancelled', 'Scheduled liquidation cancelled. Normal trading operations restored.', true);
+                    pollLiquidationStatus();
+                } else {
+                    alert('Error cancelling liquidation: ' + (data.detail || data.message || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error cancelling liquidation: ' + err.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function pollLiquidationStatus() {
+            try {
+                const res = await fetch('/api/megabull/liquidation-status');
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.data) {
+                        liquidationState = json.data;
+                        const banner = document.getElementById('liquidationBanner');
+                        if (json.data.armed && json.data.status === 'SCHEDULED_FOR_MARKET_OPEN') {
+                            banner.classList.remove('hidden');
+                        } else {
+                            banner.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (e) {
+                // silent
+            }
+        }
+
+        // Initialize symbol duplicate cache & liquidation polling
         fetchPortfolioSymbols();
+        setInterval(pollLiquidationStatus, 12000);
+        pollLiquidationStatus();
     </script>
 </body>
 </html>

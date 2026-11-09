@@ -35,6 +35,19 @@ class MegaBullService:
         self._cache: Dict[str, Any] = {}
         self._cache_time: Dict[str, float] = {}
 
+        # In-memory liquidation state fallback
+        self._liquidation_state: Dict[str, Any] = {
+            "armed": False,
+            "status": "IDLE",
+            "armed_at": None,
+            "market_open_at_stage": False,
+            "holdings_count": 0,
+            "holdings_snapshot": [],
+            "executed_at": None,
+            "disarmed_at": None,
+            "message": "Normal trading operations active."
+        }
+
     def _get_headers(self) -> Dict[str, str]:
         """MegaBull API expects 'api-key' and optional 'user-id' headers."""
         headers = {
@@ -1040,6 +1053,17 @@ class MegaBullService:
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
 
+        # Emergency Liquidation Guard: block any buying if emergency liquidation is scheduled
+        liq = self.get_liquidation_status()
+        if liq.get("armed") and liq.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
+            logger.warning(f"Order rejected for {sym}: Emergency liquidation is scheduled for market open.")
+            return {
+                "status": "ERROR",
+                "code": "LIQUIDATION_ACTIVE",
+                "error": "Emergency liquidation is currently scheduled for market open. Buying is halted until liquidation completes or is cancelled.",
+                "details": liq
+            }
+
         if enforce_duplicate_check:
             dup = self.is_symbol_in_portfolio(sym)
             if dup["exists"]:
@@ -1198,16 +1222,326 @@ class MegaBullService:
         results["status"] = "PLACED"
         return results
 
+    def get_liquidation_status(self) -> Dict[str, Any]:
+        """
+        Retrieves current emergency liquidation state from MongoDB Atlas (or in-memory cache).
+        Returns status dictionary indicating if liquidation is armed for market open, executed, or idle.
+        """
+        try:
+            from online.db import db_manager
+            col = db_manager.system_state
+            if col is not None:
+                doc = col.find_one({"_id": "emergency_liquidation"})
+                if doc and isinstance(doc, dict):
+                    self._liquidation_state = {
+                        "armed": bool(doc.get("armed", False)),
+                        "status": str(doc.get("status", "IDLE")),
+                        "armed_at": doc.get("armed_at"),
+                        "market_open_at_stage": bool(doc.get("market_open_at_stage", False)),
+                        "holdings_count": int(doc.get("holdings_count", 0)),
+                        "holdings_snapshot": doc.get("holdings_snapshot", []),
+                        "executed_at": doc.get("executed_at"),
+                        "disarmed_at": doc.get("disarmed_at"),
+                        "message": str(doc.get("message", ""))
+                    }
+        except Exception as e:
+            logger.debug(f"Could not read liquidation status from MongoDB: {e}")
+
+        state = dict(self._liquidation_state)
+        state["is_market_open_now"] = self.is_market_open()
+        return state
+
+    def cancel_open_orders(self) -> Dict[str, Any]:
+        """
+        Cancels all pending/open orders on MegaBull paper broker,
+        and marks all staged buy orders in MongoDB as CANCELLED.
+        """
+        cancelled_broker_orders: List[str] = []
+        orders = self.get_orders()
+        open_orders = orders.get("open", [])
+        if self.api_key and open_orders:
+            for o in open_orders:
+                o_id = str(o.get("orderId", o.get("id", "")))
+                if not o_id:
+                    continue
+                try:
+                    url = f"{self.base_url}/api/order/cancel/{o_id}"
+                    resp = requests.post(url, headers=self._get_headers(), timeout=self.timeout)
+                    if resp.status_code == 200:
+                        cancelled_broker_orders.append(o_id)
+                    else:
+                        del_resp = requests.delete(f"{self.base_url}/api/order/{o_id}", headers=self._get_headers(), timeout=self.timeout)
+                        if del_resp.status_code == 200:
+                            cancelled_broker_orders.append(o_id)
+                except Exception as e:
+                    logger.debug(f"Failed to cancel MegaBull order {o_id}: {e}")
+
+        self._cache.pop("orders", None)
+
+        staged_cancelled_count = 0
+        try:
+            from online.db import db_manager
+            col = db_manager.staged_orders
+            if col is not None:
+                res = col.update_many(
+                    {"status": {"$in": ["STAGED_OFFMARKET", "PENDING"]}},
+                    {"$set": {
+                        "status": "CANCELLED",
+                        "cancel_reason": "Emergency Liquidation - Order cancelled to prevent buying",
+                        "cancelled_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                    }}
+                )
+                staged_cancelled_count = res.modified_count
+        except Exception as e:
+            logger.debug(f"Could not cancel staged orders in MongoDB: {e}")
+
+        return {
+            "broker_cancelled_count": len(cancelled_broker_orders),
+            "staged_cancelled_count": staged_cancelled_count
+        }
+
+    def cancel_scheduled_liquidation(self) -> Dict[str, Any]:
+        """
+        Cancels the scheduled off-market emergency liquidation.
+        Disarms the state, removes the banner, and restores normal trading operations.
+        """
+        timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        self._liquidation_state = {
+            "armed": False,
+            "status": "CANCELLED_BY_USER",
+            "armed_at": self._liquidation_state.get("armed_at"),
+            "market_open_at_stage": self._liquidation_state.get("market_open_at_stage", False),
+            "holdings_count": self._liquidation_state.get("holdings_count", 0),
+            "holdings_snapshot": self._liquidation_state.get("holdings_snapshot", []),
+            "executed_at": None,
+            "disarmed_at": timestamp_str,
+            "message": "Scheduled liquidation cancelled by user. Normal trading operations restored."
+        }
+
+        try:
+            from online.db import db_manager
+            col = db_manager.system_state
+            if col is not None:
+                col.update_one(
+                    {"_id": "emergency_liquidation"},
+                    {"$set": self._liquidation_state},
+                    upsert=True
+                )
+        except Exception as e:
+            logger.debug(f"Could not persist liquidation cancellation to MongoDB: {e}")
+
+        return {
+            "status": "SUCCESS",
+            "message": "Scheduled liquidation cancelled. Normal trading operations restored.",
+            "disarmed_at": timestamp_str
+        }
+
+    def liquidate_all_positions(self, force_market_open: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Executes emergency square off of all active portfolio holdings:
+        - Long holdings (qty > 0): Sold at MARKET price.
+        - Short holdings (qty < 0): Bought back / covered at MARKET price.
+        - Cancels all pending/open orders and staged buy orders to prevent new buying.
+
+        Case 1 (Market Open):
+            Immediately fires MARKET exit orders to MegaBull and completes liquidation.
+        Case 2 (Market Closed):
+            Stages emergency liquidation in MongoDB Atlas system_state.
+            Displays persistent banner on UI with Cancel option.
+            Automatically executes as soon as market opens (09:15 IST).
+        """
+        market_open = self.is_market_open() if force_market_open is None else bool(force_market_open)
+
+        holdings = self.get_holdings(enrich_ltp=True)
+        active_holdings = [h for h in holdings if int(h.get("qty", 0)) != 0]
+
+        cancel_info = self.cancel_open_orders()
+        timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # CASE 1: MARKET OPEN (Live Trading Hours)
+        if market_open:
+            orders_fired = []
+            failed_orders = []
+
+            for h in active_holdings:
+                sym = str(h.get("symbol", "")).strip().upper()
+                qty = int(h.get("qty", 0))
+                abs_qty = abs(qty)
+                is_long = qty > 0
+                exit_action = "SELL" if is_long else "BUY"
+                duration = "CNC" if is_long else "MIS"
+                token = str(h.get("instrument_token", self.get_instrument_token(sym)))
+                ltp = float(h.get("ltp", h.get("avg_buy_price", 0.0)))
+
+                exit_payload = {
+                    "instrumentToken": token,
+                    "price": ltp,
+                    "qty": abs_qty,
+                    "type": exit_action,
+                    "duration": duration,
+                    "orderType": "MARKET"
+                }
+
+                order_id = f"MKT_EXIT_{sym}_{int(time.time())}"
+                success = False
+                broker_resp = None
+
+                if self.api_key:
+                    try:
+                        url = f"{self.base_url}/api/order/buysell"
+                        resp = requests.post(url, headers=self._get_headers(), json=exit_payload, timeout=self.timeout)
+                        if resp.status_code == 200:
+                            broker_resp = resp.json()
+                            order_id = str(broker_resp.get("orderId", broker_resp.get("id", order_id)))
+                            success = True
+                        else:
+                            broker_resp = resp.text[:150]
+                    except Exception as e:
+                        broker_resp = str(e)
+                else:
+                    success = True
+
+                order_summary = {
+                    "symbol": sym,
+                    "instrument_token": token,
+                    "action": exit_action,
+                    "quantity": abs_qty,
+                    "original_qty": qty,
+                    "type": "LONG" if is_long else "SHORT",
+                    "execution_price": ltp,
+                    "order_type": "MARKET",
+                    "order_id": order_id,
+                    "status": "EXECUTED" if success else "FAILED",
+                    "broker_response": broker_resp,
+                    "executed_at": timestamp_str
+                }
+
+                if success:
+                    orders_fired.append(order_summary)
+                else:
+                    failed_orders.append(order_summary)
+
+            self._liquidation_state = {
+                "armed": False,
+                "status": "EXECUTED_IMMEDIATELY" if force_market_open is None else "EXECUTED_AT_MARKET_OPEN",
+                "armed_at": self._liquidation_state.get("armed_at", timestamp_str),
+                "market_open_at_stage": True,
+                "holdings_count": len(active_holdings),
+                "holdings_snapshot": active_holdings,
+                "executed_at": timestamp_str,
+                "disarmed_at": None,
+                "orders_fired": orders_fired,
+                "failed_orders": failed_orders,
+                "message": f"Market Open: Squared off {len(orders_fired)}/{len(active_holdings)} active holdings at market price."
+            }
+
+            try:
+                from online.db import db_manager
+                col = db_manager.system_state
+                if col is not None:
+                    col.update_one(
+                        {"_id": "emergency_liquidation"},
+                        {"$set": self._liquidation_state},
+                        upsert=True
+                    )
+            except Exception as e:
+                logger.debug(f"Could not persist liquidation state to MongoDB: {e}")
+
+            self._cache.pop("holdings", None)
+            self._cache.pop("orders", None)
+            self._cache.pop("positions", None)
+
+            return {
+                "status": "SUCCESS",
+                "case": "CASE_1_MARKET_OPEN",
+                "market_open": True,
+                "message": f"Successfully executed market exit orders for {len(orders_fired)} holdings at current price.",
+                "holdings_squared_off": len(orders_fired),
+                "orders_fired": orders_fired,
+                "failed_orders": failed_orders,
+                "orders_cancelled": cancel_info
+            }
+
+        # CASE 2: MARKET CLOSED (After Hours / Weekend / Holiday)
+        else:
+            snapshot = [
+                {
+                    "symbol": str(h.get("symbol", "")).strip().upper(),
+                    "instrument_token": str(h.get("instrument_token", self.get_instrument_token(h.get("symbol", "")))),
+                    "qty": int(h.get("qty", 0)),
+                    "type": str(h.get("type", "LONG")),
+                    "avg_buy_price": float(h.get("avg_buy_price", 0.0)),
+                    "ltp": float(h.get("ltp", h.get("avg_buy_price", 0.0))),
+                    "exit_action": "SELL" if int(h.get("qty", 0)) > 0 else "BUY",
+                    "exit_qty": abs(int(h.get("qty", 0))),
+                    "duration": "CNC" if int(h.get("qty", 0)) > 0 else "MIS"
+                }
+                for h in active_holdings
+            ]
+
+            self._liquidation_state = {
+                "armed": True,
+                "status": "SCHEDULED_FOR_MARKET_OPEN",
+                "armed_at": timestamp_str,
+                "market_open_at_stage": False,
+                "holdings_count": len(active_holdings),
+                "holdings_snapshot": snapshot,
+                "executed_at": None,
+                "disarmed_at": None,
+                "message": f"Market Closed: Scheduled emergency square-off for all {len(active_holdings)} stocks at market open (09:15 IST). All buy orders cancelled."
+            }
+
+            try:
+                from online.db import db_manager
+                col = db_manager.system_state
+                if col is not None:
+                    col.update_one(
+                        {"_id": "emergency_liquidation"},
+                        {"$set": self._liquidation_state},
+                        upsert=True
+                    )
+            except Exception as e:
+                logger.debug(f"Could not persist liquidation state to MongoDB: {e}")
+
+            return {
+                "status": "SUCCESS",
+                "case": "CASE_2_MARKET_CLOSED",
+                "market_open": False,
+                "message": f"Emergency liquidation armed for market open (09:15 IST). All {len(active_holdings)} stocks will be sold at market price. All buy orders cancelled.",
+                "holdings_count": len(active_holdings),
+                "holdings_snapshot": snapshot,
+                "orders_cancelled": cancel_info
+            }
+
     def sync_execution_and_bracket_orders(self) -> Dict[str, Any]:
         """
         Monitors trade lifecycle:
-        1. Checks staged off-market orders: if market is open, fires entry order to MegaBull.
-        2. Detects executed entry orders (now appearing in active holdings).
-        3. Automatically places Target & SL orders if not already active on MegaBull.
-        4. Handles 1-day expiry: if it's a new session and holding is still running, re-places Target & SL.
-        5. Detects trade completion: if holding hit Target or SL (closed), cancels remaining orders,
+        1. If emergency liquidation is armed: executes square-off upon market open.
+        2. Checks staged off-market orders: if market is open, fires entry order to MegaBull.
+        3. Detects executed entry orders (now appearing in active holdings).
+        4. Automatically places Target & SL orders if not already active on MegaBull.
+        5. Handles 1-day expiry: if it's a new session and holding is still running, re-places Target & SL.
+        6. Detects trade completion: if holding hit Target or SL (closed), cancels remaining orders,
            marks trade as COMPLETED, and stops placing brackets.
         """
+        # Check if scheduled emergency liquidation is armed
+        liq = self.get_liquidation_status()
+        if liq.get("armed") and liq.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
+            if self.is_market_open():
+                logger.info("Market is OPEN! Executing scheduled emergency liquidation now.")
+                liq_result = self.liquidate_all_positions(force_market_open=True)
+                return {
+                    "status": "SUCCESS",
+                    "action": "EMERGENCY_LIQUIDATION_EXECUTED",
+                    "details": liq_result
+                }
+            else:
+                return {
+                    "status": "WAITING_FOR_MARKET_OPEN",
+                    "action": "LIQUIDATION_ARMED",
+                    "message": "Market is closed. Liquidation remains armed for market open (09:15 IST).",
+                    "details": liq
+                }
         holdings = self.get_holdings(enrich_ltp=True)
         open_orders = self.get_orders().get("open", [])
         active_symbols = {str(h.get("symbol", "")).strip().upper(): h for h in holdings if int(h.get("qty", 0)) != 0}
