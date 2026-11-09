@@ -71,6 +71,10 @@ class TestMegaBullAPIAndPages(unittest.TestCase):
         self.assertIn("Virtual Capital", html)
         self.assertIn("Blocked Margin", html)
         self.assertIn("Free Cash Margin", html)
+        self.assertIn("Total Capital We Had", html)
+        self.assertIn("Capital Put in Stocks", html)
+        self.assertIn("Capital Remaining", html)
+        self.assertIn("Running (Bought, Not Sold)", html)
         self.assertIn("Equity Portfolio Holdings", html)
 
     def test_05_api_megabull_account_endpoint(self):
@@ -126,6 +130,25 @@ class TestMegaBullAPIAndPages(unittest.TestCase):
         self.assertIn("total_invested", summary)
         self.assertIn("total_current", summary)
         self.assertIn("net_worth", summary)
+        self.assertIn("total_capital_had", summary)
+        self.assertIn("capital_put_in_stocks", summary)
+        self.assertIn("capital_remaining", summary)
+        self.assertIn("valid_orders", summary)
+
+    def test_10_api_megabull_valid_orders_endpoint(self):
+        """Verifies GET /api/megabull/orders/valid returns running, pending, and completed orders, excluding cancelled."""
+        resp = self.client.get("/api/megabull/orders/valid")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("count", data)
+        self.assertIn("data", data)
+        self.assertIsInstance(data["data"], list)
+
+        # Ensure no cancelled or failed orders exist
+        for o in data["data"]:
+            self.assertNotIn(o.get("status", "").upper(), ["CANCELLED", "CANCELED", "REJECTED", "FAILED"])
+            self.assertIn(o.get("category"), ["RUNNING", "PENDING", "COMPLETED"])
 
 
 if __name__ == "__main__":

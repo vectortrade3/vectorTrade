@@ -258,7 +258,7 @@ class MegaBullService:
 
     def get_orders(self) -> Dict[str, Any]:
         """
-        Fetches open and executed order logs.
+        Fetches open and executed order logs, excluding any cancelled, rejected, or failed orders.
         Endpoint: GET /api/order/my
         """
         cached = self._get_cached("orders")
@@ -274,12 +274,127 @@ class MegaBullService:
             if resp.status_code == 200:
                 data = resp.json()
                 if isinstance(data, dict):
-                    self._set_cached("orders", data)
-                    return data
+                    # Filter out failed and cancelled orders
+                    def is_valid_order(o: Dict[str, Any]) -> bool:
+                        st = str(o.get("status", "")).upper()
+                        return st not in ("CANCELLED", "CANCELED", "REJECTED", "FAILED", "EXPIRED")
+
+                    open_orders = [o for o in data.get("open", []) if is_valid_order(o)]
+                    executed_orders = [o for o in data.get("executed", []) if is_valid_order(o)]
+
+                    filtered = {"open": open_orders, "executed": executed_orders}
+                    self._set_cached("orders", filtered)
+                    return filtered
             return {"open": [], "executed": []}
         except Exception as e:
             logger.error(f"Error fetching MegaBull orders: {e}")
             return {"open": [], "executed": []}
+
+    def get_all_valid_orders(self, holdings: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Builds a comprehensive stream of all valid orders:
+        1. Running Orders: Stocks bought and currently held (bought but not sold yet).
+        2. Pending Orders: Open orders waiting to execute on MegaBull.
+        3. Completed Orders: Executed trade logs.
+        Strictly excludes any failed, rejected, or cancelled orders.
+        """
+        if holdings is None:
+            holdings = self.get_holdings(enrich_ltp=True)
+
+        raw_orders = self.get_orders()
+        valid_orders: List[Dict[str, Any]] = []
+
+        # 1. Running Orders (Bought but not sold yet - active portfolio holdings)
+        for h in holdings:
+            token = str(h.get("instrument_token", ""))
+            symbol = str(h.get("symbol", ""))
+            qty = int(h.get("qty", 1))
+            is_long = qty >= 0
+            avg_buy_price = float(h.get("avg_buy_price", 0.0))
+            ltp = float(h.get("ltp", avg_buy_price))
+            invested_val = float(h.get("invested_value", round(avg_buy_price * abs(qty), 2)))
+            current_val = float(h.get("current_value", round(ltp * abs(qty), 2)))
+            unrealized_pnl = float(h.get("unrealized_pnl", round(current_val - invested_val, 2)))
+            pnl_pct = float(h.get("pnl_pct", 0.0))
+            is_profit = h.get("is_profit", unrealized_pnl >= 0)
+
+            valid_orders.append({
+                "order_id": f"HOLD_{token}" if token else f"HOLD_{symbol}",
+                "symbol": symbol,
+                "instrument_token": token,
+                "category": "RUNNING",
+                "category_label": "Running (Bought, Not Sold)",
+                "action": "BUY" if is_long else "SELL (SHORT)",
+                "quantity": abs(qty),
+                "order_price": avg_buy_price,
+                "ltp": ltp,
+                "capital_put": invested_val,
+                "current_valuation": current_val,
+                "status": "RUNNING",
+                "status_badge": "RUNNING",
+                "unrealized_pnl": unrealized_pnl,
+                "pnl_pct": pnl_pct,
+                "is_profit": is_profit,
+                "product": "CNC"
+            })
+
+        # 2. Pending Orders (Open on MegaBull)
+        for po in raw_orders.get("open", []):
+            st = str(po.get("status", "PENDING")).upper()
+            if st in ("CANCELLED", "CANCELED", "REJECTED", "FAILED", "EXPIRED"):
+                continue
+            symbol = str(po.get("instrumentName", po.get("symbol", ""))).upper()
+            qty = int(po.get("qty", po.get("quantity", 0)))
+            price = float(po.get("price", po.get("triggerPrice", 0.0)))
+            valid_orders.append({
+                "order_id": str(po.get("orderId", po.get("id", ""))),
+                "symbol": symbol,
+                "instrument_token": str(po.get("instrumentToken", "")),
+                "category": "PENDING",
+                "category_label": "Pending Order",
+                "action": str(po.get("action", po.get("type", "BUY"))).upper(),
+                "quantity": qty,
+                "order_price": price,
+                "ltp": price,
+                "capital_put": round(price * qty, 2),
+                "current_valuation": round(price * qty, 2),
+                "status": "PENDING",
+                "status_badge": "PENDING",
+                "unrealized_pnl": 0.0,
+                "pnl_pct": 0.0,
+                "is_profit": True,
+                "product": str(po.get("product", "CNC")).upper()
+            })
+
+        # 3. Completed Orders (Executed on MegaBull)
+        for eo in raw_orders.get("executed", []):
+            st = str(eo.get("status", "EXECUTED")).upper()
+            if st in ("CANCELLED", "CANCELED", "REJECTED", "FAILED", "EXPIRED"):
+                continue
+            symbol = str(eo.get("instrumentName", eo.get("symbol", ""))).upper()
+            qty = int(eo.get("qty", eo.get("quantity", 0)))
+            price = float(eo.get("price", eo.get("priceAvg", 0.0)))
+            valid_orders.append({
+                "order_id": str(eo.get("orderId", eo.get("id", ""))),
+                "symbol": symbol,
+                "instrument_token": str(eo.get("instrumentToken", "")),
+                "category": "COMPLETED",
+                "category_label": "Completed Order",
+                "action": str(eo.get("action", eo.get("type", "BUY"))).upper(),
+                "quantity": qty,
+                "order_price": price,
+                "ltp": price,
+                "capital_put": round(price * qty, 2),
+                "current_valuation": round(price * qty, 2),
+                "status": "COMPLETED",
+                "status_badge": "EXECUTED",
+                "unrealized_pnl": 0.0,
+                "pnl_pct": 0.0,
+                "is_profit": True,
+                "product": str(eo.get("product", "CNC")).upper()
+            })
+
+        return valid_orders
 
     def get_portfolio_summary(self) -> Dict[str, Any]:
         """Aggregates account details, holdings valuation, and positions into unified payload."""
@@ -288,17 +403,29 @@ class MegaBullService:
         positions = self.get_positions()
         orders = self.get_orders()
 
+        # Build comprehensive valid orders stream (running, pending, completed)
+        valid_orders = self.get_all_valid_orders(holdings=holdings)
+
+        running_orders = [o for o in valid_orders if o["category"] == "RUNNING"]
+        pending_orders = [o for o in valid_orders if o["category"] == "PENDING"]
+        completed_orders = [o for o in valid_orders if o["category"] == "COMPLETED"]
+
         total_invested = round(sum(h["invested_value"] for h in holdings), 2)
         total_current = round(sum(h["current_value"] for h in holdings), 2)
         total_pnl = round(sum(h["unrealized_pnl"] for h in holdings), 2)
         total_pnl_pct = round((total_pnl / total_invested * 100), 2) if total_invested > 0 else 0.0
 
-        cash_left = account.get("virtual_money_left", 0.0)
-        net_worth = round(cash_left + total_current, 2)
+        total_capital_had = account.get("virtual_money", 0.0)
+        capital_put_in_stocks = account.get("virtual_money_blocked", 0.0)
+        capital_remaining = account.get("virtual_money_left", 0.0)
+        net_worth = round(capital_remaining + total_current, 2)
 
         return {
             "status": account.get("status", "SUCCESS"),
             "account": account,
+            "total_capital_had": total_capital_had,
+            "capital_put_in_stocks": capital_put_in_stocks,
+            "capital_remaining": capital_remaining,
             "holdings": holdings,
             "holdings_count": len(holdings),
             "total_invested": total_invested,
@@ -309,8 +436,11 @@ class MegaBullService:
             "positions": positions,
             "positions_count": len(positions),
             "orders": orders,
-            "open_orders_count": len(orders.get("open", [])),
-            "executed_orders_count": len(orders.get("executed", [])),
+            "valid_orders": valid_orders,
+            "valid_orders_count": len(valid_orders),
+            "running_orders_count": len(running_orders),
+            "pending_orders_count": len(pending_orders),
+            "completed_orders_count": len(completed_orders),
             "last_synced": time.strftime("%Y-%m-%d %H:%M:%S")
         }
 

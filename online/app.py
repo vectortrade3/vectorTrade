@@ -341,6 +341,23 @@ async def get_megabull_orders_api():
     }
 
 
+@app.get("/api/megabull/orders/valid")
+async def get_megabull_valid_orders_api():
+    """
+    Returns unified list of valid orders:
+    - Running: Stocks bought and currently running in market (not sold yet).
+    - Pending: Open orders waiting to execute.
+    - Completed: Executed trade logs.
+    Strictly excludes failed, rejected, or cancelled orders.
+    """
+    valid_orders = megabull_service.get_all_valid_orders()
+    return {
+        "status": "SUCCESS",
+        "count": len(valid_orders),
+        "data": valid_orders
+    }
+
+
 @app.get("/api/megabull/summary")
 async def get_megabull_summary_api():
     """Returns aggregated MegaBull account balance, portfolio valuation, and performance."""
