@@ -2074,10 +2074,10 @@
             if (e.target === document.getElementById('liquidateAllModal')) closeLiquidateAllModal();
         });
 
-        // Background polling every 12 seconds
+        // Background polling every 5 seconds for live updates
         function startPolling() {
-            setInterval(fetchOrdersAndStats, 12000);
-            setInterval(pollLiquidationStatus, 12000);
+            setInterval(fetchOrdersAndStats, 5000);
+            setInterval(pollLiquidationStatus, 5000);
             pollLiquidationStatus();
         }
 

@@ -207,23 +207,90 @@ class MegaBullService:
             }
 
     def get_ltp(self, token: str) -> Optional[float]:
-        """Fetches latest traded price for a given instrument token."""
-        cache_key = f"ltp_{token}"
+        """Fetches latest traded price for a given instrument token or symbol name."""
+        raw_key = str(token).strip().upper()
+        # Resolve symbol to instrument token if alphabetic
+        resolved_token = self.get_instrument_token(raw_key) if any(c.isalpha() for c in raw_key) else raw_key
+
+        cache_key = f"ltp_{resolved_token}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
-        url = f"{self.base_url}/api/marketwatch/ltp/{token}"
+        url = f"{self.base_url}/api/marketwatch/ltp/{resolved_token}"
         try:
             resp = requests.get(url, headers=self._get_headers(), timeout=self.timeout)
             if resp.status_code == 200:
                 data = resp.json()
                 ltp = float(data.get("ltp", 0.0))
                 self._set_cached(cache_key, ltp)
+                if raw_key != resolved_token:
+                    self._set_cached(f"ltp_{raw_key}", ltp)
                 return ltp
         except Exception as e:
-            logger.debug(f"Failed to fetch LTP for token {token}: {e}")
+            logger.debug(f"Failed to fetch LTP for token/symbol {token}: {e}")
         return None
+
+    def fetch_live_quotes(self, symbols_or_tokens: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Fetches and caches live quotes (LTP) for specified symbols or all active portfolio & watchlist symbols.
+        Persists fresh quotes to MongoDB Atlas `live_quotes` collection.
+        """
+        if not symbols_or_tokens:
+            symbols = set()
+            for h in self.get_holdings(enrich_ltp=False):
+                s = str(h.get("symbol", "")).strip().upper()
+                if s:
+                    symbols.add(s)
+            try:
+                from online.db import db_manager
+                if db_manager.signals_watchlist is not None:
+                    for d in db_manager.signals_watchlist.find({}, {"symbol": 1}):
+                        s = str(d.get("symbol", "")).strip().upper()
+                        if s:
+                            symbols.add(s)
+                if db_manager.staged_orders is not None:
+                    for d in db_manager.staged_orders.find({"status": {"$in": ["STAGED_OFFMARKET", "PENDING", "ACTIVE"]}}, {"symbol": 1}):
+                        s = str(d.get("symbol", "")).strip().upper()
+                        if s:
+                            symbols.add(s)
+            except Exception:
+                pass
+            symbols_or_tokens = list(symbols) if symbols else ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC", "LT", "TATAMOTORS"]
+
+        quotes = {}
+        now_ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        market_open = self.is_market_open()
+
+        for item in symbols_or_tokens:
+            s_item = str(item).strip().upper()
+            token = self.get_instrument_token(s_item) if any(c.isalpha() for c in s_item) else s_item
+            symbol = s_item if any(c.isalpha() for c in s_item) else s_item
+            ltp = self.get_ltp(token)
+            if ltp is not None and ltp > 0:
+                quotes[symbol] = {
+                    "symbol": symbol,
+                    "instrument_token": token,
+                    "ltp": ltp,
+                    "market_status": "OPEN" if market_open else "CLOSED",
+                    "updated_at": now_ts
+                }
+
+        # Persist to MongoDB live_quotes
+        try:
+            from online.db import db_manager
+            col = db_manager.live_quotes
+            if col is not None and quotes:
+                for sym, q in quotes.items():
+                    col.update_one(
+                        {"symbol": sym},
+                        {"$set": q},
+                        upsert=True
+                    )
+        except Exception as e:
+            logger.debug(f"Could not persist quotes to live_quotes: {e}")
+
+        return quotes
 
     def get_holdings(self, enrich_ltp: bool = True) -> List[Dict[str, Any]]:
         """
@@ -447,6 +514,8 @@ class MegaBullService:
                                         "current_valuation": sold,
                                         "status": "COMPLETED",
                                         "status_badge": "CLOSED",
+                                        "lifecycle_stage": "COMPLETED_BOUGHT_TO_SOLD",
+                                        "lifecycle_label": "Completed: Bought ➔ Sold",
                                         "unrealized_pnl": gross_pl,
                                         "realized_pnl": net_pnl_val,
                                         "gross_pnl": gross_pl,
@@ -536,6 +605,8 @@ class MegaBullService:
                 "current_valuation": current_val,
                 "status": "RUNNING",
                 "status_badge": "RUNNING" if is_long else "SHORT",
+                "lifecycle_stage": "RUNNING_BOUGHT" if is_long else "RUNNING_SHORT_SELLED",
+                "lifecycle_label": "Running: Bought (Long)" if is_long else "Running: Short Selled",
                 "unrealized_pnl": unrealized_pnl,
                 "gross_pnl": unrealized_pnl,
                 "brokerage": brokerage_val,
@@ -584,6 +655,8 @@ class MegaBullService:
                 "current_valuation": p_val,
                 "status": "ACTIVE",
                 "status_badge": "INTRADAY",
+                "lifecycle_stage": "RUNNING_BOUGHT" if p_qty >= 0 else "RUNNING_SHORT_SELLED",
+                "lifecycle_label": "Running: Bought (Intraday)" if p_qty >= 0 else "Running: Short Selled (Intraday)",
                 "unrealized_pnl": p_pnl,
                 "gross_pnl": p_pnl,
                 "brokerage": pos_charges["brokerage"],
@@ -625,7 +698,9 @@ class MegaBullService:
                 "capital_put": round(price * qty, 2),
                 "current_valuation": round(price * qty, 2),
                 "status": "PENDING",
-                "status_badge": "PENDING",
+                "status_badge": "AWAITING PRICE",
+                "lifecycle_stage": "PENDING",
+                "lifecycle_label": "Pending (Order submitted, awaiting price)",
                 "unrealized_pnl": 0.0,
                 "gross_pnl": 0.0,
                 "brokerage": po_charges["brokerage"],
@@ -665,7 +740,7 @@ class MegaBullService:
                         "symbol": s_sym,
                         "instrument_token": str(so.get("instrument_token", self.get_instrument_token(s_sym))),
                         "category": "PENDING",
-                        "category_label": "Pending (Staged Off-Market)",
+                        "category_label": "Pending (AMO - Staged Off-Market)",
                         "action": s_action,
                         "quantity": s_qty,
                         "order_price": s_px,
@@ -673,7 +748,9 @@ class MegaBullService:
                         "capital_put": round(s_px * s_qty, 2),
                         "current_valuation": round(s_px * s_qty, 2),
                         "status": "STAGED",
-                        "status_badge": "STAGED",
+                        "status_badge": "AMO 09:15",
+                        "lifecycle_stage": "WILL_BE_PUT_AMO",
+                        "lifecycle_label": "AMO (Will be placed at market open 09:15)",
                         "unrealized_pnl": 0.0,
                         "gross_pnl": 0.0,
                         "brokerage": s_charges["brokerage"],
@@ -705,6 +782,7 @@ class MegaBullService:
                 product=str(eo.get("product", "CNC"))
             )
 
+            is_sell_exit = "SELL" in str(eo.get("action", eo.get("type", "BUY"))).upper()
             valid_orders.append({
                 "order_id": str(eo.get("orderId", eo.get("id", ""))),
                 "symbol": symbol,
@@ -719,6 +797,8 @@ class MegaBullService:
                 "current_valuation": round(price * qty, 2),
                 "status": "COMPLETED",
                 "status_badge": "EXECUTED",
+                "lifecycle_stage": "COMPLETED_BOUGHT_TO_SOLD" if is_sell_exit else "COMPLETED_SHORT_TO_COVERED",
+                "lifecycle_label": "Completed: Bought ➔ Sold" if is_sell_exit else "Completed: Short ➔ Covered",
                 "unrealized_pnl": 0.0,
                 "gross_pnl": 0.0,
                 "brokerage": eo_charges["brokerage"],
@@ -903,7 +983,9 @@ class MegaBullService:
         valid_orders = self.get_all_valid_orders(holdings=holdings)
 
         running_orders = [o for o in valid_orders if o["category"] == "RUNNING"]
-        pending_orders = [o for o in valid_orders if o["category"] == "PENDING"]
+        all_pending_orders = [o for o in valid_orders if o["category"] == "PENDING"]
+        pending_orders = [o for o in valid_orders if o["category"] == "PENDING" and o.get("lifecycle_stage") != "WILL_BE_PUT_AMO"]
+        amo_orders = [o for o in valid_orders if o.get("lifecycle_stage") == "WILL_BE_PUT_AMO" or o.get("status") == "STAGED"]
         completed_orders = [o for o in valid_orders if o["category"] == "COMPLETED"]
 
         total_invested = round(sum(h["invested_value"] for h in holdings), 2)
@@ -955,8 +1037,17 @@ class MegaBullService:
             "valid_orders": valid_orders,
             "valid_orders_count": len(valid_orders),
             "running_orders_count": len(running_orders),
-            "pending_orders_count": len(pending_orders),
+            "pending_orders_count": len(all_pending_orders),
+            "broker_pending_count": len(pending_orders),
+            "amo_orders_count": len(amo_orders),
             "completed_orders_count": len(completed_orders),
+            "orders_by_stage": {
+                "WILL_BE_PUT_AMO": len(amo_orders),
+                "PENDING": len(pending_orders),
+                "RUNNING_BOUGHT": len([o for o in running_orders if o.get("lifecycle_stage") == "RUNNING_BOUGHT"]),
+                "RUNNING_SHORT_SELLED": len([o for o in running_orders if o.get("lifecycle_stage") == "RUNNING_SHORT_SELLED"]),
+                "COMPLETED": len(completed_orders)
+            },
             "transactions": transactions,
             "transactions_count": len(transactions),
             "total_brokerage_paid": total_brokerage_paid,

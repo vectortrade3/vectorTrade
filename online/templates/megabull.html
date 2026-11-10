@@ -365,6 +365,12 @@
                                 {{ summary.pending_orders_count }}
                             </span>
                         </button>
+                        <button onclick="setFilter('AMO')" id="tabAMO" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
+                            <span>AMO (09:15)</span>
+                            <span id="badgeCountAMO" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-400">
+                                {{ summary.amo_orders_count or 0 }}
+                            </span>
+                        </button>
                         <button onclick="setFilter('COMPLETED')" id="tabCOMPLETED" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
                             <span>Completed Trades</span>
                             <span id="badgeCountCOMPLETED" class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400">
@@ -415,7 +421,7 @@
                     </thead>
                     <tbody id="ordersTableBody" class="divide-y divide-white/[0.04]">
                         {% for order in summary.valid_orders %}
-                        <tr class="order-row apple-spring hover:bg-white/[0.03]" data-category="{{ order.category }}" data-symbol="{{ order.symbol }}">
+                        <tr class="order-row apple-spring hover:bg-white/[0.03]" data-category="{{ order.category }}" data-stage="{{ order.lifecycle_stage or '' }}" data-status="{{ order.status or '' }}" data-symbol="{{ order.symbol }}">
                             <!-- Symbol -->
                             <td class="py-3.5 px-5">
                                 <div class="flex items-center space-x-3">
@@ -537,20 +543,35 @@
 
                             <!-- Status Badge -->
                             <td class="py-3.5 px-4 text-center">
-                                {% if order.category == 'RUNNING' %}
-                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                                    <span>RUNNING</span>
+                                {% if order.lifecycle_stage == 'WILL_BE_PUT_AMO' or order.status == 'STAGED' %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30" title="{{ order.lifecycle_label }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                                    <span>AMO 09:15</span>
                                 </span>
-                                {% elif order.category == 'PENDING' %}
-                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                {% elif order.lifecycle_stage == 'PENDING' %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30" title="{{ order.lifecycle_label }}">
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                                    <span>PENDING</span>
+                                    <span>AWAITING PRICE</span>
+                                </span>
+                                {% elif order.lifecycle_stage == 'RUNNING_BOUGHT' or (order.category == 'RUNNING' and order.action.startswith('BUY')) %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" title="{{ order.lifecycle_label }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    <span>BOUGHT</span>
+                                </span>
+                                {% elif order.lifecycle_stage == 'RUNNING_SHORT_SELLED' or (order.category == 'RUNNING' and order.action.startswith('SELL')) %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30" title="{{ order.lifecycle_label }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                    <span>SHORT SELLED</span>
+                                </span>
+                                {% elif order.lifecycle_stage == 'COMPLETED_SHORT_TO_COVERED' %}
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30" title="{{ order.lifecycle_label }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                    <span>SHORT ➔ COVERED</span>
                                 </span>
                                 {% else %}
-                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    <span>CLOSED</span>
+                                <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-neutral-500/15 text-neutral-300 border border-neutral-500/30" title="{{ order.lifecycle_label }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+                                    <span>BOUGHT ➔ SOLD</span>
                                 </span>
                                 {% endif %}
                             </td>
@@ -1042,7 +1063,7 @@
 
         function setFilter(filter) {
             currentFilter = filter;
-            ['ALL', 'RUNNING', 'PENDING', 'COMPLETED', 'TRANSACTIONS'].forEach(f => {
+            ['ALL', 'RUNNING', 'PENDING', 'AMO', 'COMPLETED', 'TRANSACTIONS'].forEach(f => {
                 const btn = document.getElementById(`tab${f}`);
                 if (!btn) return;
                 if (f === filter) {
@@ -1077,9 +1098,22 @@
 
             rows.forEach(row => {
                 const category = row.getAttribute('data-category');
+                const stage = row.getAttribute('data-stage') || '';
+                const status = row.getAttribute('data-status') || '';
                 const symbol = row.getAttribute('data-symbol') || '';
+                const isAmo = (stage === 'WILL_BE_PUT_AMO' || status === 'STAGED');
 
-                const matchesCategory = (currentFilter === 'ALL' || category === currentFilter);
+                let matchesCategory = false;
+                if (currentFilter === 'ALL') {
+                    matchesCategory = true;
+                } else if (currentFilter === 'AMO') {
+                    matchesCategory = isAmo;
+                } else if (currentFilter === 'PENDING') {
+                    matchesCategory = (category === 'PENDING');
+                } else {
+                    matchesCategory = (category === currentFilter);
+                }
+
                 const matchesSearch = (!query || symbol.includes(query));
 
                 if (matchesCategory && matchesSearch) {
@@ -1125,6 +1159,9 @@
                         document.getElementById('badgeCountALL').textContent = s.valid_orders_count;
                         document.getElementById('badgeCountRUNNING').textContent = s.running_orders_count;
                         document.getElementById('badgeCountPENDING').textContent = s.pending_orders_count;
+                        if (document.getElementById('badgeCountAMO')) {
+                            document.getElementById('badgeCountAMO').textContent = s.amo_orders_count || 0;
+                        }
                         document.getElementById('badgeCountCOMPLETED').textContent = s.completed_orders_count;
                         if (document.getElementById('badgeCountTRANSACTIONS')) {
                             document.getElementById('badgeCountTRANSACTIONS').textContent = s.transactions_count || (s.transactions ? s.transactions.length : 0);
@@ -1146,8 +1183,8 @@
             }
         }
 
-        // Periodic background poll every 15s
-        setInterval(refreshMegaBullData, 15000);
+        // Periodic background poll every 5s for live updates
+        setInterval(refreshMegaBullData, 5000);
 
         // ==========================================
         // PORTFOLIO SYMBOLS & DUPLICATE CHECK ENGINE

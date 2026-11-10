@@ -518,6 +518,8 @@ class OrdersService:
             "status": "COMPLETED" if is_completed else "RUNNING",
             "action": "SELL (SHORT)" if is_short else "BUY (LONG)",
             "is_completed": is_completed,
+            "lifecycle_stage": trade.get("lifecycle_stage", ("COMPLETED_BOUGHT_TO_SOLD" if not is_short else "COMPLETED_SHORT_TO_COVERED") if is_completed else ("RUNNING_BOUGHT" if not is_short else "RUNNING_SHORT_SELLED")),
+            "lifecycle_label": trade.get("lifecycle_label", ("Completed: Bought ➔ Sold" if not is_short else "Completed: Short ➔ Covered") if is_completed else ("Running: Bought (Long)" if not is_short else "Running: Short Selled")),
             "is_liquidation_scheduled": bool(trade.get("is_liquidation_scheduled", False)),
             "scheduled_exit_action": trade.get("scheduled_exit_action"),
             "current_ltp": float(trade.get("ltp", entry))
@@ -593,6 +595,8 @@ class OrdersService:
                 "status": "RUNNING",
                 "ltp": h.get("ltp", h.get("avg_buy_price", 0.0)),
                 "action": "SELL (SHORT)" if int(h.get("qty", 1)) < 0 else "BUY (LONG)",
+                "lifecycle_stage": "RUNNING_SHORT_SELLED" if int(h.get("qty", 1)) < 0 else "RUNNING_BOUGHT",
+                "lifecycle_label": "Running: Short Selled" if int(h.get("qty", 1)) < 0 else "Running: Bought (Long)",
                 "is_liquidation_scheduled": bool(staged_liq),
                 "scheduled_exit_action": f"{staged_liq.get('action', 'SELL')} {staged_liq.get('quantity', abs(int(h.get('qty', 1))))} MKT" if staged_liq else None
             }
@@ -615,7 +619,9 @@ class OrdersService:
                 "status": "COMPLETED",
                 "closed_date": c.get("closed_date", "2026-10-29"),
                 "exit_price": c.get("exit_price", 0.0),
-                "action": c.get("action", "BUY & SELL (CLOSED)")
+                "action": c.get("action", "BUY & SELL (CLOSED)"),
+                "lifecycle_stage": c.get("lifecycle_stage", "COMPLETED_BOUGHT_TO_SOLD"),
+                "lifecycle_label": c.get("lifecycle_label", "Completed: Bought ➔ Sold")
             }
             journal_rows.append(self.calculate_trade_journal_row(trade_raw))
 

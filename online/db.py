@@ -166,6 +166,10 @@ class DatabaseManager:
     def system_audit(self):
         return self.get_collection("system_audit")
 
+    @property
+    def live_quotes(self):
+        return self.get_collection("live_quotes")
+
 
 # Export singleton instance
 db_manager = DatabaseManager()

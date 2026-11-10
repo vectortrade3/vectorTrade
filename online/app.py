@@ -7,6 +7,9 @@ session authentication, executive overview, and dedicated orders board.
 import os
 import sys
 import logging
+import asyncio
+from datetime import datetime
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from urllib.parse import parse_qs
@@ -29,9 +32,28 @@ from online.config import settings
 from online.db import db_manager
 from online.services.orders_service import orders_service
 from online.services.megabull_service import megabull_service
+from online.services.live_sync_worker import live_sync_worker, OrderLifecycleStage
 
 logger = logging.getLogger("VectorTrade.OnlineApp")
 logger.setLevel(logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for continuous background market & order synchronization daemon."""
+    logger.info("Starting background full-time LiveSyncWorker daemon...")
+    sync_task = asyncio.create_task(live_sync_worker.run_async_loop(interval_seconds=5))
+    try:
+        yield
+    finally:
+        logger.info("Stopping background LiveSyncWorker daemon...")
+        live_sync_worker.stop()
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
+
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -39,7 +61,8 @@ app = FastAPI(
     description="VectorTrade Cloud Orders Dashboard & Execution Terminal",
     version="2.0.0",
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
+    lifespan=lifespan
 )
 
 # Enable signed session cookies for authentication
@@ -531,6 +554,68 @@ async def cancel_liquidation_api():
 
 
 # ==============================================================================
+# LIVE MARKET & ORDER SYNCHRONIZATION ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/sync/status")
+async def get_sync_status():
+    """Returns current operational status of the background LiveSyncWorker."""
+    return JSONResponse(live_sync_worker.get_status())
+
+
+@app.post("/api/sync/trigger")
+async def trigger_sync_tick():
+    """Manually triggers an immediate synchronization cycle."""
+    res = await asyncio.to_thread(live_sync_worker.tick)
+    return JSONResponse(res)
+
+
+@app.get("/api/sync/live-feed")
+async def get_sync_live_feed():
+    """
+    Returns real-time data bundle for frontend live updating:
+    - Current prices (LTP) & market open status
+    - Valid orders categorized across all 4 lifecycle stages (AMO, Pending, Running, Completed)
+    - Portfolio metrics (Net worth, P&L, Invested capital, Cash remaining)
+    """
+    summary = megabull_service.get_portfolio_summary()
+    valid_orders = summary.get("valid_orders", [])
+    quotes = live_sync_worker.price_cache or megabull_service.fetch_live_quotes()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return JSONResponse({
+        "status": "SUCCESS",
+        "market_open": megabull_service.is_market_open(),
+        "timestamp": now_str,
+        "quotes": quotes,
+        "valid_orders": valid_orders,
+        "orders_by_stage": summary.get("orders_by_stage", {}),
+        "running_orders_count": summary.get("running_orders_count", 0),
+        "pending_orders_count": summary.get("pending_orders_count", 0),
+        "amo_orders_count": summary.get("amo_orders_count", 0),
+        "completed_orders_count": summary.get("completed_orders_count", 0),
+        "net_worth": summary.get("net_worth", 0.0),
+        "total_invested": summary.get("total_invested", 0.0),
+        "total_current": summary.get("total_current", 0.0),
+        "total_pnl": summary.get("total_pnl", 0.0),
+        "total_pnl_pct": summary.get("total_pnl_pct", 0.0),
+        "last_sync": live_sync_worker.last_sync_time or now_str
+    })
+
+
+@app.get("/api/prices/live")
+async def get_live_prices(symbols: Optional[str] = Query(None, description="Comma-separated stock symbols")):
+    """Returns real-time prices (LTP) for requested or monitored stocks."""
+    sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
+    quotes = megabull_service.fetch_live_quotes(sym_list)
+    return JSONResponse({
+        "status": "SUCCESS",
+        "market_open": megabull_service.is_market_open(),
+        "quotes": quotes
+    })
+
+
+# ==============================================================================
 # HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
 # ==============================================================================
 
@@ -669,6 +754,9 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/megabull/portfolio-symbols (MegaBull portfolio symbols API)", "url": "/api/megabull/portfolio-symbols", "expected": 200},
         {"desc": "GET /api/trades/journal (Trade book 17-column journal API)", "url": "/api/trades/journal", "expected": 200},
         {"desc": "GET /api/megabull/liquidation-status (Liquidation status API)", "url": "/api/megabull/liquidation-status", "expected": 200},
+        {"desc": "GET /api/sync/status (Live sync worker status API)", "url": "/api/sync/status", "expected": 200},
+        {"desc": "GET /api/sync/live-feed (Live sync feed API)", "url": "/api/sync/live-feed", "expected": 200},
+        {"desc": "GET /api/prices/live (Live prices API)", "url": "/api/prices/live", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 
