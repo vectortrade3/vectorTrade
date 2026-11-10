@@ -90,8 +90,7 @@
                 <div class="relative">
                     <i data-lucide="user" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
                     <input type="text" id="username" name="username" required autofocus autocomplete="username"
-                           value="{{ default_user or '' }}"
-                           placeholder="Enter username (root)"
+                           placeholder="Enter username"
                            class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
                 </div>
             </div>
@@ -106,7 +105,7 @@
                 <div class="relative">
                     <i data-lucide="lock" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
                     <input type="password" id="password" name="password" required autocomplete="current-password"
-                           placeholder="Enter password (root)"
+                           placeholder="Enter password"
                            class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-11 py-2.5 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
                     <button type="button" onclick="togglePasswordVisibility()" 
                             class="absolute right-3.5 top-1/2 -translate-y-1/2 text-apple-subtext hover:text-white apple-spring">
@@ -131,13 +130,11 @@
             </button>
         </form>
 
-        <!-- Credentials Hint / Environment Note -->
-        <div class="pt-2 border-t border-white/[0.06] text-center space-y-1.5">
-            <p class="text-[11px] text-apple-subtext font-mono">
-                Default: <span class="text-neutral-300 font-bold">root</span> / <span class="text-neutral-300 font-bold">root</span>
-            </p>
-            <p class="text-[10px] text-neutral-500">
-                Configured via <code class="text-neutral-400">AUTH_USERNAME</code> & <code class="text-neutral-400">AUTH_PASSWORD</code> in <code class="text-neutral-400">.env</code>
+        <!-- Security Footer -->
+        <div class="pt-2 border-t border-white/[0.06] text-center space-y-1">
+            <p class="text-[11px] text-neutral-400 font-mono flex items-center justify-center space-x-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Protected Terminal • End-to-End Encrypted Session</span>
             </p>
         </div>
     </div>

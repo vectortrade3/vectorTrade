@@ -309,8 +309,14 @@
                             Showing {{ trade_journal|length }} trades
                         </span>
                     </div>
-                    <div class="text-xs text-apple-subtext font-mono hidden md:flex items-center space-x-2">
-                        <span>Sale Date &amp; Exit Values Blank for Running Trades</span>
+                    <div class="flex items-center space-x-3">
+                        <a href="/api/trades/export/csv" download class="px-3 py-1.5 rounded-xl text-xs font-mono font-medium hairline-border bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 apple-spring flex items-center space-x-1.5 shadow-sm">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span>Export CSV</span>
+                        </a>
+                        <div class="text-xs text-apple-subtext font-mono hidden md:flex items-center space-x-2">
+                            <span>Sale Date &amp; Exit Values Blank for Running Trades</span>
+                        </div>
                     </div>
                 </div>
 

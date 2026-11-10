@@ -409,6 +409,13 @@ class LiveSyncWorker:
         except Exception as e:
             logger.debug(f"Could not persist portfolio_live_state: {e}")
 
+        # Automatically update persistent trades record CSV on disk
+        try:
+            from online.services.orders_service import orders_service
+            orders_service.save_trades_record_csv()
+        except Exception as e:
+            logger.debug(f"Could not auto-save trades_record.csv: {e}")
+
         return state_doc
 
     def tick(self) -> Dict[str, Any]:

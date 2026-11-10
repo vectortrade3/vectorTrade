@@ -1077,6 +1077,116 @@ def get_mongodb_status_endpoint():
         }), 500
 
 
+# ==============================================================================
+# OFFLINE ORDERS BOARD & 17-COLUMN TRADE BOOK (SYNCED WITH MONGODB ATLAS)
+# ==============================================================================
+
+@app.route("/orders", methods=["GET"])
+def orders_page():
+    """Renders the comprehensive Trade Book & Orders Board in the offline app, fetching live data from MongoDB Atlas."""
+    from online.services.orders_service import orders_service
+    from online.db import db_manager
+
+    trade_journal = orders_service.get_trade_journal()
+    orders = orders_service.get_orders(limit=100)
+    summary_stats = orders_service.get_order_summary_stats()
+    db_health = db_manager.ping()
+
+    return render_template(
+        "orders.html",
+        app_name="VectorTrade (Offline)",
+        trade_journal=trade_journal,
+        orders=orders,
+        stats=summary_stats,
+        db_health=db_health,
+        is_offline=True
+    )
+
+
+@app.route("/api/trades/journal", methods=["GET"])
+@app.route("/api/orders/tradebook", methods=["GET"])
+def get_offline_trades_journal_api():
+    """Returns the complete Trade Book / Journal with all 17 columns calculated from MongoDB Atlas."""
+    from online.services.orders_service import orders_service
+    status_filter = request.args.get("status")
+    trades = orders_service.get_trade_journal(status_filter=status_filter)
+    return jsonify({
+        "status": "SUCCESS",
+        "count": len(trades),
+        "trades": trades
+    })
+
+
+@app.route("/api/orders", methods=["GET"])
+def get_offline_orders_api():
+    """Returns watchlist setup orders from MongoDB Atlas."""
+    from online.services.orders_service import orders_service
+    status_filter = request.args.get("status")
+    strategy_filter = request.args.get("strategy")
+    limit = int(request.args.get("limit", 100))
+    orders = orders_service.get_orders(status=status_filter, strategy=strategy_filter, limit=limit)
+    return jsonify({
+        "status": "SUCCESS",
+        "count": len(orders),
+        "orders": orders
+    })
+
+
+@app.route("/api/stats", methods=["GET"])
+def get_offline_orders_stats_api():
+    """Returns summary KPIs and statistics for orders in the offline app."""
+    from online.services.orders_service import orders_service
+    stats = orders_service.get_order_summary_stats()
+    return jsonify({
+        "status": "SUCCESS",
+        "stats": stats
+    })
+
+
+@app.route("/api/trades/export/csv", methods=["GET"])
+@app.route("/api/orders/export/csv", methods=["GET"])
+def export_offline_trades_csv_api():
+    """Exports and downloads the 17-column CSV trade journal directly from the offline app."""
+    from online.services.orders_service import orders_service
+    from flask import Response
+    from datetime import datetime
+
+    status_filter = request.args.get("status")
+    trades = orders_service.get_trade_journal(status_filter=status_filter)
+    csv_content = orders_service.generate_trade_journal_csv(trades)
+
+    try:
+        orders_service.save_trades_record_csv()
+    except Exception as e:
+        logger.debug(f"Could not persist trades_record.csv on disk: {e}")
+
+    filename = f"vectortrade_journal_offline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+    )
+
+
+@app.route("/api/megabull/liquidation-status", methods=["GET"])
+def get_offline_liquidation_status_api():
+    """Returns liquidation status for offline orders board telemetry."""
+    from online.services.megabull_service import megabull_service
+    return jsonify(megabull_service.get_liquidation_status())
+
+
+@app.route("/api/megabull/portfolio-symbols", methods=["GET"])
+def get_offline_portfolio_symbols_api():
+    """Returns portfolio symbols for duplicate checks in offline orders modal."""
+    from online.services.megabull_service import megabull_service
+    holdings = megabull_service.get_holdings(enrich_ltp=False)
+    symbols = list({str(h.get("symbol", "")).upper() for h in holdings if h.get("symbol")})
+    return jsonify({"status": "SUCCESS", "symbols": symbols, "all_portfolio_symbols": symbols})
+
+
 def run_offline_headless(output_format: str = "text") -> Dict[str, Any]:
     """
     Executes a comprehensive, non-interactive diagnostic of the VectorTrade Offline engine.

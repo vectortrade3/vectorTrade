@@ -194,6 +194,57 @@ class TestTradeJournal17Columns(unittest.TestCase):
         for h in headers:
             self.assertIn(h, html)
 
+    def test_07_csv_generation_and_export_endpoint(self):
+        """Verifies CSV generation and GET /api/trades/export/csv returns valid CSV attachment."""
+        csv_data = orders_service.generate_trade_journal_csv()
+        self.assertIn("Stock Name,Buy Date,Strategy Name,TF,QTY,Entry,Stoploss", csv_data)
+        self.assertIn("NET P/L,Lifecycle Status", csv_data)
+
+        resp = self.client.get("/api/trades/export/csv")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp.headers.get("content-type", ""))
+        self.assertIn("attachment; filename=", resp.headers.get("content-disposition", ""))
+        self.assertIn("Stock Name,Buy Date", resp.text)
+
+    def test_08_login_screen_has_no_credentials_or_root_placeholder(self):
+        """Verifies login page does not display root credentials hint, placeholder, or pre-filled value."""
+        resp = self.client.get("/login")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.text
+
+        # Ensure no root placeholder or default credentials hint in HTML
+        self.assertNotIn("Enter username (root)", html)
+        self.assertNotIn("Enter password (root)", html)
+        self.assertNotIn("Default: root / root", html)
+        self.assertNotIn('value="root"', html)
+        self.assertIn('placeholder="Enter username"', html)
+        self.assertIn('placeholder="Enter password"', html)
+
+    def test_09_offline_app_orders_and_csv_export(self):
+        """Verifies offline Flask app serves /orders, /api/trades/journal, and /api/trades/export/csv."""
+        from offline.app import app as offline_app
+        offline_client = offline_app.test_client()
+
+        # 1. Orders HTML page
+        resp_page = offline_client.get("/orders")
+        self.assertEqual(resp_page.status_code, 200)
+        self.assertIn("Trade Book", resp_page.get_data(as_text=True))
+        self.assertIn("Export CSV", resp_page.get_data(as_text=True))
+
+        # 2. Trades Journal API
+        resp_api = offline_client.get("/api/trades/journal")
+        self.assertEqual(resp_api.status_code, 200)
+        data = resp_api.get_json()
+        self.assertEqual(data["status"], "SUCCESS")
+        self.assertIn("trades", data)
+
+        # 3. CSV Export API
+        resp_csv = offline_client.get("/api/trades/export/csv")
+        self.assertEqual(resp_csv.status_code, 200)
+        self.assertIn("text/csv", resp_csv.content_type)
+        self.assertIn("attachment; filename=", resp_csv.headers.get("Content-Disposition", ""))
+        self.assertIn("Stock Name,Buy Date", resp_csv.get_data(as_text=True))
+
 
 if __name__ == "__main__":
     unittest.main()

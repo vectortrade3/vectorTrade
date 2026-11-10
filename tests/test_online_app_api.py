@@ -105,14 +105,16 @@ class TestOnlineAppAPI(unittest.TestCase):
         self.assertIn("/login?next=/orders", resp.headers["location"])
 
     def test_10_login_page_renders_cleanly(self):
-        """Verifies GET /login displays sign in form with root credentials hint."""
+        """Verifies GET /login displays sign in form with clean credentials fields and no root hints."""
         resp = self.client.get("/login")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/html", resp.headers["content-type"])
         html = resp.text
         self.assertIn("Sign In", html)
         self.assertIn("VectorTrade Online", html)
-        self.assertIn("root", html)
+        self.assertIn('placeholder="Enter username"', html)
+        self.assertNotIn('value="root"', html)
+        self.assertNotIn('Default: root / root', html)
 
     def test_11_login_post_invalid_credentials_fails(self):
         """Verifies POST /login with bad credentials returns 400 and error banner."""

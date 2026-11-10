@@ -6,10 +6,12 @@ daily trade setups and buy orders stored in MongoDB Atlas `signals_watchlist`.
 
 import re
 import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from online.db import db_manager
 from online.config import settings
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 logger = logging.getLogger("VectorTrade.OrdersService")
 logger.setLevel(logging.INFO)
 
@@ -653,6 +655,70 @@ class OrdersService:
                 journal_rows = [r for r in journal_rows if r["is_completed"]]
 
         return journal_rows
+
+    def generate_trade_journal_csv(self, journal_rows: Optional[List[Dict[str, Any]]] = None) -> str:
+        """
+        Generates RFC 4180 compliant CSV string for the trade journal containing all 17 columns:
+        Stock Name, Buy Date, Strategy Name, TF, QTY, Entry, Stoploss, RISK per share,
+        Sale Date, Target 1:2, Target 1:3, AMT. Invested, EXTRA P&L (Charges / dividend),
+        AMT. On Exit, P/L Per Share, P/L Per Share %, NET P/L, Lifecycle Status
+        """
+        import csv
+        import io
+
+        if journal_rows is None:
+            journal_rows = self.get_trade_journal()
+
+        output = io.StringIO()
+        writer = csv.writer(output, lineterminator="\n")
+
+        headers = [
+            "Stock Name", "Buy Date", "Strategy Name", "TF", "QTY", "Entry", "Stoploss",
+            "RISK per share", "Sale Date", "Target 1:2", "Target 1:3", "AMT. Invested",
+            "EXTRA P&L (Charges / dividend)", "AMT. On Exit", "P/L Per Share",
+            "P/L Per Share %", "NET P/L", "Lifecycle Status"
+        ]
+        writer.writerow(headers)
+
+        for row in journal_rows:
+            is_comp = row.get("is_completed", False)
+            writer.writerow([
+                row.get("stock_name", row.get("symbol", "")),
+                row.get("buy_date", ""),
+                row.get("strategy_name", row.get("strategy", "")),
+                row.get("tf", "Daily"),
+                row.get("qty", row.get("quantity", 0)),
+                f"{row.get('entry', 0.0):.2f}",
+                f"{row.get('stoploss', 0.0):.2f}",
+                f"{row.get('risk_per_share', 0.0):.2f}",
+                row.get("sale_date", "") if is_comp else "",
+                f"{row.get('target_1_2', 0.0):.2f}",
+                f"{row.get('target_1_3', 0.0):.2f}",
+                f"{row.get('amt_invested', 0.0):.2f}",
+                f"{row.get('extra_pnl', 0.0):.2f}",
+                f"{row.get('amt_on_exit', 0.0):.2f}" if (is_comp and row.get("amt_on_exit") is not None) else "",
+                f"{row.get('pnl_per_share', 0.0):.2f}" if (is_comp and row.get("pnl_per_share") is not None) else "",
+                f"{row.get('pnl_per_share_pct', 0.0):.2f}%" if (is_comp and row.get("pnl_per_share_pct") is not None) else "",
+                f"{row.get('net_pnl', 0.0):.2f}" if (is_comp and row.get("net_pnl") is not None) else "",
+                row.get("lifecycle_label", row.get("lifecycle_stage", row.get("status", "")))
+            ])
+
+        return output.getvalue()
+
+    def save_trades_record_csv(self, filepath: Optional[str] = None) -> str:
+        """
+        Saves the complete trade journal to a CSV file on disk (default: data_store/trades_record.csv).
+        """
+        if not filepath:
+            target_dir = PROJECT_ROOT / "data_store"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            filepath = str(target_dir / "trades_record.csv")
+
+        csv_content = self.generate_trade_journal_csv()
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(csv_content)
+        logger.info(f"Saved trades record CSV to {filepath}")
+        return filepath
 
 
 orders_service = OrdersService()

@@ -124,7 +124,7 @@ async def login_page(request: Request):
             "app_name": settings.app_name,
             "error": None,
             "next": request.query_params.get("next", "/orders"),
-            "default_user": "root"
+            "default_user": ""
         }
     )
 
@@ -342,6 +342,34 @@ async def get_trades_journal_api(status: Optional[str] = Query(None, description
         "count": len(trades),
         "trades": trades
     }
+
+
+@app.get("/api/trades/export/csv")
+@app.get("/api/orders/export/csv")
+async def export_trades_csv_api(status: Optional[str] = Query(None, description="Filter by status: RUNNING, COMPLETED, ALL")):
+    """
+    Exports the complete Trade Book / Journal as an RFC 4180 CSV file
+    containing all 17 columns with exact calculation values and lifecycle statuses.
+    """
+    trades = orders_service.get_trade_journal(status_filter=status)
+    csv_content = orders_service.generate_trade_journal_csv(trades)
+
+    # Also persist to local data_store/trades_record.csv
+    try:
+        orders_service.save_trades_record_csv()
+    except Exception as e:
+        logger.debug(f"Could not update trades_record.csv on disk: {e}")
+
+    filename = f"vectortrade_journal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    from fastapi.responses import Response
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+    )
 
 
 # ==============================================================================
