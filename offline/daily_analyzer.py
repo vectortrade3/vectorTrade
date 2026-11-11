@@ -265,10 +265,13 @@ def synthesize_trade_opportunity(
     p_gain_pct = round((pred_gain_pts / close) * 100, 2)
     p_drop_pct = round((pred_drop_pts / close) * 100, 2)
 
-    # 50MA Base Strategy check
-    strat_qualified = is_base and (pred_r >= 0.70)
-    # Global Regime check
-    glob_qualified = (p_gain_pct >= 4.0) and (p_gain_pct >= 2.0 * p_drop_pct) and (p_drop_pct <= 4.0)
+    # 50MA Base Strategy check (only if enabled in StrategyManager)
+    ma50_active = StrategyManager.is_strategy_enabled("ma50_setup")
+    global_active = StrategyManager.is_strategy_enabled("global_regime")
+
+    strat_qualified = ma50_active and is_base and (pred_r >= 0.70)
+    # Global Regime check (only if enabled in StrategyManager)
+    glob_qualified = global_active and (p_gain_pct >= 4.0) and (p_gain_pct >= 2.0 * p_drop_pct) and (p_drop_pct <= 4.0)
 
     if not (strat_qualified or glob_qualified):
         return None
@@ -354,16 +357,25 @@ def scan_all_constituents(
     Enforces exact Base Strategy conditions, sub-classifies into Setups 1, 2, 3,
     and runs chronological forward trade verification on recent signals.
     """
-    xgb_model = models_dict["strat_model"]
-    xgb_scaler = models_dict["strat_scaler"]
-    xgb_imputer = models_dict["strat_imputer"]
-    features_xgb = models_dict["strat_features"]
+    ma50_enabled = StrategyManager.is_strategy_enabled("ma50_setup")
+    global_enabled = StrategyManager.is_strategy_enabled("global_regime")
+    active_strats = StrategyManager.get_active_strategies()
+    has_custom_strats = any(k not in ("ma50_setup", "global_regime") for k in active_strats)
 
-    gain_model = models_dict["gain_model"]
-    drop_model = models_dict["drop_model"]
-    glob_scaler = models_dict["glob_scaler"]
-    glob_imputer = models_dict["glob_imputer"]
-    features_glob = models_dict["glob_features"]
+    if not ma50_enabled and not global_enabled and not has_custom_strats:
+        logger.warning("All strategies are deselected. Zero trades will be generated.")
+        return []
+
+    xgb_model = models_dict.get("strat_model")
+    xgb_scaler = models_dict.get("strat_scaler")
+    xgb_imputer = models_dict.get("strat_imputer")
+    features_xgb = models_dict.get("strat_features", [])
+
+    gain_model = models_dict.get("gain_model")
+    drop_model = models_dict.get("drop_model")
+    glob_scaler = models_dict.get("glob_scaler")
+    glob_imputer = models_dict.get("glob_imputer")
+    features_glob = models_dict.get("glob_features", [])
 
     stock_meta = models_dict.get("stock_meta", {})
 
@@ -372,7 +384,15 @@ def scan_all_constituents(
         csv_files = sorted(glob.glob(os.path.join(str(GENERATED_DIR), "*_generated.csv")))
 
     total_files = len(csv_files)
-    logger.info(f"Scanning {total_files} constituent files for Base 50MA and Global Setups...")
+
+    logger.info(
+        f"Scanning {total_files} constituent files. Active Strategies: "
+        f"50MA={ma50_enabled}, Global={global_enabled}, Custom={has_custom_strats}..."
+    )
+
+    if not ma50_enabled and not global_enabled and not has_custom_strats:
+        logger.warning("All strategies are deselected. Zero trades will be generated.")
+        return []
 
     finalized_trades: List[Dict[str, Any]] = []
 
@@ -427,36 +447,41 @@ def scan_all_constituents(
                 # Condition 3: Candle is green (Close > Open)
                 is_green = (close > open_p)
 
-                is_base_50ma = ma50_up_7d and bb_near_low and is_green
+                is_base_50ma = ma50_enabled and ma50_up_7d and bb_near_low and is_green
 
-                # If this historical bar is not a base setup and not the latest bar, skip
-                if not is_base_50ma and i < (n_rows - 1):
+                # If this historical bar is not an active base setup and not the latest bar, skip
+                if not is_base_50ma and (i < (n_rows - 1) or not global_enabled) and not has_custom_strats:
                     continue
 
-                # Run Machine Learning models on this bar
+                # Run Machine Learning models on this bar only for active strategies
                 row_m = df_model.iloc[i:i+1].copy()
-                for feat in features_xgb:
-                    if feat not in row_m.columns:
-                        row_m[feat] = 0.0
-                X_xgb = row_m[features_xgb]
-                X_xgb_s = xgb_scaler.transform(xgb_imputer.transform(X_xgb))
-                pred_r = float(xgb_model.predict(X_xgb_s)[0])
+                pred_r = 0.0
+                if ma50_enabled:
+                    for feat in features_xgb:
+                        if feat not in row_m.columns:
+                            row_m[feat] = 0.0
+                    X_xgb = row_m[features_xgb]
+                    X_xgb_s = xgb_scaler.transform(xgb_imputer.transform(X_xgb))
+                    pred_r = float(xgb_model.predict(X_xgb_s)[0])
 
-                for feat in features_glob:
-                    if feat not in row_m.columns:
-                        row_m[feat] = 0.0
-                X_glob = row_m[features_glob]
-                X_glob_s = glob_scaler.transform(glob_imputer.transform(X_glob))
-                pred_gain_pts = max(0.5, float(gain_model.predict(X_glob_s)[0]))
-                pred_drop_pts = max(0.5, float(drop_model.predict(X_glob_s)[0]))
+                p_gain_pct = 0.0
+                p_drop_pct = 0.0
+                if global_enabled or (ma50_enabled and is_base_50ma):
+                    for feat in features_glob:
+                        if feat not in row_m.columns:
+                            row_m[feat] = 0.0
+                    X_glob = row_m[features_glob]
+                    X_glob_s = glob_scaler.transform(glob_imputer.transform(X_glob))
+                    pred_gain_pts = max(0.5, float(gain_model.predict(X_glob_s)[0]))
+                    pred_drop_pts = max(0.5, float(drop_model.predict(X_glob_s)[0]))
 
-                p_gain_pct = round((pred_gain_pts / close) * 100, 2)
-                p_drop_pct = round((pred_drop_pts / close) * 100, 2)
+                    p_gain_pct = round((pred_gain_pts / close) * 100, 2)
+                    p_drop_pct = round((pred_drop_pts / close) * 100, 2)
 
                 # -------------------------------------------------------------
-                # 1. 50MA BASE STRATEGY QUALIFICATION
+                # 1. 50MA BASE STRATEGY QUALIFICATION (Only if 50MA is selected)
                 # -------------------------------------------------------------
-                if is_base_50ma and pred_r >= 0.70:
+                if ma50_enabled and is_base_50ma and pred_r >= 0.70:
                     dist_ma50 = low - ma50_now
                     # Sub-classification into 3 setups:
                     if -10.0 <= dist_ma50 <= 30.0:
@@ -536,7 +561,7 @@ def scan_all_constituents(
                         outcome = "ARMED"
                         outcome_detail = f"Armed for Tomorrow: Enter when price reaches ₹{buy_price}. SL: ₹{sl_price}, Target: ₹{target_price} (1:2 R:R)."
 
-                    is_dual = (p_gain_pct >= 3.5) and (p_gain_pct >= 1.5 * p_drop_pct)
+                    is_dual = global_enabled and (p_gain_pct >= 3.5) and (p_gain_pct >= 1.5 * p_drop_pct)
                     strat_name = "50 MA + Global Regime" if is_dual else "50 MA Setup"
 
                     finalized_trades.append({
@@ -571,9 +596,68 @@ def scan_all_constituents(
                     })
 
                 # -------------------------------------------------------------
-                # 2. GLOBAL REGIME ONLY (Only on latest bar for strong momentum)
+                # 2. GLOBAL REGIME ONLY (Only if Global Regime is selected)
                 # -------------------------------------------------------------
-                elif (i == n_rows - 1) and (p_gain_pct >= 4.5) and (p_gain_pct >= 2.0 * p_drop_pct) and (p_drop_pct <= 3.5):
+                elif global_enabled and (i == n_rows - 1) and (p_gain_pct >= 4.5) and (p_gain_pct >= 2.0 * p_drop_pct) and (p_drop_pct <= 3.5):
+                    risk_amount = max(pred_drop_pts, close * 0.015)
+                    entry_p = round(close, 2)
+                    sl_p = round(max(0.1, entry_p - risk_amount), 2)
+                    tgt_p = round(entry_p + (2.0 * risk_amount), 2)
+                    loss_p = round(((entry_p - sl_p) / entry_p) * 100, 2)
+                    profit_p = round(((tgt_p - entry_p) / entry_p) * 100, 2)
+
+                    finalized_trades.append({
+                        "symbol": sym,
+                        "name": company_name,
+                        "sector": sector,
+                        "date": str(row['Date'])[:10],
+                        "strategy": "Global Regime",
+                        "setup_subclass": "7-Day High Momentum Breakout",
+                        "setup_num": 0,
+                        "action": "STRONG BUY" if p_gain_pct >= 6.0 else "BUY",
+                        "entry_price": entry_p,
+                        "sl_price": sl_p,
+                        "target_price": tgt_p,
+                        "loss_pct": loss_p,
+                        "profit_pct": profit_p,
+                        "risk_reward": "1 : 2.00",
+                        "risk_reward_num": 2.0,
+                        "predicted_r": 1.0,
+                        "predicted_gain_pct": p_gain_pct,
+                        "predicted_drop_pct": p_drop_pct,
+                        "outcome": "ARMED",
+                        "outcome_detail": f"7-Day Momentum: Expected +{p_gain_pct:.1f}% gain vs -{p_drop_pct:.1f}% max drop",
+                        "days_held": 0,
+                        "rsi": round(float(row.get('RSI_14', 50.0)), 1),
+                        "atr": round(float(row.get('ATR_14', close * 0.015)), 2),
+                        "ma50": round(ma50_now, 2),
+                        "dist_low_bb": round(dist_low_bb, 2),
+                        "dist_low_ma50": round(low - ma50_now, 2),
+                        "is_latest": True,
+                        "rationale": f"Global Regime: Favorable 7-day asymmetric upside (+{p_gain_pct:.1f}% gain vs -{p_drop_pct:.1f}% drop)."
+                    })
+
+                # -------------------------------------------------------------
+                # 3. EXTENSIBLE FOR ALL FUTURE ACTIVE STRATEGIES
+                # -------------------------------------------------------------
+                if has_custom_strats:
+                    for strat_id, strat_inst in active_strats.items():
+                        if strat_id not in ("ma50_setup", "global_regime"):
+                            try:
+                                custom_setups = strat_inst.evaluate(
+                                    df=df,
+                                    symbol=sym,
+                                    index=i,
+                                    is_latest=(i == n_rows - 1),
+                                    row=row,
+                                    close=close,
+                                    high=high,
+                                    low=low
+                                )
+                                if custom_setups and isinstance(custom_setups, list):
+                                    finalized_trades.extend(custom_setups)
+                            except Exception as c_err:
+                                logger.debug(f"Custom strategy '{strat_id}' evaluation on {sym}: {c_err}")
                     risk_amount = max(pred_drop_pts, close * 0.015)
                     entry_p = round(close, 2)
                     sl_p = round(max(0.1, entry_p - risk_amount), 2)
@@ -685,12 +769,19 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
         outcome_counts[o] = outcome_counts.get(o, 0) + 1
 
     total_duration = time.time() - start_time
-    completion_msg = (
-        f"Analyzed 207 stocks. Finalized {len(finalized_trades)} setups "
-        f"(Armed: {outcome_counts.get('ARMED', 0)}, Active: {outcome_counts.get('ACTIVE', 0)}, "
-        f"Wins: {outcome_counts.get('TARGET_HIT', 0)}, Losses: {outcome_counts.get('SL_HIT', 0)}) "
-        f"across {market_status_desc} in {total_duration:.1f}s."
-    )
+    active_strats = StrategyManager.get_active_strategies()
+    if not active_strats:
+        completion_msg = (
+            f"Analyzed 207 stocks in {total_duration:.1f}s across {market_status_desc}. "
+            f"All strategies are currently deselected; 0 trade setups generated as per strategy selection."
+        )
+    else:
+        completion_msg = (
+            f"Analyzed 207 stocks. Finalized {len(finalized_trades)} setups "
+            f"(Armed: {outcome_counts.get('ARMED', 0)}, Active: {outcome_counts.get('ACTIVE', 0)}, "
+            f"Wins: {outcome_counts.get('TARGET_HIT', 0)}, Losses: {outcome_counts.get('SL_HIT', 0)}) "
+            f"across {market_status_desc} in {total_duration:.1f}s."
+        )
 
     # Persist finalized analysis atomically
     json_manager.update_daily_analysis_info(

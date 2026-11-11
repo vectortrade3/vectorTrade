@@ -1200,6 +1200,23 @@ class MegaBullService:
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
 
+        # Strategy Enablement Guard: block order if strategy is deselected
+        if strategy and str(strategy).strip() not in ("Manual Setup", "Manual", ""):
+            try:
+                from strategies.manager import StrategyManager
+                if not StrategyManager.is_strategy_enabled(strategy):
+                    err_msg = f"Strategy '{strategy}' is currently deselected. Taking trades with this strategy is disabled."
+                    logger.warning(f"Order rejected for {sym}: {err_msg}")
+                    return {
+                        "status": "ERROR",
+                        "code": "STRATEGY_DISABLED",
+                        "error": err_msg,
+                        "strategy": strategy,
+                        "symbol": sym
+                    }
+            except Exception as strat_err:
+                logger.debug(f"Strategy enablement check error in place_order: {strat_err}")
+
         if enforce_duplicate_check:
             dup = self.is_symbol_in_portfolio(sym)
             if dup["exists"]:

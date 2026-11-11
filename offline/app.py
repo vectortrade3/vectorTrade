@@ -30,6 +30,7 @@ from offline.data_cleaner import run_data_cleaning_pipeline
 from offline.model_trainer import train_strategy_model, train_global_models, train_all_models
 from offline.model_inferencer import run_strategy_inference, run_global_inference, run_all_inference
 from offline.daily_analyzer import run_daily_analysis_pipeline, get_market_schedule_info
+from strategies.manager import StrategyManager
 
 # Initialize Flask & WebSockets
 app = Flask(__name__, template_folder=str(OFFLINE_DIR / "templates"))
@@ -238,6 +239,7 @@ def index():
     daily_analysis_info = json_manager.get_daily_analysis_info()
     market_schedule = get_market_schedule_info()
     performance_log = json_manager.get_model_performance_log()
+    strategies = StrategyManager.list_strategies(include_disabled=True)
     return render_template(
         "index.html",
         active_tab="dashboard",
@@ -248,7 +250,8 @@ def index():
         inference_info=inference_info,
         daily_analysis_info=daily_analysis_info,
         market_schedule=market_schedule,
-        performance_log=performance_log
+        performance_log=performance_log,
+        strategies=strategies
     )
 
 
@@ -264,6 +267,7 @@ def analysis_page():
     daily_analysis_info = json_manager.get_daily_analysis_info()
     market_schedule = get_market_schedule_info()
     performance_log = json_manager.get_model_performance_log()
+    strategies = StrategyManager.list_strategies(include_disabled=True)
     return render_template(
         "index.html",
         active_tab="analysis",
@@ -274,7 +278,8 @@ def analysis_page():
         inference_info=inference_info,
         daily_analysis_info=daily_analysis_info,
         market_schedule=market_schedule,
-        performance_log=performance_log
+        performance_log=performance_log,
+        strategies=strategies
     )
 
 
@@ -298,6 +303,7 @@ def get_system_status():
         "daily_analysis_progress": json_manager.get_daily_analysis_progress(),
         "market_schedule": get_market_schedule_info(),
         "performance_log": json_manager.get_model_performance_log(),
+        "strategies": StrategyManager.list_strategies(include_disabled=True),
         "stocks_count": len(json_manager.get_stocks_list()),
         "current_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
     })
@@ -962,6 +968,104 @@ def get_strategy_50ma_summary_api():
     """
     summary = ma50_service.get_50ma_strategy_summary()
     return jsonify(summary), 200
+
+
+# ==============================================================================
+# STRATEGY SELECTION & DYNAMIC MANAGEMENT ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/strategies", methods=["GET"])
+def get_strategies_api():
+    """
+    Returns list of all discovered strategies, including active/deselected status,
+    metadata, triggers, description, and execution rules.
+    """
+    strats = StrategyManager.list_strategies(include_disabled=True)
+    active_count = sum(1 for s in strats if s.get("enabled", True))
+    return jsonify({
+        "status": "SUCCESS",
+        "strategies": strats,
+        "total_count": len(strats),
+        "active_count": active_count
+    }), 200
+
+
+@app.route("/api/strategies/toggle", methods=["POST"])
+def toggle_strategy_api():
+    """
+    Toggles or sets the selected/deselected state for a given strategy.
+    When deselected:
+    - Daily analysis skips analyzing stocks with that strategy's model.
+    - No trades are taken with that strategy.
+    """
+    data = request.get_json(silent=True) or {}
+    strategy_id = data.get("strategy_id")
+    if not strategy_id:
+        return jsonify({"status": "ERROR", "message": "strategy_id is required"}), 400
+
+    current_enabled = StrategyManager.is_strategy_enabled(strategy_id)
+    target_enabled = data.get("enabled")
+    if target_enabled is None:
+        target_enabled = not current_enabled
+    else:
+        target_enabled = bool(target_enabled)
+
+    success = StrategyManager.set_strategy_enabled(strategy_id, target_enabled)
+    if not success:
+        return jsonify({"status": "ERROR", "message": f"Strategy '{strategy_id}' not found"}), 404
+
+    strats = StrategyManager.list_strategies(include_disabled=True)
+    active_count = sum(1 for s in strats if s.get("enabled", True))
+    action_text = "selected (active for analysis & trading)" if target_enabled else "deselected (no analysis, no trades will be taken)"
+    msg = f"Strategy '{strategy_id}' is now {action_text}."
+
+    json_manager.log_app_event(
+        event="STRATEGY_TOGGLED",
+        status="Success",
+        message=msg,
+        extra={"strategy_id": strategy_id, "enabled": target_enabled, "active_count": active_count}
+    )
+
+    return jsonify({
+        "status": "SUCCESS",
+        "message": msg,
+        "strategy_id": strategy_id,
+        "enabled": target_enabled,
+        "strategies": strats,
+        "total_count": len(strats),
+        "active_count": active_count
+    }), 200
+
+
+@app.route("/api/strategies/select", methods=["POST"])
+def select_strategies_batch_api():
+    """
+    Batch selects/deselects strategies from a list of selected strategy IDs.
+    Any strategy in the list is enabled; any omitted registered strategy is disabled.
+    """
+    data = request.get_json(silent=True) or {}
+    selected_ids = data.get("selected_strategy_ids", data.get("selected", []))
+    if not isinstance(selected_ids, list):
+        return jsonify({"status": "ERROR", "message": "selected_strategy_ids must be a list"}), 400
+
+    selected_ids_norm = {StrategyManager.resolve_strategy_id(s) or s.lower() for s in selected_ids}
+    all_strats = StrategyManager.get_all_strategies()
+
+    for sid in all_strats.keys():
+        should_enable = sid.lower() in selected_ids_norm or sid in selected_ids
+        StrategyManager.set_strategy_enabled(sid, should_enable)
+
+    strats = StrategyManager.list_strategies(include_disabled=True)
+    active_count = sum(1 for s in strats if s.get("enabled", True))
+    msg = f"Batch strategy selection updated: {active_count}/{len(strats)} strategies active."
+
+    return jsonify({
+        "status": "SUCCESS",
+        "message": msg,
+        "strategies": strats,
+        "total_count": len(strats),
+        "active_count": active_count
+    }), 200
 
 # ==============================================================================
 # DAILY MARKET ANALYSIS & TRADE FINALIZER ENDPOINTS

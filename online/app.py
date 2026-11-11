@@ -643,6 +643,57 @@ async def get_live_prices(symbols: Optional[str] = Query(None, description="Comm
     })
 
 
+@app.get("/api/strategies")
+async def get_strategies_online_api():
+    """Returns list of all discovered strategies and their active status."""
+    from strategies.manager import StrategyManager
+    strats = StrategyManager.list_strategies(include_disabled=True)
+    active_count = sum(1 for s in strats if s.get("enabled", True))
+    return JSONResponse({
+        "status": "SUCCESS",
+        "strategies": strats,
+        "total_count": len(strats),
+        "active_count": active_count
+    })
+
+
+@app.post("/api/strategies/toggle")
+async def toggle_strategy_online_api(request: Request):
+    """Toggles or sets the selected/deselected state for a strategy."""
+    from strategies.manager import StrategyManager
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    strategy_id = data.get("strategy_id")
+    if not strategy_id:
+        return JSONResponse({"status": "ERROR", "message": "strategy_id is required"}, status_code=400)
+
+    current_enabled = StrategyManager.is_strategy_enabled(strategy_id)
+    target_enabled = data.get("enabled")
+    if target_enabled is None:
+        target_enabled = not current_enabled
+    else:
+        target_enabled = bool(target_enabled)
+
+    success = StrategyManager.set_strategy_enabled(strategy_id, target_enabled)
+    if not success:
+        return JSONResponse({"status": "ERROR", "message": f"Strategy '{strategy_id}' not found"}, status_code=404)
+
+    strats = StrategyManager.list_strategies(include_disabled=True)
+    active_count = sum(1 for s in strats if s.get("enabled", True))
+    action_text = "selected (active for analysis & trading)" if target_enabled else "deselected (no analysis, no trades)"
+    return JSONResponse({
+        "status": "SUCCESS",
+        "message": f"Strategy '{strategy_id}' is now {action_text}.",
+        "strategy_id": strategy_id,
+        "enabled": target_enabled,
+        "strategies": strats,
+        "total_count": len(strats),
+        "active_count": active_count
+    })
+
+
 # ==============================================================================
 # HEADLESS DIAGNOSTIC & VERIFICATION RUNNER
 # ==============================================================================

@@ -291,6 +291,40 @@
                 </div>
             </div>
 
+            <!-- ============================================================= -->
+            <!-- DYNAMIC STRATEGY SELECTION & MODEL EXECUTION CONTROL -->
+            <!-- ============================================================= -->
+            <div class="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-r from-slate-900/60 via-purple-950/20 to-slate-900/60 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 font-medium">Modular Alpha Engines</span>
+                            <h2 class="text-base font-semibold text-white tracking-tight flex items-center gap-2">
+                                <i data-lucide="cpu" class="w-4 h-4 text-purple-400"></i>
+                                Strategy Model Selection &amp; Execution Control
+                            </h2>
+                            <span id="dashActiveStrategiesCountBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                                Loading...
+                            </span>
+                        </div>
+                        <p class="text-xs text-apple-textSecondary max-w-2xl">
+                            Select which algorithmic strategies to run. If you deselect any strategy, the offline scanner will not evaluate stocks with that model, and no trades will be taken with that strategy. Fully adaptive to new and upcoming strategies.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="loadStrategiesUI()" title="Refresh Strategy Registry" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Refresh Strategies</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dynamic Strategy Cards Container -->
+                <div id="dashboardStrategiesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                    <!-- Populated dynamically by loadStrategiesUI() -->
+                </div>
+            </div>
+
             <!-- Pipeline Controls Grid (5 Stages) -->
             <div class="space-y-4">
                 <div class="flex items-center justify-between px-1">
@@ -2595,6 +2629,26 @@
                 </div>
             </div>
 
+            <!-- ACTIVE STRATEGY SELECTION BAR FOR DAILY ANALYSIS -->
+            <div class="glass-panel rounded-2xl p-4 border border-white/10 bg-slate-900/50 shadow-lg space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="text-xs font-semibold text-white tracking-wide uppercase">Strategy Model Selection for Scan &amp; Trades:</span>
+                    </div>
+                    <span id="analysisActiveStrategiesSummaryBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                        Loading strategies...
+                    </span>
+                </div>
+                <div id="analysisStrategiesSelectorBar" class="flex flex-wrap items-center gap-2.5 pt-0.5">
+                    <!-- Populated dynamically by loadStrategiesUI() -->
+                </div>
+                <div id="analysisAllDisabledWarning" class="hidden p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                    <span><strong>Warning:</strong> All trading strategies are currently deselected. Running market analysis will scan constituents but generate 0 trade setups, and no trades will be taken.</span>
+                </div>
+            </div>
+
             <!-- 4 Executive KPI Metric Cards -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border border-white/5">
@@ -3410,11 +3464,141 @@
                 loadTradeLedgerData();
             } else if (tab === 'analysis') {
                 loadFinalizedTradesData();
+                loadStrategiesUI();
+            } else if (tab === 'dashboard') {
+                loadStrategiesUI();
             } else if (tab === 'ma50') {
                 load50MASummary();
                 load50MATrades();
             }
         }
+
+        // ---------------------------------------------------------------------
+        // DYNAMIC & ADAPTIVE STRATEGY MANAGER (DISCOVERY & TOGGLE)
+        // ---------------------------------------------------------------------
+        let currentStrategiesList = [];
+
+        async function loadStrategiesUI() {
+            try {
+                const res = await fetch('/api/strategies');
+                if (!res.ok) throw new Error("Failed to fetch strategies");
+                const data = await res.json();
+                if (!data || data.status !== 'SUCCESS') return;
+
+                currentStrategiesList = data.strategies || [];
+                const activeCount = data.active_count || 0;
+                const totalCount = data.total_count || currentStrategiesList.length;
+
+                // 1. Update badges
+                const dashBadge = document.getElementById('dashActiveStrategiesCountBadge');
+                if (dashBadge) {
+                    dashBadge.innerText = `${activeCount} / ${totalCount} Active`;
+                    dashBadge.className = activeCount > 0
+                        ? "text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                        : "text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25";
+                }
+
+                const analysisBadge = document.getElementById('analysisActiveStrategiesSummaryBadge');
+                if (analysisBadge) {
+                    analysisBadge.innerText = `${activeCount} of ${totalCount} Active Strategies`;
+                    analysisBadge.className = activeCount > 0
+                        ? "text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                        : "text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/25";
+                }
+
+                const warningBox = document.getElementById('analysisAllDisabledWarning');
+                if (warningBox) {
+                    if (activeCount === 0) {
+                        warningBox.classList.remove('hidden');
+                    } else {
+                        warningBox.classList.add('hidden');
+                    }
+                }
+
+                // 2. Render Dashboard Strategy Cards
+                const dashContainer = document.getElementById('dashboardStrategiesContainer');
+                if (dashContainer) {
+                    dashContainer.innerHTML = currentStrategiesList.map(s => {
+                        const isEnabled = Boolean(s.enabled);
+                        return `
+                        <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between border transition-all duration-300 ${isEnabled ? 'border-emerald-500/30 bg-emerald-950/10 shadow-lg shadow-emerald-950/20' : 'border-white/5 bg-white/[0.01] opacity-75'}">
+                            <div>
+                                <div class="flex items-center justify-between gap-3 mb-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-lg ${isEnabled ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-white/5 text-slate-400 border border-white/10'} flex items-center justify-center shrink-0">
+                                            <i data-lucide="${isEnabled ? 'activity' : 'pause-circle'}" class="w-4 h-4"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-semibold text-white tracking-tight">${s.name || s.display_name}</h4>
+                                            <div class="text-[10px] font-mono text-apple-textTertiary uppercase">${s.strategy_id} &bull; ${s.type || 'Custom'}</div>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="toggleStrategy('${s.strategy_id}')" title="${isEnabled ? 'Click to deselect strategy' : 'Click to enable strategy'}" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? 'bg-emerald-500' : 'bg-slate-700'}">
+                                        <span class="sr-only">Toggle ${s.name}</span>
+                                        <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? 'translate-x-5' : 'translate-x-0'}"></span>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-apple-textSecondary leading-relaxed line-clamp-3 mb-3">
+                                    ${s.description || 'Algorithmic trading strategy integrated into VectorTrade.'}
+                                </p>
+                            </div>
+                            <div class="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                                <span class="inline-flex items-center gap-1.5 font-medium ${isEnabled ? 'text-emerald-400' : 'text-slate-400'}">
+                                    <span class="w-2 h-2 rounded-full ${isEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}"></span>
+                                    ${isEnabled ? 'Active (Scanning & Trading)' : 'Deselected (Skipped)'}
+                                </span>
+                                <span class="text-[11px] font-mono text-apple-textTertiary">v${s.version || '1.0.0'}</span>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                }
+
+                // 3. Render Daily Analysis Strategy Pills
+                const analysisContainer = document.getElementById('analysisStrategiesSelectorBar');
+                if (analysisContainer) {
+                    analysisContainer.innerHTML = currentStrategiesList.map(s => {
+                        const isEnabled = Boolean(s.enabled);
+                        return `
+                        <button type="button" onclick="toggleStrategy('${s.strategy_id}')" class="px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 border transition-all duration-200 shadow-sm ${isEnabled ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25 shadow-emerald-500/10' : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:border-white/20'}">
+                            <span class="w-2.5 h-2.5 rounded-full ${isEnabled ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-slate-500'}"></span>
+                            <span class="font-semibold">${s.name || s.display_name}</span>
+                            <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${isEnabled ? 'bg-emerald-500/30 text-emerald-200 font-bold' : 'bg-white/10 text-slate-400'}">${isEnabled ? 'SELECTED' : 'DESELECTED'}</span>
+                        </button>
+                        `;
+                    }).join('');
+                }
+
+                lucide.createIcons();
+            } catch (err) {
+                console.error("Error loading strategies UI:", err);
+            }
+        }
+
+        async function toggleStrategy(strategyId) {
+            try {
+                updateSystemStatus(`Updating strategy ${strategyId}...`, 'blue', true);
+                const res = await fetch('/api/strategies/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ strategy_id: strategyId })
+                });
+                const data = await res.json();
+                if (data && data.status === 'SUCCESS') {
+                    await loadStrategiesUI();
+                    const stateText = data.enabled ? 'selected' : 'deselected';
+                    updateSystemStatus(`Strategy '${strategyId}' ${stateText}.`, data.enabled ? 'emerald' : 'amber', false, 3500);
+                } else {
+                    alert(data.message || "Could not toggle strategy");
+                }
+            } catch (err) {
+                console.error("Toggle strategy error:", err);
+                alert("Network error toggling strategy.");
+            }
+        }
+
+        // Initial load of strategies
+        loadStrategiesUI();
 
         // ---------------------------------------------------------------------
         // UNIFIED SYSTEM STATUS CONTROLLER

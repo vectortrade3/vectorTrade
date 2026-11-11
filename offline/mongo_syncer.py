@@ -192,6 +192,17 @@ class MongoSyncer:
             logger.info("No trades to sync to MongoDB.")
             return {"status": "SKIPPED", "synced_count": 0, "message": "No trades provided"}
 
+        # Filter out any trades belonging to deselected strategies
+        try:
+            from strategies.manager import StrategyManager
+            active_trades = [t for t in trades if StrategyManager.is_strategy_enabled(t.get("strategy", ""))]
+            if not active_trades:
+                logger.info("All provided trades belong to deselected strategies. MongoDB sync skipped.")
+                return {"status": "SKIPPED", "synced_count": 0, "message": "All trades belong to deselected strategies"}
+            trades = active_trades
+        except Exception as filter_err:
+            logger.debug(f"Strategy filter check in MongoSyncer: {filter_err}")
+
         db = self.get_db()
         if db is None:
             msg = "Could not connect to MongoDB Atlas. Sync skipped (offline mode)."

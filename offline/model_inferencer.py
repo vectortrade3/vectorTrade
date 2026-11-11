@@ -96,6 +96,18 @@ def run_strategy_inference(force: bool = False) -> Dict[str, Any]:
     start_time = time.time()
     today_str = str(date.today())
 
+    # Strategy selection check
+    if not StrategyManager.is_strategy_enabled("ma50_setup"):
+        msg = "50 MA Setup Strategy is currently deselected. Strategy model inference skipped."
+        logger.info(msg)
+        return {
+            "status": "SKIPPED",
+            "section": "STRATEGY",
+            "message": msg,
+            "skipped": True,
+            "metrics": {}
+        }
+
     # Daily skip check
     inf_info = json_manager.get_inference_info()
     strat_info = inf_info.get("strategy_inference", {})
@@ -609,6 +621,18 @@ def run_global_inference(force: bool = False) -> Dict[str, Any]:
     """
     start_time = time.time()
     today_str = str(date.today())
+
+    # Strategy selection check
+    if not StrategyManager.is_strategy_enabled("global_regime"):
+        msg = "Global Regime Strategy is currently deselected. Global model inference skipped."
+        logger.info(msg)
+        return {
+            "status": "SKIPPED",
+            "section": "GLOBAL",
+            "message": msg,
+            "skipped": True,
+            "metrics": {}
+        }
 
     # Daily skip check
     inf_info = json_manager.get_inference_info()
