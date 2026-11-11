@@ -2629,6 +2629,45 @@
                 </div>
             </div>
 
+            <!-- 4:00 PM AUTOMATED DAILY SCHEDULER & SELF-CLOSER PANEL -->
+            <div class="glass-panel rounded-2xl p-4 border border-white/10 bg-slate-900/60 shadow-lg space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="timer" class="w-4 h-4 text-cyan-400"></i>
+                        <span class="text-xs font-semibold text-white tracking-wide uppercase">4:00 PM Automated Daily Scheduler &amp; Self-Closer</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="schedulerWindowBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                            Evaluating Schedule...
+                        </span>
+                        <span id="schedulerInternetBadge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 border border-white/10 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Internet
+                        </span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div class="p-2.5 rounded-xl bg-black/20 border border-white/5">
+                        <span class="text-[11px] text-apple-textSecondary">Current IST Time:</span>
+                        <div id="schedulerCurrentIst" class="font-mono font-medium text-white text-sm mt-0.5">--:--:-- IST</div>
+                        <div id="schedulerCountdown" class="text-[10px] text-cyan-400 mt-0.5">Countdown to 4:00 PM: --</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-black/20 border border-white/5">
+                        <span class="text-[11px] text-apple-textSecondary">Today's Daily Analysis:</span>
+                        <div id="schedulerTodayStatus" class="font-medium text-slate-300 text-sm mt-0.5">Checking...</div>
+                        <div id="schedulerMongoStatus" class="text-[10px] text-apple-textSecondary mt-0.5">MongoDB Sync: Pending</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between">
+                        <div>
+                            <span class="text-[11px] text-apple-textSecondary">Lifecycle / Auto-Close:</span>
+                            <div id="schedulerSelfCloseStatus" class="font-medium text-amber-300 text-xs mt-0.5">Closes once today's sync is done</div>
+                        </div>
+                        <button type="button" onclick="triggerSchedulerTick(false)" class="mt-2 w-full py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-slate-300 hover:text-white border border-white/10 transition-colors flex items-center justify-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Check Schedule Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ACTIVE STRATEGY SELECTION BAR FOR DAILY ANALYSIS -->
             <div class="glass-panel rounded-2xl p-4 border border-white/10 bg-slate-900/50 shadow-lg space-y-3">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -3599,6 +3638,119 @@
 
         // Initial load of strategies
         loadStrategiesUI();
+
+        // ---------------------------------------------------------------------
+        // 4:00 PM AUTOMATED DAILY SCHEDULER & SELF-CLOSER CONTROLLER
+        // ---------------------------------------------------------------------
+        async function loadSchedulerStatus() {
+            try {
+                const res = await fetch('/api/scheduler/status');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data || data.status !== 'SUCCESS') return;
+                const s = data.scheduler;
+
+                // Window badge
+                const winBadge = document.getElementById('schedulerWindowBadge');
+                if (winBadge) {
+                    if (s.window === 'AUTORUN_WINDOW') {
+                        winBadge.className = 'text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                        winBadge.innerText = 'Auto-Run Window Active (4:00 PM - 11:59 PM)';
+                    } else {
+                        winBadge.className = 'text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/25';
+                        winBadge.innerText = 'Idle Mode (Waiting for 4:00 PM IST)';
+                    }
+                }
+
+                // Internet badge
+                const netBadge = document.getElementById('schedulerInternetBadge');
+                if (netBadge) {
+                    if (s.internet_connected) {
+                        netBadge.className = 'text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1';
+                        netBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Internet: Connected';
+                    } else {
+                        netBadge.className = 'text-xs font-mono px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1';
+                        netBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> Internet: Offline';
+                    }
+                }
+
+                // Current IST time & countdown
+                const istEl = document.getElementById('schedulerCurrentIst');
+                if (istEl) istEl.innerText = s.current_time_ist || '--:--:-- IST';
+
+                const countEl = document.getElementById('schedulerCountdown');
+                if (countEl) {
+                    countEl.innerText = s.is_active_window 
+                        ? 'Auto-run window active (Executes & uploads to MongoDB)' 
+                        : `Countdown to 4:00 PM: ${s.time_until_4pm}`;
+                }
+
+                // Today status
+                const todayEl = document.getElementById('schedulerTodayStatus');
+                if (todayEl) {
+                    if (s.today_analysis_done) {
+                        todayEl.className = 'font-medium text-emerald-400 text-sm mt-0.5 flex items-center gap-1';
+                        todayEl.innerHTML = '<i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Done for Today';
+                    } else {
+                        todayEl.className = 'font-medium text-amber-300 text-sm mt-0.5';
+                        todayEl.innerText = s.is_active_window ? 'Ready / Pending Execution' : 'Waiting for 4:00 PM';
+                    }
+                }
+
+                // MongoDB status
+                const mongoEl = document.getElementById('schedulerMongoStatus');
+                if (mongoEl) {
+                    if (s.mongo_synced) {
+                        mongoEl.className = 'text-[10px] text-emerald-400 mt-0.5';
+                        mongoEl.innerText = `MongoDB Atlas: Synced (${s.mongo_synced_at ? s.mongo_synced_at.slice(11, 19) : 'Today'})`;
+                    } else {
+                        mongoEl.className = 'text-[10px] text-apple-textSecondary mt-0.5';
+                        mongoEl.innerText = 'MongoDB Atlas: Pending 4:00 PM sync';
+                    }
+                }
+
+                // Self-closing status
+                const closeEl = document.getElementById('schedulerSelfCloseStatus');
+                if (closeEl) {
+                    if (s.self_close_scheduled) {
+                        closeEl.className = 'font-medium text-emerald-400 text-xs mt-0.5 animate-pulse';
+                        closeEl.innerText = 'Completed! Process exiting gracefully...';
+                    } else if (s.today_analysis_done && s.is_active_window) {
+                        closeEl.className = 'font-medium text-emerald-400 text-xs mt-0.5';
+                        closeEl.innerText = 'Completed for today. Auto-closing.';
+                    } else {
+                        closeEl.className = 'font-medium text-slate-400 text-xs mt-0.5';
+                        closeEl.innerText = 'Closes automatically once 4PM sync finishes';
+                    }
+                }
+
+                lucide.createIcons();
+            } catch (err) {
+                console.debug("loadSchedulerStatus error:", err);
+            }
+        }
+
+        async function triggerSchedulerTick(force = false) {
+            try {
+                updateSystemStatus("Checking schedule...", "blue", true);
+                const res = await fetch('/api/scheduler/tick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: force })
+                });
+                const data = await res.json();
+                if (data && data.status === 'SUCCESS') {
+                    await loadSchedulerStatus();
+                    updateSystemStatus(`Schedule checked: ${data.result.action}`, "emerald", false, 3000);
+                }
+            } catch (err) {
+                console.error("triggerSchedulerTick error:", err);
+            }
+        }
+
+        // Initialize scheduler polling
+        loadSchedulerStatus();
+        setInterval(loadSchedulerStatus, 10000);
 
         // ---------------------------------------------------------------------
         // UNIFIED SYSTEM STATUS CONTROLLER

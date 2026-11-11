@@ -1,6 +1,239 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-11T20:38:33.643286+05:30",
+      "readable_time": "2026-11-11 20:38:33 India Standard Time",
+      "event": "DAILY_ANALYSIS_COMPLETED",
+      "status": "Success",
+      "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-11) in 28.9s.",
+      "error": null,
+      "extra": {
+        "session_date": "2026-11-11",
+        "finalized_count": 25,
+        "strategies_breakdown": {
+          "50 MA Setup": 23,
+          "50 MA + Global Regime": 2
+        },
+        "outcomes_breakdown": {
+          "ACTIVE": 16,
+          "TARGET_HIT": 2,
+          "NO_TRIGGER": 3,
+          "SL_HIT": 1,
+          "ARMED": 3
+        },
+        "duration": 28.94
+      }
+    },
+    {
+      "timestamp": "2026-11-11T20:38:02.599030+05:30",
+      "readable_time": "2026-11-11 20:38:02 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Market data already downloaded and appended today (2026-11-11). Dataset is up-to-date.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:36:12.024684+05:30",
+      "readable_time": "2026-11-11 20:36:12 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Successfully appended 1242 new market bars across 207 stocks up to 2026-11-11.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:36:11.991105+05:30",
+      "readable_time": "2026-11-11 20:36:11 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Successfully appended 1242 new market bars across 207 stocks up to 2026-11-11.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:34:52.591419+05:30",
+      "readable_time": "2026-11-11 20:34:52 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-11-02 to 2026-11-11...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:33.593180+05:30",
+      "readable_time": "2026-11-11 20:32:33 India Standard Time",
+      "event": "STRATEGY_TOGGLED",
+      "status": "Success",
+      "message": "Strategy 'global_regime' is now deselected (no analysis, no trades will be taken).",
+      "error": null,
+      "extra": {
+        "strategy_id": "global_regime",
+        "enabled": false,
+        "active_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-11T20:32:26.586212+05:30",
+      "readable_time": "2026-11-11 20:32:26 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-11). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:26.531610+05:30",
+      "readable_time": "2026-11-11 20:32:26 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-11). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:26.475240+05:30",
+      "readable_time": "2026-11-11 20:32:26 India Standard Time",
+      "event": "GLOBAL_MODELS_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global models already trained up to 2026-11-01 today (2026-11-11). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:26.416658+05:30",
+      "readable_time": "2026-11-11 20:32:26 India Standard Time",
+      "event": "STRATEGY_MODEL_TRAINING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Strategy model already trained up to 2026-11-01 today (2026-11-11). Training skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:10.962056+05:30",
+      "readable_time": "2026-11-11 20:32:10 India Standard Time",
+      "event": "UNIT_TEST_TASK",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Unit test executed successfully.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:10.846398+05:30",
+      "readable_time": "2026-11-11 20:32:10 India Standard Time",
+      "event": "TEST_EVENT",
+      "status": "Everything fine",
+      "message": "Event logged cleanly.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:10.621577+05:30",
+      "readable_time": "2026-11-11 20:32:10 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 9.0s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:10.581871+05:30",
+      "readable_time": "2026-11-11 20:32:10 India Standard Time",
+      "event": "GLOBAL_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "Global Regime evaluated: Directional Accuracy 47.7%, Win Rate 49.8%, Overall P&L +222.9% (1604/1744 Long, 140 Cash) in 9.0s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:01.641743+05:30",
+      "readable_time": "2026-11-11 20:32:01 India Standard Time",
+      "event": "GLOBAL_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Global Regime Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:01.554463+05:30",
+      "readable_time": "2026-11-11 20:32:01 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[COMPLETED] 50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 1.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:01.505811+05:30",
+      "readable_time": "2026-11-11 20:32:01 India Standard Time",
+      "event": "STRATEGY_INFERENCE_COMPLETED",
+      "status": "Everything fine",
+      "message": "50 MA Strategy evaluated: Win Rate 35.1%, Overall P&L +111.5%, Net R +15.0R (279/1576 taken, 21.6% recall) in 1.1s.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:32:00.365629+05:30",
+      "readable_time": "2026-11-11 20:32:00 India Standard Time",
+      "event": "STRATEGY_INFERENCE",
+      "status": "Everything fine",
+      "message": "[RUNNING] Evaluating Strategy Models on historical out-of-sample test splits...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:31:19.853045+05:30",
+      "readable_time": "2026-11-11 20:31:19 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-11). Consolidation skipped.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T20:16:10.441394+05:30",
+      "readable_time": "2026-11-11 20:16:10 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:8684 (or http://localhost:8684)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-11T19:20:57.651902+05:30",
+      "readable_time": "2026-11-11 19:20:57 India Standard Time",
+      "event": "STRATEGY_TOGGLED",
+      "status": "Success",
+      "message": "Strategy 'global_regime' is now deselected (no analysis, no trades will be taken).",
+      "error": null,
+      "extra": {
+        "strategy_id": "global_regime",
+        "enabled": false,
+        "active_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-11T19:20:25.664178+05:30",
+      "readable_time": "2026-11-11 19:20:25 India Standard Time",
+      "event": "STRATEGY_TOGGLED",
+      "status": "Success",
+      "message": "Strategy 'global_regime' is now deselected (no analysis, no trades will be taken).",
+      "error": null,
+      "extra": {
+        "strategy_id": "global_regime",
+        "enabled": false,
+        "active_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-11T19:18:40.491010+05:30",
+      "readable_time": "2026-11-11 19:18:40 India Standard Time",
+      "event": "STRATEGY_TOGGLED",
+      "status": "Success",
+      "message": "Strategy 'global_regime' is now deselected (no analysis, no trades will be taken).",
+      "error": null,
+      "extra": {
+        "strategy_id": "global_regime",
+        "enabled": false,
+        "active_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-11T19:18:13.970159+05:30",
+      "readable_time": "2026-11-11 19:18:13 India Standard Time",
+      "event": "STRATEGY_TOGGLED",
+      "status": "Success",
+      "message": "Strategy 'global_regime' is now deselected (no analysis, no trades will be taken).",
+      "error": null,
+      "extra": {
+        "strategy_id": "global_regime",
+        "enabled": false,
+        "active_count": 1
+      }
+    },
+    {
       "timestamp": "2026-11-09T16:22:30.131348+05:30",
       "readable_time": "2026-11-09 16:22:30 India Standard Time",
       "event": "STRATEGY_MODEL_TRAINING",
@@ -2937,5 +3170,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-09T16:22:30.131348+05:30"
+  "last_event_time": "2026-11-11T20:38:33.643286+05:30"
 }

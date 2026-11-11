@@ -706,7 +706,10 @@ def scan_all_constituents(
 # 6. MAIN END-TO-END PIPELINE RUNNER
 # ==============================================================================
 
-def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
+def run_daily_analysis_pipeline(
+    force_download: bool = False,
+    execution_trigger: str = "MANUAL"
+) -> Dict[str, Any]:
     """
     Executes the Daily Market Analysis & AI Trade Finalizer pipeline:
     1. Evaluates market schedule.
@@ -716,7 +719,7 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
     5. Persists state atomically and returns summary.
     """
     start_time = time.time()
-    logger.info("Starting Daily Market Analysis & AI Trade Finalizer Pipeline...")
+    logger.info(f"Starting Daily Market Analysis & AI Trade Finalizer Pipeline (Trigger: {execution_trigger})...")
 
     # Stage 0: Market Schedule Evaluation
     sched = get_market_schedule_info()
@@ -783,7 +786,31 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
             f"across {market_status_desc} in {total_duration:.1f}s."
         )
 
-    # Persist finalized analysis atomically
+    # Gather active strategies executed
+    try:
+        enabled_strategies = [s.get("strategy_id", s.get("id")) for s in StrategyManager.get_enabled_strategies()]
+    except Exception:
+        enabled_strategies = ["ma50_setup", "global_regime"]
+
+    # Synchronize Finalized Setups to MongoDB Atlas for Online App
+    mongo_sync_result = {"status": "SKIPPED", "synced_count": 0}
+    mongo_synced = False
+    mongo_synced_at = None
+    try:
+        from offline.mongo_syncer import MongoSyncer
+        syncer = MongoSyncer()
+        mongo_sync_result = syncer.sync_trades(finalized_trades, session_date=market_session_date)
+        if mongo_sync_result.get("status") == "SUCCESS":
+            mongo_synced = True
+            mongo_synced_at = datetime.now().astimezone().isoformat()
+            logger.info(f"MongoDB Sync: {mongo_sync_result.get('message')}")
+        else:
+            logger.warning(f"MongoDB Sync status: {mongo_sync_result.get('status')} - {mongo_sync_result.get('message')}")
+    except Exception as sync_e:
+        logger.warning(f"Optional MongoDB sync skipped due to error: {sync_e}")
+        mongo_sync_result = {"status": "ERROR", "message": str(sync_e), "synced_count": 0}
+
+    # Persist finalized analysis atomically with MongoDB sync outcomes
     json_manager.update_daily_analysis_info(
         status="COMPLETED",
         market_session_date=market_session_date,
@@ -791,23 +818,14 @@ def run_daily_analysis_pipeline(force_download: bool = False) -> Dict[str, Any]:
         total_stocks_analyzed=207,
         finalized_trades=finalized_trades,
         strategies_breakdown=strategy_counts,
+        strategies_run=enabled_strategies,
+        mongo_synced=mongo_synced,
+        mongo_synced_at=mongo_synced_at,
+        mongo_sync_details=mongo_sync_result,
+        execution_trigger=execution_trigger,
         message=completion_msg,
         duration_seconds=round(total_duration, 2)
     )
-
-    # Synchronize Finalized Setups to MongoDB Atlas for Online App
-    mongo_sync_result = {"status": "SKIPPED", "synced_count": 0}
-    try:
-        from offline.mongo_syncer import MongoSyncer
-        syncer = MongoSyncer()
-        mongo_sync_result = syncer.sync_trades(finalized_trades, session_date=market_session_date)
-        if mongo_sync_result.get("status") == "SUCCESS":
-            logger.info(f"MongoDB Sync: {mongo_sync_result.get('message')}")
-        else:
-            logger.warning(f"MongoDB Sync status: {mongo_sync_result.get('status')} - {mongo_sync_result.get('message')}")
-    except Exception as sync_e:
-        logger.warning(f"Optional MongoDB sync skipped due to error: {sync_e}")
-        mongo_sync_result = {"status": "ERROR", "message": str(sync_e), "synced_count": 0}
 
     json_manager.update_daily_analysis_progress(
         status="COMPLETED",

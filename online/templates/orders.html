@@ -689,10 +689,27 @@
                             <td class="py-3.5 px-5 text-right font-mono">
                                 <div class="flex items-center justify-end space-x-2">
                                     {% if order.is_in_portfolio %}
-                                    <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
-                                        <i data-lucide="shield-check" class="w-3 h-3"></i>
-                                        <span>In Portfolio</span>
-                                    </span>
+                                        {% if order.portfolio_status == 'WILL_BE_PUT_AMO' %}
+                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center space-x-1 cursor-help">
+                                            <i data-lucide="clock" class="w-3 h-3 text-purple-400"></i>
+                                            <span>AMO 09:15</span>
+                                        </span>
+                                        {% elif order.portfolio_status == 'ORDER_PENDING' %}
+                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                            <i data-lucide="hourglass" class="w-3 h-3 text-amber-400"></i>
+                                            <span>Pending</span>
+                                        </span>
+                                        {% elif order.portfolio_status == 'RUNNING_HOLDING' %}
+                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1 cursor-help">
+                                            <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
+                                            <span>Holding</span>
+                                        </span>
+                                        {% else %}
+                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                            <i data-lucide="shield-check" class="w-3 h-3"></i>
+                                            <span>In Portfolio</span>
+                                        </span>
+                                        {% endif %}
                                     {% else %}
                                     <button onclick="openPlaceOrderModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                         <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
@@ -1502,12 +1519,29 @@
                     </td>
                     <td class="py-3.5 px-5 text-right font-mono">
                         <div class="flex items-center justify-end space-x-2">
-                            ${o.is_in_portfolio ? `
-                                <span title="${o.portfolio_reason || 'Already in portfolio'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
-                                    <i data-lucide="shield-check" class="w-3 h-3"></i>
-                                    <span>In Portfolio</span>
-                                </span>
-                            ` : `
+                            ${o.is_in_portfolio ? (
+                                o.portfolio_status === 'WILL_BE_PUT_AMO' ? `
+                                    <span title="${o.portfolio_reason || 'AMO Staged Order'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center space-x-1 cursor-help">
+                                        <i data-lucide="clock" class="w-3 h-3 text-purple-400"></i>
+                                        <span>AMO 09:15</span>
+                                    </span>
+                                ` : o.portfolio_status === 'ORDER_PENDING' ? `
+                                    <span title="${o.portfolio_reason || 'Pending on MegaBull'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                        <i data-lucide="hourglass" class="w-3 h-3 text-amber-400"></i>
+                                        <span>Pending</span>
+                                    </span>
+                                ` : o.portfolio_status === 'RUNNING_HOLDING' ? `
+                                    <span title="${o.portfolio_reason || 'Active Holding'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1 cursor-help">
+                                        <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
+                                        <span>Holding</span>
+                                    </span>
+                                ` : `
+                                    <span title="${o.portfolio_reason || 'Already in portfolio'}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
+                                        <i data-lucide="shield-check" class="w-3 h-3"></i>
+                                        <span>In Portfolio</span>
+                                    </span>
+                                `
+                            ) : `
                                 <button onclick="openPlaceOrderModal('${o.id}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                     <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
                                     <span>Place Order</span>

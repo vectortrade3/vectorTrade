@@ -1182,6 +1182,39 @@ def get_mongodb_status_endpoint():
 
 
 # ==============================================================================
+# AUTOMATED 4:00 PM DAILY SCHEDULER & SELF-CLOSER ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/scheduler/status", methods=["GET"])
+def get_scheduler_status_api():
+    """Returns real-time status of the automated 4:00 PM timer, window, internet check, and self-close state."""
+    from offline.scheduler import get_daily_scheduler
+    scheduler = get_daily_scheduler()
+    return jsonify({
+        "status": "SUCCESS",
+        "scheduler": scheduler.get_status()
+    }), 200
+
+
+@app.route("/api/scheduler/tick", methods=["POST"])
+def trigger_scheduler_tick_api():
+    """Manually triggers an immediate scheduler evaluation tick."""
+    from offline.scheduler import get_daily_scheduler
+    scheduler = get_daily_scheduler()
+    force = False
+    try:
+        body = request.get_json(silent=True) or {}
+        force = bool(body.get("force", False))
+    except Exception:
+        pass
+    res = scheduler.run_tick_once(force_execution=force)
+    return jsonify({
+        "status": "SUCCESS",
+        "result": res
+    }), 200
+
+
+# ==============================================================================
 # OFFLINE ORDERS BOARD & 17-COLUMN TRADE BOOK (SYNCED WITH MONGODB ATLAS)
 # ==============================================================================
 
@@ -1509,6 +1542,15 @@ def run_app(host: str = "0.0.0.0", port: int = 8684):
             pass
 
     try:
+        # Start 4:00 PM Daily Scheduler background thread
+        try:
+            from offline.scheduler import get_daily_scheduler
+            daily_sched = get_daily_scheduler(check_interval_seconds=60)
+            daily_sched.start()
+            logger.info("4:00 PM Daily Automated Scheduler background thread started.")
+        except Exception as sched_e:
+            logger.warning(f"Could not start background daily scheduler: {sched_e}")
+
         json_manager.log_app_event(
             event="APP_STARTED",
             status="Everything fine",

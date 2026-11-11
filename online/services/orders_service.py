@@ -203,12 +203,27 @@ class OrdersService:
                 held_symbols = {str(h.get("symbol", "")).strip().upper(): h for h in holdings if int(h.get("qty", 0)) != 0}
                 pending_symbols = {str(o.get("instrumentName", o.get("symbol", ""))).strip().upper(): o for o in open_orders}
 
+                # Check staged off-market (AMO) orders from MongoDB Atlas
+                staged_symbols = {}
+                if db_manager.staged_orders is not None:
+                    try:
+                        for so in db_manager.staged_orders.find({"status": {"$in": ["STAGED_OFFMARKET", "PENDING"]}}):
+                            s_sym = str(so.get("symbol", "")).strip().upper()
+                            if s_sym:
+                                staged_symbols[s_sym] = so
+                    except Exception as stg_err:
+                        logger.debug(f"Could not read staged_orders collection: {stg_err}")
+
                 for o in orders:
                     sym = o.get("symbol", "").upper()
                     if sym in held_symbols:
                         o["is_in_portfolio"] = True
                         o["portfolio_status"] = "RUNNING_HOLDING"
                         o["portfolio_reason"] = f"Symbol '{sym}' is already active in your portfolio holdings (Qty: {held_symbols[sym].get('qty')})."
+                    elif sym in staged_symbols:
+                        o["is_in_portfolio"] = True
+                        o["portfolio_status"] = "WILL_BE_PUT_AMO"
+                        o["portfolio_reason"] = f"Symbol '{sym}' has an AMO staged order (will be placed at market open 09:15)."
                     elif sym in pending_symbols:
                         o["is_in_portfolio"] = True
                         o["portfolio_status"] = "ORDER_PENDING"

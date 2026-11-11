@@ -5,12 +5,12 @@
   "current_index": 207,
   "total_stocks": 207,
   "percentage": 100.0,
-  "from_date": "2026-11-02",
-  "to_date": "2026-11-02",
-  "message": "Market data already downloaded and appended today (2026-11-02). Dataset is up-to-date.",
+  "from_date": "2026-11-11",
+  "to_date": "2026-11-11",
+  "message": "Market data already downloaded and appended today (2026-11-11). Dataset is up-to-date.",
   "elapsed_seconds": 0.0,
   "error": null,
-  "last_downloaded_date": "2026-11-02",
-  "last_append_date": "2026-11-02",
-  "updated_at": "2026-11-02T21:01:42.844495+05:30"
+  "last_downloaded_date": "2026-11-11",
+  "last_append_date": "2026-11-11",
+  "updated_at": "2026-11-11T20:38:02.580404+05:30"
 }

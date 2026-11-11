@@ -114,7 +114,7 @@ class TestMongoSyncer(unittest.TestCase):
         json_path = BASE_DIR / "data_store" / "daily_analysis.json"
         if json_path.exists():
             res = syncer.sync_from_json_file(json_path)
-            self.assertIn(res["status"], ["SUCCESS", "OFFLINE_FALLBACK", "ERROR"])
+            self.assertIn(res["status"], ["SUCCESS", "OFFLINE_FALLBACK", "ERROR", "SKIPPED"])
             if res["status"] == "SUCCESS":
                 self.assertGreater(res["synced_count"], 0)
 

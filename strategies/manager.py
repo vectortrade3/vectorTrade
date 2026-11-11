@@ -291,6 +291,11 @@ class StrategyManager:
         return results
 
     @classmethod
+    def get_enabled_strategies(cls) -> List[Dict[str, Any]]:
+        """Returns list of all currently enabled strategies."""
+        return cls.list_strategies(include_disabled=False)
+
+    @classmethod
     def filter_dataset(cls, strategy_id: str, df: pd.DataFrame) -> pd.DataFrame:
         """
         Filters a dataset specifically for the given strategy.

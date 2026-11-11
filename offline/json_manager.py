@@ -1276,6 +1276,11 @@ def initialize_daily_analysis_state() -> Dict[str, Any]:
             "Global Regime": 0,
             "50 MA + Global Regime": 0
         },
+        "strategies_run": ["ma50_setup", "global_regime"],
+        "mongo_synced": False,
+        "mongo_synced_at": None,
+        "mongo_sync_details": None,
+        "execution_trigger": "MANUAL",
         "finalized_trades": [],
         "message": "Ready to run daily market analysis and trade finalizer."
     }
@@ -1289,6 +1294,12 @@ def initialize_daily_analysis_state() -> Dict[str, Any]:
         needs_save = True
     if not current.get("last_run_timestamp"):
         current["last_run_timestamp"] = datetime.now().astimezone().isoformat()
+        needs_save = True
+    if "mongo_synced" not in current:
+        current["mongo_synced"] = False
+        needs_save = True
+    if "strategies_run" not in current:
+        current["strategies_run"] = ["ma50_setup", "global_regime"]
         needs_save = True
     if needs_save:
         write_json_file(DAILY_ANALYSIS_FILE, current)
@@ -1307,6 +1318,11 @@ def update_daily_analysis_info(
     total_stocks_analyzed: int = 207,
     finalized_trades: Optional[List[Dict[str, Any]]] = None,
     strategies_breakdown: Optional[Dict[str, int]] = None,
+    strategies_run: Optional[List[str]] = None,
+    mongo_synced: bool = False,
+    mongo_synced_at: Optional[str] = None,
+    mongo_sync_details: Optional[Dict[str, Any]] = None,
+    execution_trigger: str = "MANUAL",
     message: str = "",
     duration_seconds: float = 0.0
 ) -> Dict[str, Any]:
@@ -1321,10 +1337,16 @@ def update_daily_analysis_info(
         "market_session_date": market_session_date,
         "market_status": market_status,
         "last_run_timestamp": now_str,
+        "completed_at": now_str,
         "total_stocks_analyzed": total_stocks_analyzed,
         "total_bullish_candidates": len(trades),
         "finalized_trades_count": len(trades),
         "strategies_breakdown": breakdown,
+        "strategies_run": strategies_run or [],
+        "mongo_synced": bool(mongo_synced),
+        "mongo_synced_at": mongo_synced_at or (now_str if mongo_synced else None),
+        "mongo_sync_details": mongo_sync_details or {},
+        "execution_trigger": execution_trigger,
         "finalized_trades": trades,
         "duration_seconds": round(duration_seconds, 2),
         "message": message,
@@ -1334,6 +1356,45 @@ def update_daily_analysis_info(
     write_json_file(DAILY_ANALYSIS_FILE, data)
     notify_progress_listeners("DAILY_ANALYSIS_INFO", data)
     return data
+
+
+def is_daily_analysis_and_sync_done_for_today(target_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Checks if on today's calendar date, the daily analysis was completed AND
+    the results were successfully synchronized to MongoDB Atlas.
+    """
+    info = get_daily_analysis_info()
+    today_str = target_date or datetime.now().strftime("%Y-%m-%d")
+
+    status = str(info.get("status", "")).upper()
+    last_run = str(info.get("last_run_timestamp", ""))
+    completed_at = str(info.get("completed_at", ""))
+    mongo_synced = bool(info.get("mongo_synced", False))
+    mongo_synced_at = str(info.get("mongo_synced_at", "") or "")
+    market_session_date = str(info.get("market_session_date", ""))
+
+    run_date_matches = (
+        last_run.startswith(today_str) or 
+        completed_at.startswith(today_str) or 
+        market_session_date == today_str
+    )
+    sync_date_matches = mongo_synced and (
+        mongo_synced_at.startswith(today_str) or run_date_matches
+    )
+
+    is_done = (status == "COMPLETED" and run_date_matches and mongo_synced)
+
+    return {
+        "is_done": is_done,
+        "today_date": today_str,
+        "status": status,
+        "run_date_matches": run_date_matches,
+        "mongo_synced": mongo_synced,
+        "mongo_synced_at": mongo_synced_at,
+        "last_run_timestamp": last_run,
+        "strategies_run": info.get("strategies_run", []),
+        "finalized_trades_count": info.get("finalized_trades_count", 0)
+    }
 
 
 def get_daily_analysis_progress() -> Dict[str, Any]:
