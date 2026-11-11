@@ -85,7 +85,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
-                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Offline Engine</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Online Cloud</span>
                         </div>
                     </div>
                 </div>
@@ -93,17 +93,17 @@
                 <!-- Main Nav Tabs -->
                 <nav class="hidden md:flex items-center space-x-1">
                     <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
-                        Dashboard
-                    </a>
-                    <a href="/analysis" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
-                        <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-400"></i>
-                        <span>Analysis</span>
+                        Home
                     </a>
                     <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
-                        <span>Orders &amp; Trade Book</span>
+                        <span>Orders</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            {{ stats.armed_orders_count or 0 }}
+                            {{ stats.armed_orders_count }}
                         </span>
+                    </a>
+                    <a href="/megabull" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>MegaBull</span>
                     </a>
                 </nav>
             </div>
@@ -142,12 +142,12 @@
                 <!-- User Profile & Sign Out -->
                 <div class="flex items-center space-x-2 pl-2 border-l border-white/[0.08]">
                     <div class="px-2.5 py-1 rounded-lg hairline-border bg-white/[0.04] text-xs font-mono text-neutral-200 flex items-center space-x-1.5">
-                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
-                        <span>Offline Local</span>
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>{{ user or 'root' }}</span>
                     </div>
-                    <a href="/" title="Back to Dashboard" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-blue-500/15 text-neutral-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center space-x-1">
-                        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-                        <span class="hidden sm:inline">Dashboard</span>
+                    <a href="/logout" title="Sign Out" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-400 hover:border-rose-500/30 flex items-center space-x-1">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Sign Out</span>
                     </a>
                 </div>
             </div>
@@ -180,6 +180,44 @@
 
     <!-- Main Workspace -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Trading Capital Allocation & 1% Risk Controller Bar (MongoDB Synced) -->
+        <section class="rounded-3xl hairline-border bg-gradient-to-r from-blue-950/30 via-neutral-900/60 to-indigo-950/30 p-5 backdrop-blur-2xl border border-white/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 shadow-xl">
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="h-12 w-12 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold font-mono text-base shadow-inner">
+                    <i data-lucide="calculator" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h2 class="text-base font-bold text-white tracking-tight">Trading Capital &amp; 1% Risk Allocation</h2>
+                        <span id="badgeCapitalLimitStatus" class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full {% if stats.is_custom_limit_active %}bg-amber-500/15 text-amber-300 border border-amber-500/30{% else %}bg-emerald-500/15 text-emerald-400 border border-emerald-500/30{% endif %}">
+                            {% if stats.is_custom_limit_active %}Custom Threshold Active{% else %}Full Paper Capital{% endif %}
+                        </span>
+                        <span class="px-2 py-0.5 text-[10px] font-mono rounded-full bg-white/[0.06] text-neutral-300 hairline-border">
+                            MongoDB Synced
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-apple-subtext font-mono mt-1">
+                        <span>Paper Account: <strong class="text-neutral-200">₹<span id="labelBrokerCapital">{{ "{:,.2f}".format(stats.broker_total_capital or 526545.11) }}</span></strong></span>
+                        <span>•</span>
+                        <span>Active Trading Capital: <strong class="text-white text-sm">₹<span id="labelEffectiveCapital">{{ "{:,.2f}".format(stats.effective_capital or 500000.00) }}</span></strong></span>
+                        <span>•</span>
+                        <span>Max 1% Risk / Trade: <strong class="text-rose-400 text-sm">₹<span id="labelRiskPerTrade">{{ "{:,.2f}".format(stats.risk_per_trade_inr or 5000.00) }}</span></strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 flex-shrink-0">
+                <button type="button" onclick="openCapitalSettingsModal()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-white hairline-border flex items-center space-x-1.5 shadow">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-400"></i>
+                    <span>Set Capital Limit</span>
+                </button>
+                <button type="button" onclick="openExcelCalculatorModal()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/30">
+                    <i data-lucide="table-2" class="w-3.5 h-3.5"></i>
+                    <span>Quantity Calculator</span>
+                </button>
+            </div>
+        </section>
 
         <!-- Executive KPI Cards -->
         <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1098,6 +1136,283 @@
                 </div>
             </div>
         </div>
+
+        <!-- ============================================================== -->
+        <!-- CAPITAL ALLOCATION & THRESHOLD MODAL (MongoDB Synced)          -->
+        <!-- ============================================================== -->
+        <div id="capitalSettingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+            <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-lg w-full p-6 shadow-2xl text-left space-y-5 border border-white/10 apple-spring">
+                <!-- Header -->
+                <div class="flex items-center justify-between hairline-bottom pb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="h-11 w-11 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 shadow-lg">
+                            <i data-lucide="sliders" class="w-6 h-6 text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">Trading Capital Allocation</h3>
+                            <p class="text-xs text-apple-subtext font-mono">Custom Threshold &amp; MongoDB Atlas Storage</p>
+                        </div>
+                    </div>
+                    <button onclick="closeCapitalSettingsModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Broker Capital Telemetry -->
+                <div class="rounded-2xl hairline-border bg-white/[0.02] p-4 space-y-2 text-xs font-mono">
+                    <div class="flex items-center justify-between text-neutral-400">
+                        <span>MegaBull Paper Account Capital:</span>
+                        <span class="text-white font-bold text-sm">₹<span id="modalSettingBrokerCapital">{{ "{:,.2f}".format(stats.broker_total_capital or 526545.11) }}</span></span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-400">
+                        <span>Free Available Balance:</span>
+                        <span class="text-emerald-400 font-semibold">₹<span id="modalSettingBrokerAvailable">{{ "{:,.2f}".format(stats.broker_available_balance or 0.0) }}</span></span>
+                    </div>
+                </div>
+
+                <!-- Custom Limit Input Form -->
+                <div class="space-y-3 font-mono">
+                    <div>
+                        <label class="text-[11px] text-apple-subtext font-sans block mb-1">
+                            Set Capital Limit for Paper Trading (₹)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">₹</span>
+                            <input type="number" id="inputCustomCapital" step="1000" min="0" 
+                                   value="{{ stats.custom_capital_limit if stats.custom_capital_limit else '' }}"
+                                   placeholder="Leave blank for full paper balance (e.g. 100000)" 
+                                   class="w-full bg-black/60 hairline-border rounded-xl pl-8 pr-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-blue-500/60 apple-spring">
+                        </div>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="flex items-center space-x-2 pt-1">
+                        <span class="text-[10px] text-apple-subtext font-sans">Quick Presets:</span>
+                        <button type="button" onclick="setCapitalPreset(30000)" class="px-2.5 py-1 rounded-lg text-[10px] hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200 apple-spring">₹30K</button>
+                        <button type="button" onclick="setCapitalPreset(50000)" class="px-2.5 py-1 rounded-lg text-[10px] hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200 apple-spring">₹50K</button>
+                        <button type="button" onclick="setCapitalPreset(100000)" class="px-2.5 py-1 rounded-lg text-[10px] hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200 apple-spring">₹1 Lakh</button>
+                        <button type="button" onclick="setCapitalPreset(200000)" class="px-2.5 py-1 rounded-lg text-[10px] hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200 apple-spring">₹2 Lakh</button>
+                    </div>
+
+                    <!-- Rule Callout Box -->
+                    <div class="rounded-2xl hairline-border bg-blue-500/[0.05] border-blue-500/20 p-3.5 text-[11px] text-blue-200/90 font-sans space-y-1.5 leading-relaxed">
+                        <div class="flex items-center space-x-1.5 font-bold text-blue-300">
+                            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                            <span>Threshold &amp; 1% Risk Safety Rules:</span>
+                        </div>
+                        <ul class="list-disc pl-4 space-y-1 text-[11px] text-neutral-300 font-sans">
+                            <li><strong>Under-limit threshold:</strong> If you set e.g. ₹1 Lakh, the engine strictly trades under ₹1 Lakh regardless of higher paper balance.</li>
+                            <li><strong>Over-limit safety:</strong> If you set more than total broker balance, the system automatically ignores the excess and caps at actual money.</li>
+                            <li><strong>1% Risk rule:</strong> Every trade risks mathematically &le; 1.0% of this active capital.</li>
+                            <li><strong>MongoDB storage:</strong> Saved instantly to MongoDB Atlas and shared across online &amp; offline apps.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-2 flex items-center justify-between">
+                    <button type="button" onclick="resetCapitalSettingsToDefault()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                        Reset to Full Balance
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="closeCapitalSettingsModal()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 apple-spring">
+                            Cancel
+                        </button>
+                        <button type="button" id="btnSaveCapitalSettings" onclick="saveCapitalSettings()" class="apple-spring px-5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/30">
+                            <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                            <span>Save to MongoDB</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- EXCEL QUANTITY CALCULATOR MODAL (1% Risk Model)                -->
+        <!-- Exact Replica of User Excel Geometry Sheet                     -->
+        <!-- ============================================================== -->
+        <div id="excelCalculatorModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+            <div class="rounded-3xl hairline-border bg-neutral-900/95 max-w-2xl w-full p-6 sm:p-7 shadow-2xl text-left space-y-4 border border-white/10 apple-spring">
+                
+                <!-- Blue Header Banner (Excel Style) -->
+                <div class="rounded-2xl bg-blue-700/80 border border-blue-500/40 p-3.5 text-center shadow-lg relative">
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-wide font-sans">Quantity Calculator</h2>
+                    <p class="text-[11px] text-blue-100 font-mono mt-0.5">Strict 1% Risk per Trade Payoff Model</p>
+                    <button onclick="closeExcelCalculatorModal()" class="absolute right-3 top-3 h-7 w-7 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white apple-spring">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Action Selector (BUY vs SHORT SELL) -->
+                <div class="flex items-center justify-between text-xs font-mono px-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-apple-subtext font-sans">Trade Direction:</span>
+                        <div class="flex rounded-xl hairline-border bg-black/40 p-1 space-x-1">
+                            <button type="button" id="calcBtnBuy" onclick="setCalcAction('BUY')" class="px-3 py-1 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 apple-spring">BUY (LONG)</button>
+                            <button type="button" id="calcBtnSell" onclick="setCalcAction('SELL')" class="px-3 py-1 rounded-lg font-bold text-xs text-neutral-400 hover:text-rose-400 apple-spring">SELL (SHORT)</button>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-apple-subtext font-sans">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
+                        <span>Auto-calculates on keystroke</span>
+                    </div>
+                </div>
+
+                <!-- Excel Data Grid Table -->
+                <div class="overflow-hidden rounded-2xl hairline-border border-white/10 bg-black/40 font-mono text-xs">
+                    <table class="w-full text-left border-collapse">
+                        <tbody>
+                            <!-- Row 1: Portfolio -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300 w-1/3">Portfolio</td>
+                                <td class="py-2.5 px-4 w-1/3">
+                                    <input type="number" id="calcInputPortfolio" value="{{ stats.effective_capital if stats.effective_capital else 30000 }}" oninput="runExcelCalculation()" 
+                                           class="w-full bg-blue-950/40 text-blue-300 font-bold px-3 py-1.5 rounded-lg hairline-border border-blue-500/30 focus:outline-none focus:border-blue-400 text-sm">
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Total Capital (Threshold Base)</td>
+                            </tr>
+
+                            <!-- Row 2: 1% Risk per Trade -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300">1% Risk per Trade</td>
+                                <td class="py-2.5 px-4 text-rose-400 font-extrabold text-sm">
+                                    ₹<span id="calcDisplayRiskPerTrade">300.00</span>
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Risk per trade = Portfolio * 1%</td>
+                            </tr>
+
+                            <!-- Formula Banner Row -->
+                            <tr class="bg-white/[0.03] border-b border-white/[0.08] text-center">
+                                <td colspan="3" class="py-1 px-4 text-[11px] font-bold text-neutral-400 uppercase tracking-widest font-sans">Formula Breakdown</td>
+                            </tr>
+
+                            <!-- Row 3: Entry Price -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300">Entry Price</td>
+                                <td class="py-2.5 px-4">
+                                    <input type="number" id="calcInputEntry" step="0.05" value="1216" oninput="runExcelCalculation()" 
+                                           class="w-full bg-blue-950/40 text-blue-300 font-bold px-3 py-1.5 rounded-lg hairline-border border-blue-500/30 focus:outline-none focus:border-blue-400 text-sm">
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Entry from Chart</td>
+                            </tr>
+
+                            <!-- Row 4: Stop Loss Price -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300">Stop Loss Price</td>
+                                <td class="py-2.5 px-4">
+                                    <input type="number" id="calcInputSL" step="0.05" value="1195" oninput="runExcelCalculation()" 
+                                           class="w-full bg-blue-950/40 text-blue-300 font-bold px-3 py-1.5 rounded-lg hairline-border border-blue-500/30 focus:outline-none focus:border-blue-400 text-sm">
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Stop Loss from Chart</td>
+                            </tr>
+
+                            <!-- Row 5: SL Rupee per Share -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300">SL Rupee per Share</td>
+                                <td class="py-2.5 px-4 text-rose-400 font-bold text-sm">
+                                    ₹<span id="calcDisplaySLPerShare">21.00</span>
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Difference = |Entry - Stop Loss|</td>
+                            </tr>
+
+                            <!-- Row 6: Total Shares to Trade (QUANTITY - Yellow Highlight Box) -->
+                            <tr class="border-b border-white/[0.08] bg-yellow-400/[0.08]">
+                                <td class="py-3 px-4 font-extrabold text-yellow-300 text-sm">Total Shares to trade</td>
+                                <td class="py-3 px-4">
+                                    <span id="calcDisplayQuantity" class="inline-block bg-yellow-400 text-neutral-950 font-black px-4 py-1.5 rounded-lg text-base shadow-md">
+                                        14
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-yellow-300/90 text-[11px] font-sans font-semibold">
+                                    Quantity = floor(Risk per trade / SL per share)
+                                </td>
+                            </tr>
+
+                            <!-- Row 7: Investment Amount -->
+                            <tr class="border-b border-white/[0.08] hover:bg-white/[0.02]">
+                                <td class="py-2.5 px-4 font-semibold text-neutral-300">Investment amount</td>
+                                <td class="py-2.5 px-4 font-bold text-white text-sm">
+                                    ₹<span id="calcDisplayInvestment">17,024.00</span>
+                                </td>
+                                <td class="py-2.5 px-4 text-apple-subtext text-[11px] font-sans">Amount = Entry price * Quantity</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Targets Table (Risk to Reward 1:1, 1:2, 1:3) -->
+                <div class="rounded-2xl hairline-border border-white/10 bg-black/40 overflow-hidden font-mono text-xs">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-white/[0.08] bg-white/[0.02] text-apple-subtext text-[11px]">
+                                <th class="py-2 px-4 font-semibold">Target %</th>
+                                <th class="py-2 px-4 font-semibold text-emerald-400">Price (₹)</th>
+                                <th class="py-2 px-4 font-semibold font-sans">Risk to Reward Formula</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
+                                <td class="py-2 px-4 font-bold text-neutral-300">01:01</td>
+                                <td class="py-2 px-4 font-bold text-emerald-400 text-sm">₹<span id="calcDisplayTgt1">1237.00</span></td>
+                                <td class="py-2 px-4 text-apple-subtext text-[11px] font-sans">Target 1 = Entry &plusmn; SL per share</td>
+                            </tr>
+                            <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
+                                <td class="py-2 px-4 font-bold text-neutral-300">01:02</td>
+                                <td class="py-2 px-4 font-bold text-emerald-400 text-sm">₹<span id="calcDisplayTgt2">1258.00</span></td>
+                                <td class="py-2 px-4 text-apple-subtext text-[11px] font-sans">Target 2 = Target 1 &plusmn; SL per share</td>
+                            </tr>
+                            <tr class="hover:bg-white/[0.02]">
+                                <td class="py-2 px-4 font-bold text-neutral-300">01:03</td>
+                                <td class="py-2 px-4 font-bold text-emerald-400 text-sm">₹<span id="calcDisplayTgt3">1279.00</span></td>
+                                <td class="py-2 px-4 text-apple-subtext text-[11px] font-sans">Target 3 = Target 2 &plusmn; SL per share</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Bottom Summary Card (Investment | AMT 1:2 | AMT 1:3 | RISK) -->
+                <div class="rounded-2xl hairline-border border-yellow-400/30 bg-gradient-to-r from-yellow-950/20 via-black to-emerald-950/20 p-4 font-mono text-xs space-y-2">
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="hairline-border rounded-xl p-2.5 bg-yellow-400/[0.06] border-yellow-400/20">
+                            <span class="text-[10px] text-yellow-300 uppercase font-bold block font-sans">Investment</span>
+                            <div class="text-sm font-bold text-white mt-0.5">₹<span id="calcSumInvestment">17,024</span></div>
+                        </div>
+                        <div class="hairline-border rounded-xl p-2.5 bg-blue-500/[0.06] border-blue-500/20">
+                            <span class="text-[10px] text-blue-300 uppercase font-bold block font-sans">AMT 1:2</span>
+                            <div class="text-sm font-bold text-white mt-0.5">₹<span id="calcSumAmt12">17,612</span></div>
+                        </div>
+                        <div class="hairline-border rounded-xl p-2.5 bg-emerald-500/[0.06] border-emerald-500/20">
+                            <span class="text-[10px] text-emerald-300 uppercase font-bold block font-sans">AMT 1:3</span>
+                            <div class="text-sm font-bold text-white mt-0.5">₹<span id="calcSumAmt13">17,906</span></div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1 px-1 text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-rose-400 font-bold tracking-wider uppercase">ACTUAL RISK:</span>
+                            <span class="text-white font-extrabold text-sm">₹<span id="calcDisplayActualRisk">294.00</span></span>
+                            <span id="badgeRiskWithinBudget" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                &le; 1.0% Budget Checked
+                            </span>
+                        </div>
+                        <div class="text-[10px] text-apple-subtext font-sans">
+                            Don't change red color font • Change only blue inputs
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-2 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeExcelCalculatorModal()" class="px-4 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-300 apple-spring">
+                        Close
+                    </button>
+                    <button type="button" onclick="applyExcelModelToManualOrder()" class="apple-spring px-5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30">
+                        <i data-lucide="arrow-right-circle" class="w-3.5 h-3.5"></i>
+                        <span>Apply to Order Dispatch</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Toast Notifications Container -->
@@ -1594,6 +1909,7 @@
                     document.getElementById('kpiAvgLoss').textContent = `-${(s.avg_loss_pct || 0).toFixed(2)}%`;
                     document.getElementById('kpiTotalCapital').textContent = `₹${Math.round(s.total_capital_required || 0).toLocaleString('en-IN')}`;
                     document.getElementById('kpiTotalRisk').textContent = `₹${Math.round(s.total_risk_budget || 0).toLocaleString('en-IN')}`;
+                    updateCapitalUI(s);
                     if (s.last_sync_timestamp) {
                         document.getElementById('lastSyncTime').textContent = s.last_sync_timestamp.substring(0, 19).replace('T', ' ');
                     }
@@ -2092,6 +2408,193 @@
             }
         }
 
+        // ==========================================
+        // CAPITAL SETTINGS (MONGODB PERSISTENCE)
+        // ==========================================
+        function openCapitalSettingsModal() {
+            document.getElementById('capitalSettingsModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeCapitalSettingsModal() {
+            document.getElementById('capitalSettingsModal').classList.add('hidden');
+        }
+
+        function setCapitalPreset(amt) {
+            document.getElementById('inputCustomCapital').value = amt;
+        }
+
+        async function saveCapitalSettings() {
+            const rawVal = document.getElementById('inputCustomCapital').value.trim();
+            const limit = rawVal === '' ? null : parseFloat(rawVal);
+            const btn = document.getElementById('btnSaveCapitalSettings');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/trading-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ custom_capital_limit: limit, risk_pct_per_trade: 1.0 })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'SUCCESS') {
+                    showToast('Trading capital settings saved to MongoDB Atlas!', 'success');
+                    closeCapitalSettingsModal();
+                    updateCapitalUI(data.settings);
+                    fetchOrdersAndStats();
+                } else {
+                    alert('Error saving capital settings: ' + (data.message || data.detail || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error saving settings: ' + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function resetCapitalSettingsToDefault() {
+            document.getElementById('inputCustomCapital').value = '';
+            await saveCapitalSettings();
+        }
+
+        function updateCapitalUI(settings) {
+            if (!settings) return;
+            const elBroker = document.getElementById('labelBrokerCapital');
+            const elEffective = document.getElementById('labelEffectiveCapital');
+            const elRisk = document.getElementById('labelRiskPerTrade');
+            const elBadge = document.getElementById('badgeCapitalLimitStatus');
+
+            if (elBroker) elBroker.textContent = Number(settings.broker_total_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (elEffective) elEffective.textContent = Number(settings.effective_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (elRisk) elRisk.textContent = Number(settings.risk_per_trade_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            if (elBadge) {
+                if (settings.is_custom_limit_active) {
+                    elBadge.className = 'px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                    elBadge.textContent = 'Custom Threshold Active';
+                } else {
+                    elBadge.className = 'px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                    elBadge.textContent = 'Full Paper Capital';
+                }
+            }
+        }
+
+        // ==========================================
+        // EXCEL QUANTITY CALCULATOR JAVASCRIPT ENGINE
+        // ==========================================
+        let calcAction = 'BUY';
+
+        function openExcelCalculatorModal(symbol = '', entry = null, sl = null, act = 'BUY') {
+            calcAction = (act || 'BUY').includes('SELL') ? 'SELL' : 'BUY';
+            setCalcAction(calcAction);
+
+            if (entry !== null && entry > 0) {
+                document.getElementById('calcInputEntry').value = entry;
+            }
+            if (sl !== null && sl > 0) {
+                document.getElementById('calcInputSL').value = sl;
+            }
+            runExcelCalculation();
+            document.getElementById('excelCalculatorModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeExcelCalculatorModal() {
+            document.getElementById('excelCalculatorModal').classList.add('hidden');
+        }
+
+        function setCalcAction(action) {
+            calcAction = action;
+            const btnBuy = document.getElementById('calcBtnBuy');
+            const btnSell = document.getElementById('calcBtnSell');
+            if (action === 'BUY') {
+                btnBuy.className = 'px-3 py-1 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 apple-spring';
+                btnSell.className = 'px-3 py-1 rounded-lg font-bold text-xs text-neutral-400 hover:text-rose-400 apple-spring';
+            } else {
+                btnSell.className = 'px-3 py-1 rounded-lg font-bold text-xs text-rose-400 bg-rose-500/20 border border-rose-500/30 apple-spring';
+                btnBuy.className = 'px-3 py-1 rounded-lg font-bold text-xs text-neutral-400 hover:text-emerald-400 apple-spring';
+            }
+            runExcelCalculation();
+        }
+
+        function runExcelCalculation() {
+            const portfolio = parseFloat(document.getElementById('calcInputPortfolio').value) || 0;
+            const entry = parseFloat(document.getElementById('calcInputEntry').value) || 0;
+            const sl = parseFloat(document.getElementById('calcInputSL').value) || 0;
+            const isShort = calcAction === 'SELL';
+
+            // 1% Risk per Trade = Portfolio * 1%
+            const riskPerTrade = Math.round((portfolio * 0.01) * 100) / 100;
+            document.getElementById('calcDisplayRiskPerTrade').textContent = riskPerTrade.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            // SL Rupee per share = |Entry - StopLoss|
+            let slRupee = isShort ? (sl - entry) : (entry - sl);
+            if (slRupee <= 0) {
+                slRupee = entry > 0 ? Math.round(entry * 0.02 * 100) / 100 : 1.0;
+            }
+            slRupee = Math.round(slRupee * 100) / 100;
+            document.getElementById('calcDisplaySLPerShare').textContent = slRupee.toFixed(2);
+
+            // Total shares to trade (Quantity) = floor(Risk per trade / SL per share)
+            let qtyByRisk = slRupee > 0 ? Math.floor(riskPerTrade / slRupee) : 0;
+            let qtyByCap = entry > 0 ? Math.floor(portfolio / entry) : 0;
+            let qty = Math.max(0, Math.min(qtyByRisk, qtyByCap));
+            document.getElementById('calcDisplayQuantity').textContent = qty;
+
+            // Investment amount = Entry price * Quantity
+            const investment = Math.round((entry * qty) * 100) / 100;
+            document.getElementById('calcDisplayInvestment').textContent = investment.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('calcSumInvestment').textContent = Math.round(investment).toLocaleString('en-IN');
+
+            // Actual Risk = Quantity * SL per share
+            const actualRisk = Math.round((qty * slRupee) * 100) / 100;
+            document.getElementById('calcDisplayActualRisk').textContent = actualRisk.toFixed(2);
+
+            // Budget Badge
+            const badgeBudget = document.getElementById('badgeRiskWithinBudget');
+            if (actualRisk <= riskPerTrade) {
+                badgeBudget.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                badgeBudget.textContent = '≤ 1.0% Budget Checked';
+            } else {
+                badgeBudget.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                badgeBudget.textContent = 'Exceeds Budget';
+            }
+
+            // Targets: 01:01, 01:02, 01:03
+            const tgt1 = isShort ? (entry - slRupee) : (entry + slRupee);
+            const tgt2 = isShort ? (entry - 2 * slRupee) : (entry + 2 * slRupee);
+            const tgt3 = isShort ? (entry - 3 * slRupee) : (entry + 3 * slRupee);
+
+            document.getElementById('calcDisplayTgt1').textContent = tgt1.toFixed(2);
+            document.getElementById('calcDisplayTgt2').textContent = tgt2.toFixed(2);
+            document.getElementById('calcDisplayTgt3').textContent = tgt3.toFixed(2);
+
+            // AMT 1:2 & AMT 1:3
+            const amt12 = Math.round(investment + (qty * 2 * slRupee));
+            const amt13 = Math.round(investment + (qty * 3 * slRupee));
+
+            document.getElementById('calcSumAmt12').textContent = amt12.toLocaleString('en-IN');
+            document.getElementById('calcSumAmt13').textContent = amt13.toLocaleString('en-IN');
+        }
+
+        function applyExcelModelToManualOrder() {
+            const entry = parseFloat(document.getElementById('calcInputEntry').value) || 0;
+            const sl = parseFloat(document.getElementById('calcInputSL').value) || 0;
+            const qty = parseInt(document.getElementById('calcDisplayQuantity').textContent) || 1;
+            const tgt = parseFloat(document.getElementById('calcDisplayTgt2').textContent) || 0;
+
+            closeExcelCalculatorModal();
+            openManualOrderModal();
+
+            document.getElementById('manualPrice').value = entry.toFixed(2);
+            document.getElementById('manualSL').value = sl.toFixed(2);
+            document.getElementById('manualTarget').value = tgt.toFixed(2);
+            document.getElementById('manualQty').value = qty;
+            setManualAction(calcAction);
+            calculateManualCapital();
+            showToast(`Applied 1% Risk Sizing: ${qty} shares @ ₹${entry.toFixed(2)} (SL: ₹${sl.toFixed(2)})`, 'success');
+        }
+
         // Close on ESC key or outside click
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -2099,6 +2602,8 @@
                 closePlaceOrderModal();
                 closeManualOrderModal();
                 closeLiquidateAllModal();
+                closeCapitalSettingsModal();
+                closeExcelCalculatorModal();
             }
         });
         document.getElementById('orderModal').addEventListener('click', (e) => {
@@ -2112,6 +2617,12 @@
         });
         document.getElementById('liquidateAllModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('liquidateAllModal')) closeLiquidateAllModal();
+        });
+        document.getElementById('capitalSettingsModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('capitalSettingsModal')) closeCapitalSettingsModal();
+        });
+        document.getElementById('excelCalculatorModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('excelCalculatorModal')) closeExcelCalculatorModal();
         });
 
         // Background polling every 5 seconds for live updates

@@ -218,6 +218,8 @@ async def orders_page(request: Request):
     trade_journal = orders_service.get_trade_journal()
     liquidation_status = megabull_service.get_liquidation_status()
     is_market_open = megabull_service.is_market_open()
+    from online.services.risk_calculator import risk_calculator
+    trading_settings = risk_calculator.get_trading_settings()
 
     return templates.TemplateResponse(
         request=request,
@@ -229,6 +231,7 @@ async def orders_page(request: Request):
             "orders": initial_orders,
             "trade_journal": trade_journal,
             "liquidation_status": liquidation_status,
+            "trading_settings": trading_settings,
             "is_market_open": is_market_open,
             "user": user,
             "env": settings.env
@@ -247,6 +250,8 @@ async def megabull_page(request: Request):
     stats = orders_service.get_order_summary_stats()
     liquidation_status = megabull_service.get_liquidation_status()
     is_market_open = megabull_service.is_market_open()
+    from online.services.risk_calculator import risk_calculator
+    trading_settings = risk_calculator.get_trading_settings()
 
     return templates.TemplateResponse(
         request=request,
@@ -257,6 +262,7 @@ async def megabull_page(request: Request):
             "summary": summary,
             "armed_orders_count": stats.get("armed_orders_count", 0),
             "liquidation_status": liquidation_status,
+            "trading_settings": trading_settings,
             "is_market_open": is_market_open,
             "env": settings.env
         }
@@ -464,6 +470,73 @@ async def get_megabull_transactions_api():
         "net_realized": round(sum(t.get("net_amount", 0.0) for t in settlement_txs), 2),
         "data": transactions
     }
+
+
+class UpdateTradingSettingsRequest(BaseModel):
+    custom_capital_limit: Optional[float] = Field(None, description="Custom trading capital limit in INR; null or 0 resets to broker total balance")
+    risk_pct_per_trade: Optional[float] = Field(1.0, ge=0.01, le=10.0, description="Risk percentage per trade (default 1.0%)")
+
+
+class CalculateQuantityRequest(BaseModel):
+    entry_price: float = Field(..., gt=0, description="Entry price in INR")
+    sl_price: float = Field(..., gt=0, description="Stop loss price in INR")
+    action: Optional[str] = Field("BUY", description="BUY or SELL")
+    custom_portfolio: Optional[float] = Field(None, description="Optional custom portfolio capital base")
+    risk_pct: Optional[float] = Field(1.0, description="Risk percentage (default 1.0%)")
+
+
+@app.get("/api/trading-settings")
+async def get_trading_settings_api():
+    """
+    Returns current trading capital configuration, paper broker balance,
+    effective capital, and 1% risk per trade amount.
+    """
+    from online.services.risk_calculator import risk_calculator
+    settings_data = risk_calculator.get_trading_settings()
+    return JSONResponse({
+        "status": "SUCCESS",
+        "settings": settings_data
+    })
+
+
+@app.post("/api/trading-settings")
+async def update_trading_settings_api(req: UpdateTradingSettingsRequest):
+    """
+    Updates user's custom trading capital limit and risk percentage in MongoDB Atlas.
+    - If custom limit < broker paper balance: custom limit is active threshold.
+    - If custom limit >= broker paper balance: ignores excess limit, trades using actual money.
+    - If custom limit is null or 0: resets to default full broker paper balance.
+    """
+    from online.services.risk_calculator import risk_calculator
+    updated = risk_calculator.update_trading_settings(
+        custom_capital_limit=req.custom_capital_limit,
+        risk_pct_per_trade=req.risk_pct_per_trade or 1.0
+    )
+    return JSONResponse({
+        "status": "SUCCESS",
+        "message": "Trading capital settings successfully saved to MongoDB Atlas.",
+        "settings": updated
+    })
+
+
+@app.post("/api/trading/calculate-quantity")
+async def calculate_quantity_api(req: CalculateQuantityRequest):
+    """
+    Calculates position sizing, 1% risk per trade, quantity, and 1:1, 1:2, 1:3 targets
+    matching the Excel Quantity Calculator model.
+    """
+    from online.services.risk_calculator import risk_calculator
+    calc = risk_calculator.calculate_quantity_and_targets(
+        entry_price=req.entry_price,
+        sl_price=req.sl_price,
+        action=req.action or "BUY",
+        custom_portfolio=req.custom_portfolio,
+        risk_pct=req.risk_pct or 1.0
+    )
+    return JSONResponse({
+        "status": "SUCCESS",
+        "data": calc
+    })
 
 
 class PlaceOrderRequest(BaseModel):
@@ -836,6 +909,7 @@ def run_online_headless(output_format: str = "text") -> Dict[str, Any]:
         {"desc": "GET /api/sync/status (Live sync worker status API)", "url": "/api/sync/status", "expected": 200},
         {"desc": "GET /api/sync/live-feed (Live sync feed API)", "url": "/api/sync/live-feed", "expected": 200},
         {"desc": "GET /api/prices/live (Live prices API)", "url": "/api/prices/live", "expected": 200},
+        {"desc": "GET /api/trading-settings (Trading capital settings API)", "url": "/api/trading-settings", "expected": 200},
         {"desc": "GET /logout (session termination)", "url": "/logout", "expected": 303},
     ]
 

@@ -198,6 +198,40 @@
             </div>
         </section>
 
+        <!-- Trading Capital Allocation & 1% Risk Controller Bar (MongoDB Synced) -->
+        <section class="rounded-3xl hairline-border bg-gradient-to-r from-blue-950/30 via-neutral-900/60 to-indigo-950/30 p-5 backdrop-blur-2xl border border-white/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 shadow-xl">
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="h-12 w-12 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold font-mono text-base shadow-inner">
+                    <i data-lucide="calculator" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h2 class="text-base font-bold text-white tracking-tight">Paper Trading Capital &amp; 1% Risk Allocation</h2>
+                        <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full {% if trading_settings and trading_settings.is_custom_limit_active %}bg-amber-500/15 text-amber-300 border border-amber-500/30{% else %}bg-emerald-500/15 text-emerald-400 border border-emerald-500/30{% endif %}">
+                            {% if trading_settings and trading_settings.is_custom_limit_active %}Custom Threshold Active{% else %}Full Paper Capital{% endif %}
+                        </span>
+                        <span class="px-2 py-0.5 text-[10px] font-mono rounded-full bg-white/[0.06] text-neutral-300 hairline-border">
+                            MongoDB Synced
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-apple-subtext font-mono mt-1">
+                        <span>Paper Account: <strong class="text-neutral-200">₹{{ "{:,.2f}".format(summary.total_capital_had) }}</strong></span>
+                        <span>•</span>
+                        <span>Active Trading Capital: <strong class="text-white text-sm">₹{{ "{:,.2f}".format(trading_settings.effective_capital if trading_settings else summary.total_capital_had) }}</strong></span>
+                        <span>•</span>
+                        <span>Max 1% Risk / Trade: <strong class="text-rose-400 text-sm">₹{{ "{:,.2f}".format(trading_settings.risk_per_trade_inr if trading_settings else (summary.total_capital_had * 0.01)) }}</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 flex-shrink-0">
+                <a href="/orders" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1.5 shadow-lg shadow-blue-600/30">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                    <span>Adjust Capital in Orders</span>
+                </a>
+            </div>
+        </section>
+
         <!-- Executive Financial KPI Cards -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             

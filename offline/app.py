@@ -1240,6 +1240,8 @@ def orders_page():
     orders = orders_service.get_orders(limit=100)
     summary_stats = orders_service.get_order_summary_stats()
     db_health = db_manager.ping()
+    from online.services.risk_calculator import risk_calculator
+    trading_settings = risk_calculator.get_trading_settings()
 
     return render_template(
         "orders.html",
@@ -1248,6 +1250,7 @@ def orders_page():
         orders=orders,
         stats=summary_stats,
         db_health=db_health,
+        trading_settings=trading_settings,
         is_offline=True
     )
 
@@ -1403,6 +1406,52 @@ def offline_health_api():
         "market_open": mb_open,
         "latency_ms": ping_res.get("latency_ms", 0.0),
         "timestamp": datetime.now().isoformat()
+    })
+
+
+@app.route("/api/trading-settings", methods=["GET", "POST"])
+def offline_trading_settings_api():
+    """Returns or updates trading capital configuration in MongoDB Atlas from offline app."""
+    from online.services.risk_calculator import risk_calculator
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        limit = data.get("custom_capital_limit")
+        risk_pct = data.get("risk_pct_per_trade", 1.0)
+        updated = risk_calculator.update_trading_settings(
+            custom_capital_limit=limit,
+            risk_pct_per_trade=risk_pct
+        )
+        return jsonify({
+            "status": "SUCCESS",
+            "message": "Trading capital settings saved to MongoDB Atlas.",
+            "settings": updated
+        })
+    return jsonify({
+        "status": "SUCCESS",
+        "settings": risk_calculator.get_trading_settings()
+    })
+
+
+@app.route("/api/trading/calculate-quantity", methods=["POST"])
+def offline_calculate_quantity_api():
+    """Calculates position sizing and targets matching Excel Quantity Calculator."""
+    from online.services.risk_calculator import risk_calculator
+    data = request.get_json(silent=True) or {}
+    entry = float(data.get("entry_price", 0.0))
+    sl = float(data.get("sl_price", 0.0))
+    act = str(data.get("action", "BUY"))
+    portfolio = data.get("custom_portfolio")
+    risk_pct = float(data.get("risk_pct", 1.0))
+    calc = risk_calculator.calculate_quantity_and_targets(
+        entry_price=entry,
+        sl_price=sl,
+        action=act,
+        custom_portfolio=portfolio,
+        risk_pct=risk_pct
+    )
+    return jsonify({
+        "status": "SUCCESS",
+        "data": calc
     })
 
 

@@ -119,11 +119,26 @@ class MongoSyncer:
         sl_price = round(float(trade.get("sl_price", 0.0)), 2)
         target_price = round(float(trade.get("target_price", 0.0)), 2)
 
-        risk_per_share = max(round(entry_price - sl_price, 2), 0.01)
-        quantity = int(trade.get("quantity", max(1, int(default_risk_budget / risk_per_share))))
+        # Dynamic Position Sizing & 1% Risk Geometry Model
+        from online.services.risk_calculator import risk_calculator
+        calc = risk_calculator.calculate_quantity_and_targets(
+            entry_price=entry_price,
+            sl_price=sl_price,
+            action=action
+        )
+
+        risk_per_share = calc["sl_rupee_per_share"]
+        raw_trade_qty = trade.get("quantity")
+        if raw_trade_qty is not None and int(raw_trade_qty) > 1:
+            quantity = int(raw_trade_qty)
+        else:
+            quantity = calc["quantity"] if calc["quantity"] > 0 else 1
+
         total_capital = round(entry_price * quantity, 2)
         loss_at_sl = round(risk_per_share * quantity, 2)
-        profit_at_target = round((target_price - entry_price) * quantity, 2)
+        if target_price <= 0:
+            target_price = calc["target_1_2"]
+        profit_at_target = round(abs(target_price - entry_price) * quantity, 2)
 
         loss_pct = round(float(trade.get("loss_pct", (risk_per_share / entry_price * 100) if entry_price > 0 else 0.0)), 2)
         profit_pct = round(float(trade.get("profit_pct", ((target_price - entry_price) / entry_price * 100) if entry_price > 0 else 0.0)), 2)
@@ -158,6 +173,13 @@ class MongoSyncer:
             "entry_price": entry_price,
             "sl_price": sl_price,
             "target_price": target_price,
+            "target_1_1": calc["target_1_1"],
+            "target_1_2": calc["target_1_2"],
+            "target_1_3": calc["target_1_3"],
+            "amt_1_1": calc["amt_1_1"],
+            "amt_1_2": calc["amt_1_2"],
+            "amt_1_3": calc["amt_1_3"],
+            "within_1_pct_risk": loss_at_sl <= calc["risk_per_trade"],
             "risk_per_share": risk_per_share,
             "quantity": quantity,
             "total_capital_required": total_capital,

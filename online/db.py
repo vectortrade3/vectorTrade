@@ -170,6 +170,10 @@ class DatabaseManager:
     def live_quotes(self):
         return self.get_collection("live_quotes")
 
+    @property
+    def trading_settings(self):
+        return self.get_collection("trading_settings")
+
 
 # Export singleton instance
 db_manager = DatabaseManager()

@@ -66,14 +66,28 @@ class OrdersService:
         sl_price = float(doc.get("sl_price", 0.0))
         target_price = float(doc.get("target_price", 0.0))
 
-        risk_per_share = max(round(entry_price - sl_price, 2), 0.01) if entry_price > sl_price else 1.0
+        # Dynamic Position Sizing & 1% Risk Geometry Model
+        from online.services.risk_calculator import risk_calculator
+        calc = risk_calculator.calculate_quantity_and_targets(
+            entry_price=entry_price,
+            sl_price=sl_price,
+            action=action
+        )
 
-        # Quantity and capital calculations
-        default_budget = settings.default_risk_budget
-        quantity = int(doc.get("quantity", max(1, int(default_budget / risk_per_share))))
+        risk_per_share = calc["sl_rupee_per_share"]
+
+        # Use explicitly passed document quantity if valid and > 1, else use 1% risk calculated quantity
+        raw_qty = doc.get("quantity")
+        if raw_qty is not None and int(raw_qty) > 1:
+            quantity = int(raw_qty)
+        else:
+            quantity = calc["quantity"] if calc["quantity"] > 0 else 1
+
         total_capital = float(doc.get("total_capital_required", round(entry_price * quantity, 2)))
         loss_at_sl = float(doc.get("loss_at_sl", round(risk_per_share * quantity, 2)))
-        profit_at_target = float(doc.get("profit_at_target", round((target_price - entry_price) * quantity, 2)))
+        if target_price <= 0:
+            target_price = calc["target_1_2"]
+        profit_at_target = float(doc.get("profit_at_target", round(abs(target_price - entry_price) * quantity, 2)))
 
         loss_pct = float(doc.get("loss_pct", round((risk_per_share / entry_price * 100), 2) if entry_price > 0 else 0.0))
         profit_pct = float(doc.get("profit_pct", round(((target_price - entry_price) / entry_price * 100), 2) if entry_price > 0 else 0.0))
@@ -111,6 +125,13 @@ class OrdersService:
             "entry_price": round(entry_price, 2),
             "sl_price": round(sl_price, 2),
             "target_price": round(target_price, 2),
+            "target_1_1": calc["target_1_1"],
+            "target_1_2": calc["target_1_2"],
+            "target_1_3": calc["target_1_3"],
+            "amt_1_1": calc["amt_1_1"],
+            "amt_1_2": calc["amt_1_2"],
+            "amt_1_3": calc["amt_1_3"],
+            "within_1_pct_risk": loss_at_sl <= calc["risk_per_trade"],
             "risk_per_share": round(risk_per_share, 2),
             "quantity": quantity,
             "total_capital_required": round(total_capital, 2),
@@ -340,6 +361,10 @@ class OrdersService:
             synced_times = [o["synced_at"] for o in normalized if o["synced_at"]]
             last_sync = max(synced_times) if synced_times else ""
 
+            # Capital allocation & risk settings
+            from online.services.risk_calculator import risk_calculator
+            t_settings = risk_calculator.get_trading_settings()
+
             return {
                 "total_orders": total_orders,
                 "armed_orders_count": armed_count,
@@ -349,6 +374,14 @@ class OrdersService:
                 "avg_loss_pct": avg_loss_pct,
                 "total_capital_required": total_capital,
                 "total_risk_budget": total_risk,
+                "effective_capital": t_settings.get("effective_capital", 500000.0),
+                "custom_capital_limit": t_settings.get("custom_capital_limit"),
+                "broker_total_capital": t_settings.get("broker_total_capital", 500000.0),
+                "broker_available_balance": t_settings.get("broker_available_balance", 0.0),
+                "risk_per_trade_inr": t_settings.get("risk_per_trade_inr", 5000.0),
+                "risk_pct_per_trade": t_settings.get("risk_pct_per_trade", 1.0),
+                "is_custom_limit_active": t_settings.get("is_custom_limit_active", False),
+                "limit_status": t_settings.get("limit_status", "DEFAULT"),
                 "strategies_breakdown": strat_counts,
                 "setups_breakdown": setup_counts,
                 "latest_date": latest_date,

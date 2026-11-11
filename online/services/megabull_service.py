@@ -1195,8 +1195,19 @@ class MegaBullService:
         """
         sym = str(symbol).strip().upper()
         act = str(action).strip().upper()
-        qty = abs(int(quantity))
         px = round(float(price), 2)
+        try:
+            qty = abs(int(quantity))
+        except (ValueError, TypeError):
+            qty = 0
+
+        target_px = round(float(target_price), 2) if target_price else round(px * (1.04 if act == "BUY" else 0.96), 2)
+        sl_px = round(float(sl_price), 2) if sl_price else round(px * (0.98 if act == "BUY" else 1.02), 2)
+
+        if qty <= 0:
+            from online.services.risk_calculator import risk_calculator
+            calc_q = risk_calculator.calculate_quantity_and_targets(px, sl_px, act)
+            qty = calc_q["quantity"] if calc_q["quantity"] > 0 else 1
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
 
