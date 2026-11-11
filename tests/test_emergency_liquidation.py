@@ -276,6 +276,36 @@ class TestEmergencyLiquidation(unittest.TestCase):
         self.assertIn("liquidateAllModal", mb_html)
         self.assertIn("btnCancelLiquidationBanner", mb_html)
 
+    def test_11_multiple_clicks_idempotency_empty_portfolio_or_already_scheduled(self):
+        """Verifies idempotency: clicking square off multiple times does not duplicate orders or staging."""
+        # 1. When portfolio is empty (0 holdings, 0 positions)
+        with patch.object(self.service, "is_market_open", return_value=True), \
+             patch.object(self.service, "get_holdings", return_value=[]), \
+             patch.object(self.service, "get_positions", return_value=[]):
+
+            res1 = self.service.liquidate_all_positions(force_market_open=True)
+            self.assertEqual(res1["status"], "SUCCESS")
+            self.assertEqual(res1["case"], "ALREADY_EMPTY")
+            self.assertEqual(res1["holdings_squared_off"], 0)
+            self.assertEqual(len(res1["orders_fired"]), 0)
+
+        # 2. When market is closed: 1st click schedules, 2nd click recognises already scheduled
+        with patch.object(self.service, "is_market_open", return_value=False), \
+             patch.object(self.service, "get_holdings", return_value=self.sample_holdings), \
+             patch.object(self.service, "get_positions", return_value=[]):
+
+            # First click
+            res_first = self.service.liquidate_all_positions(force_market_open=False)
+            self.assertEqual(res_first["status"], "SUCCESS")
+            self.assertEqual(res_first["case"], "CASE_2_MARKET_CLOSED")
+            self.assertEqual(self.service._liquidation_state["status"], "SCHEDULED_FOR_MARKET_OPEN")
+
+            # Second click with same state
+            res_second = self.service.liquidate_all_positions(force_market_open=False)
+            self.assertEqual(res_second["status"], "SUCCESS")
+            self.assertEqual(res_second["case"], "CASE_2_MARKET_CLOSED")
+            self.assertIn("already armed", res_second["message"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()

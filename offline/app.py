@@ -1187,6 +1187,76 @@ def get_offline_portfolio_symbols_api():
     return jsonify({"status": "SUCCESS", "symbols": symbols, "all_portfolio_symbols": symbols})
 
 
+@app.route("/api/megabull/liquidate-all", methods=["POST"])
+def offline_liquidate_all_api():
+    """Triggers emergency portfolio square off from the offline app."""
+    from online.services.megabull_service import megabull_service
+    data = request.get_json(silent=True) or {}
+    force_mo = data.get("force_market_open")
+    result = megabull_service.liquidate_all_positions(force_market_open=force_mo)
+    return jsonify({"status": "SUCCESS", "data": result})
+
+
+@app.route("/api/megabull/cancel-liquidation", methods=["POST"])
+def offline_cancel_liquidation_api():
+    """Cancels scheduled emergency liquidation from the offline app."""
+    from online.services.megabull_service import megabull_service
+    result = megabull_service.cancel_scheduled_liquidation()
+    return jsonify({"status": "SUCCESS", "data": result})
+
+
+@app.route("/api/megabull/orders/place", methods=["POST"])
+def offline_place_order_api():
+    """Places a manual order on MegaBull or stages it off-market from the offline app."""
+    from online.services.megabull_service import megabull_service
+    data = request.get_json(silent=True) or {}
+    symbol = str(data.get("symbol", "")).strip().upper()
+    action = str(data.get("action", "BUY")).strip().upper()
+    quantity = int(data.get("quantity", 1))
+    price = float(data.get("price", 0.0))
+    target_price = float(data["target_price"]) if data.get("target_price") else None
+    sl_price = float(data["sl_price"]) if data.get("sl_price") else None
+    strategy = str(data.get("strategy", "Manual Setup"))
+    product = str(data.get("product", "CNC"))
+    order_type = str(data.get("order_type", "LIMIT"))
+    res = megabull_service.place_order(
+        symbol=symbol,
+        action=action,
+        quantity=quantity,
+        price=price,
+        target_price=target_price,
+        sl_price=sl_price,
+        strategy=strategy,
+        product=product,
+        order_type=order_type
+    )
+    return jsonify(res)
+
+
+@app.route("/api/megabull/holdings", methods=["GET"])
+def offline_holdings_api():
+    """Returns active holdings for offline modal and dashboard."""
+    from online.services.megabull_service import megabull_service
+    return jsonify(megabull_service.get_holdings(enrich_ltp=True))
+
+
+@app.route("/api/health", methods=["GET"])
+def offline_health_api():
+    """Returns health telemetry for orders board polling in the offline app."""
+    from online.db import db_manager
+    from online.services.megabull_service import megabull_service
+    ping_res = db_manager.ping()
+    db_ok = bool(ping_res.get("ok", False))
+    mb_open = megabull_service.is_market_open()
+    return jsonify({
+        "status": "healthy" if db_ok else "degraded",
+        "mongodb_connected": db_ok,
+        "market_open": mb_open,
+        "latency_ms": ping_res.get("latency_ms", 0.0),
+        "timestamp": datetime.now().isoformat()
+    })
+
+
 def run_offline_headless(output_format: str = "text") -> Dict[str, Any]:
     """
     Executes a comprehensive, non-interactive diagnostic of the VectorTrade Offline engine.

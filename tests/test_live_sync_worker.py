@@ -31,6 +31,11 @@ class TestLiveSyncWorker(unittest.TestCase):
     def setUp(self):
         self.worker = LiveSyncWorker(interval_seconds=5)
         self.client = TestClient(app, follow_redirects=False)
+        self.patch_liq = patch.object(megabull_service, "get_liquidation_status", return_value={"armed": False, "status": "IDLE"})
+        self.patch_liq.start()
+
+    def tearDown(self):
+        self.patch_liq.stop()
 
     def test_01_stage_1_amo_retained_when_market_closed(self):
         """Verifies staged off-market orders remain in WILL_BE_PUT_AMO stage when market is closed."""

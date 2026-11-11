@@ -1615,6 +1615,33 @@ class MegaBullService:
             cancel_info = self.cancel_open_orders()
             timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
 
+            # Guard 1: If portfolio is already clean (0 active holdings/positions to exit)
+            if len(targets_to_close) == 0:
+                logger.info("liquidate_all_positions called, but portfolio has 0 active holdings. Cleaned already.")
+                return {
+                    "status": "SUCCESS",
+                    "case": "ALREADY_EMPTY",
+                    "market_open": market_open,
+                    "message": "Portfolio is already 100% clean. Zero active holdings or positions exist to square off.",
+                    "holdings_squared_off": 0,
+                    "orders_fired": [],
+                    "failed_orders": [],
+                    "orders_cancelled": cancel_info
+                }
+
+            # Guard 2: If market is closed and square-off is already armed for market open, do not duplicate
+            if not market_open and self._liquidation_state.get("armed") and self._liquidation_state.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
+                logger.info("Square off already armed for market open. Skipping duplicate staging.")
+                return {
+                    "status": "SUCCESS",
+                    "case": "CASE_2_MARKET_CLOSED",
+                    "market_open": False,
+                    "message": f"Square off is already armed for market open (09:15 IST). All {len(targets_to_close)} stocks will be cleanly exited once.",
+                    "holdings_count": len(targets_to_close),
+                    "holdings_snapshot": self._liquidation_state.get("holdings_snapshot", []),
+                    "orders_cancelled": cancel_info
+                }
+
             # CASE 1: MARKET OPEN (Live Trading Hours)
             if market_open:
                 # Disarm liquidation state immediately before firing orders to prevent race conditions
