@@ -10,6 +10,7 @@ Provides centralized, thread-safe, atomic operations for managing all project JS
 
 from __future__ import annotations
 import os
+import sys
 import json
 import time
 import threading
@@ -18,7 +19,19 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Base directories resolution
-BASE_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    exe_dir = Path(sys.executable).resolve().parent
+    if (exe_dir / "data_store").exists():
+        BASE_DIR = exe_dir
+    elif (exe_dir.parent / "data_store").exists():
+        BASE_DIR = exe_dir.parent
+    elif (exe_dir.parent.parent / "data_store").exists():
+        BASE_DIR = exe_dir.parent.parent
+    else:
+        BASE_DIR = Path(__file__).resolve().parent.parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
 DATA_STORE_DIR = BASE_DIR / "data_store"
 DATA_STORE_DIR.mkdir(parents=True, exist_ok=True)
 

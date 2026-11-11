@@ -17,8 +17,20 @@ from flask import Flask, render_template, jsonify, request
 from flask_sock import Sock
 
 # Resolve directory paths
-BASE_DIR = Path(__file__).resolve().parent.parent
-OFFLINE_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    exe_dir = Path(sys.executable).resolve().parent
+    if (exe_dir / "offline").exists():
+        BASE_DIR = exe_dir
+    elif (exe_dir.parent / "offline").exists():
+        BASE_DIR = exe_dir.parent
+    elif (exe_dir.parent.parent / "offline").exists():
+        BASE_DIR = exe_dir.parent.parent
+    else:
+        BASE_DIR = Path(__file__).resolve().parent.parent
+    OFFLINE_DIR = BASE_DIR / "offline"
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    OFFLINE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 sys.path.insert(0, str(OFFLINE_DIR))
 
@@ -1532,7 +1544,7 @@ def run_offline_headless(output_format: str = "text") -> Dict[str, Any]:
     return diagnostics
 
 
-def run_app(host: str = "0.0.0.0", port: int = 8684):
+def run_app(host: str = "0.0.0.0", port: int = 30307):
     """Starts the application and logs boot event."""
     env_port = os.environ.get("PORT")
     if env_port:
@@ -1579,7 +1591,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="VectorTrade Offline Web Engine")
     parser.add_argument("--host", default="0.0.0.0", help="Host interface (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8684, help="Port (default: 8684 [ASCII VT])")
+    parser.add_argument("--port", type=int, default=30307, help="Port (default: 30307 [Ultra-Unique])")
     parser.add_argument("--headless", action="store_true", help="Run in headless verification mode without starting interactive web server; checks engine & outputs status")
     parser.add_argument("--json", action="store_true", help="Output headless check results in JSON format")
     args, _ = parser.parse_known_args()

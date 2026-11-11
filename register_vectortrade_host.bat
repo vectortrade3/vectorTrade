@@ -1,7 +1,7 @@
 @echo off
 setlocal
 echo ========================================================
-echo  VectorTrade Host Registration: http://vectortrade:8684
+echo  VectorTrade Host Registration: http://vectortrade:30307
 echo ========================================================
 
 :: Check for Administrator privileges
@@ -30,6 +30,6 @@ ipconfig /flushdns >nul
 echo [OK] Windows DNS cache flushed.
 echo.
 echo You can now navigate to:
-echo   http://vectortrade:8684
+echo   http://vectortrade:30307
 echo.
 timeout /t 5
