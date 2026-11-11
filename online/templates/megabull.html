@@ -219,6 +219,10 @@
                         <span>•</span>
                         <span>Active Trading Capital: <strong class="text-white text-sm">₹{{ "{:,.2f}".format(trading_settings.effective_capital if trading_settings else summary.total_capital_had) }}</strong></span>
                         <span>•</span>
+                        <span>Used: <strong class="text-amber-400 font-semibold">₹{{ "{:,.2f}".format(trading_settings.broker_used_capital if trading_settings else summary.capital_put_in_stocks) }}</strong></span>
+                        <span>•</span>
+                        <span>Remaining to Trade: <strong class="text-emerald-400 font-bold text-sm">₹{{ "{:,.2f}".format(trading_settings.allocated_remaining_capital if trading_settings else summary.capital_remaining) }}</strong></span>
+                        <span>•</span>
                         <span>Max 1% Risk / Trade: <strong class="text-rose-400 text-sm">₹{{ "{:,.2f}".format(trading_settings.risk_per_trade_inr if trading_settings else (summary.total_capital_had * 0.01)) }}</strong></span>
                     </div>
                 </div>

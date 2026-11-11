@@ -78,16 +78,24 @@ class RiskCalculator:
         # 2. Fetch broker paper money
         broker_total_capital = self._fetch_broker_total_capital()
 
-        # Fetch free available balance if possible
+        # Fetch free available balance and blocked margin if possible
         broker_available = broker_total_capital
+        broker_blocked = 0.0
         try:
             from online.services.megabull_service import megabull_service
             acc = megabull_service.get_account_details()
             vm_left = float(acc.get("virtual_money_left", 0.0))
+            vm_blocked = float(acc.get("virtual_money_blocked", 0.0))
             if vm_left > 0:
                 broker_available = round(vm_left, 2)
+            if vm_blocked > 0:
+                broker_blocked = round(vm_blocked, 2)
         except Exception:
             pass
+
+        # Calculate actual capital currently blocked / used in positions
+        calc_used = round(max(0.0, broker_total_capital - broker_available), 2)
+        broker_used_capital = round(max(calc_used, broker_blocked), 2)
 
         # 3. Apply Threshold Logic:
         # - If user sets a limit less than broker balance, that limit is the active threshold.
@@ -107,13 +115,33 @@ class RiskCalculator:
             is_custom_active = False
             limit_status = "DEFAULT_FULL_PAPER_CAPITAL"
 
+        # 4. Allocated Capital Remaining Calculation:
+        # User Rule:
+        # If overall broker capital = 5 Lakh, remaining free cash = 4.10 Lakh (Used = 90k).
+        # Threshold set = 1 Lakh.
+        # Allocated remaining capital to trade = Threshold - Used = 1 Lakh - 90k = 10k only!
+        # If trade amount (quantity * entry) exceeds allocated remaining, do not place trade.
+        if is_custom_active:
+            allocated_remaining_capital = round(max(0.0, min(effective_capital - broker_used_capital, broker_available)), 2)
+            allocated_used_capital = round(min(broker_used_capital, effective_capital), 2)
+        else:
+            allocated_remaining_capital = round(max(0.0, broker_available), 2)
+            allocated_used_capital = broker_used_capital
+
+        allocated_used_pct = round((allocated_used_capital / effective_capital * 100.0), 2) if effective_capital > 0 else 0.0
+
         risk_per_trade_inr = round(effective_capital * (risk_pct_per_trade / 100.0), 2)
 
         return {
             "custom_capital_limit": custom_capital_limit,
             "broker_total_capital": broker_total_capital,
             "broker_available_balance": broker_available,
+            "broker_used_capital": broker_used_capital,
             "effective_capital": round(effective_capital, 2),
+            "allocated_used_capital": allocated_used_capital,
+            "allocated_used_pct": allocated_used_pct,
+            "allocated_remaining_capital": allocated_remaining_capital,
+            "can_trade": allocated_remaining_capital > 0,
             "risk_pct_per_trade": round(risk_pct_per_trade, 2),
             "risk_per_trade_inr": risk_per_trade_inr,
             "is_custom_limit_active": is_custom_active,
@@ -166,6 +194,85 @@ class RiskCalculator:
         """Returns the effective trading capital (in INR) taking into account custom limits."""
         settings_info = self.get_trading_settings()
         return float(settings_info.get("effective_capital", DEFAULT_BASE_CAPITAL))
+
+    def get_allocated_remaining_capital(self) -> float:
+        """Returns the remaining allocated capital available for taking trades (in INR)."""
+        settings_info = self.get_trading_settings()
+        return float(settings_info.get("allocated_remaining_capital", 0.0))
+
+    def check_capital_for_trade(
+        self,
+        quantity: int,
+        entry_price: float,
+        action: str = "BUY"
+    ) -> Dict[str, Any]:
+        """
+        Validates whether a trade is affordable under the active capital threshold.
+        Rule:
+        - If overall broker capital = 5 Lakh, remaining free cash = 4.10 Lakh (Used = 90k).
+        - If threshold = 1 Lakh -> Allocated Remaining Capital = 1 Lakh - 90k = 10k only!
+        - If trade amount (quantity * entry_price) exceeds allocated remaining capital,
+          WE DO NOT PUT THAT TRADE.
+        - Exits / Square offs (selling existing long holding or covering short) do not consume
+          buying allocation and are always allowed.
+        """
+        act = str(action).strip().upper()
+        is_closing_or_exit = (act == "SELL" or "SQUARE" in act or "COVER" in act)
+
+        try:
+            qty = abs(int(quantity))
+        except (ValueError, TypeError):
+            qty = 0
+
+        try:
+            px = max(0.0, float(entry_price))
+        except (ValueError, TypeError):
+            px = 0.0
+
+        trade_amount = round(qty * px, 2)
+        settings = self.get_trading_settings()
+        allocated_remaining = float(settings.get("allocated_remaining_capital", 0.0))
+        effective_capital = float(settings.get("effective_capital", 0.0))
+        broker_used = float(settings.get("broker_used_capital", 0.0))
+
+        # Exits and standard long square-offs always permitted since they release capital
+        if is_closing_or_exit and not act.startswith("SHORT"):
+            return {
+                "allowed": True,
+                "trade_amount": trade_amount,
+                "allocated_remaining_capital": allocated_remaining,
+                "shortfall": 0.0,
+                "effective_capital": effective_capital,
+                "broker_used_capital": broker_used,
+                "reason": "Square off / exit order does not consume capital allocation."
+            }
+
+        # New trade entry: verify affordability
+        if trade_amount <= allocated_remaining:
+            return {
+                "allowed": True,
+                "trade_amount": trade_amount,
+                "allocated_remaining_capital": allocated_remaining,
+                "shortfall": 0.0,
+                "effective_capital": effective_capital,
+                "broker_used_capital": broker_used,
+                "reason": f"Trade amount ₹{trade_amount:,.2f} is within allocated remaining capital ₹{allocated_remaining:,.2f}."
+            }
+        else:
+            shortfall = round(trade_amount - allocated_remaining, 2)
+            return {
+                "allowed": False,
+                "trade_amount": trade_amount,
+                "allocated_remaining_capital": allocated_remaining,
+                "shortfall": shortfall,
+                "effective_capital": effective_capital,
+                "broker_used_capital": broker_used,
+                "reason": (
+                    f"Trade amount ₹{trade_amount:,.2f} (Qty: {qty} @ ₹{px:,.2f}) exceeds allocated "
+                    f"remaining capital ₹{allocated_remaining:,.2f} (Threshold: ₹{effective_capital:,.2f}, "
+                    f"Used: ₹{broker_used:,.2f}). Shortfall: ₹{shortfall:,.2f}. Order cannot be placed."
+                )
+            }
 
     def calculate_quantity_and_targets(
         self,

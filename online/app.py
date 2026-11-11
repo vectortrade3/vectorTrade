@@ -574,6 +574,12 @@ async def place_megabull_order_api(order_req: PlaceOrderRequest):
     if result.get("status") == "ERROR":
         if result.get("code") == "DUPLICATE_POSITION":
             raise HTTPException(status_code=400, detail=result.get("error", "Duplicate position rejected."))
+        if result.get("code") == "INSUFFICIENT_ALLOCATED_CAPITAL":
+            raise HTTPException(status_code=400, detail=result.get("error", "Insufficient allocated capital for this trade."))
+        if result.get("code") == "STRATEGY_DISABLED":
+            raise HTTPException(status_code=400, detail=result.get("error", "Strategy is currently disabled."))
+        if result.get("code") == "LIQUIDATION_ACTIVE":
+            raise HTTPException(status_code=400, detail=result.get("error", "Emergency liquidation is currently active."))
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to place order."))
 
     return {

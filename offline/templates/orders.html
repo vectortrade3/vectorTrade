@@ -202,6 +202,10 @@
                         <span>•</span>
                         <span>Active Trading Capital: <strong class="text-white text-sm">₹<span id="labelEffectiveCapital">{{ "{:,.2f}".format(stats.effective_capital or 500000.00) }}</span></strong></span>
                         <span>•</span>
+                        <span>Used: <strong class="text-amber-400 font-semibold">₹<span id="labelBrokerUsed">{{ "{:,.2f}".format(stats.broker_used_capital or 0.00) }}</span></strong></span>
+                        <span>•</span>
+                        <span>Remaining to Trade: <strong class="text-emerald-400 font-bold text-sm">₹<span id="labelAllocatedRemaining">{{ "{:,.2f}".format(stats.allocated_remaining_capital or 0.00) }}</span></strong></span>
+                        <span>•</span>
                         <span>Max 1% Risk / Trade: <strong class="text-rose-400 text-sm">₹<span id="labelRiskPerTrade">{{ "{:,.2f}".format(stats.risk_per_trade_inr or 5000.00) }}</span></strong></span>
                     </div>
                 </div>
@@ -748,6 +752,11 @@
                                             <span>In Portfolio</span>
                                         </span>
                                         {% endif %}
+                                    {% elif not order.is_affordable %}
+                                    <button onclick="openPlaceOrderModal('{{ order.id }}')" title="{{ order.capital_reason }}" class="apple-spring px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-1">
+                                        <i data-lucide="alert-triangle" class="w-3 h-3 text-amber-400"></i>
+                                        <span>Cap Exceeded</span>
+                                    </button>
                                     {% else %}
                                     <button onclick="openPlaceOrderModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                         <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
@@ -903,6 +912,15 @@
                     </div>
                 </div>
 
+                <!-- Capital Insufficiency Alert Banner (hidden by default) -->
+                <div id="placeOrderCapitalWarning" class="hidden rounded-xl bg-rose-500/15 border border-rose-500/30 p-3 text-xs text-rose-300 flex items-start space-x-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold">Insufficient Allocated Capital:</span>
+                        <p id="placeOrderCapitalWarningText" class="mt-0.5 text-neutral-300">Required trade amount exceeds your remaining allocated capital budget.</p>
+                    </div>
+                </div>
+
                 <!-- Parameters Form -->
                 <div class="space-y-4 text-xs font-mono">
                     <div class="grid grid-cols-2 gap-3">
@@ -996,6 +1014,15 @@
                     <div>
                         <span class="font-bold">Duplicate Position Warning:</span>
                         <p id="manualOrderDuplicateText" class="mt-0.5 text-neutral-300">This stock is already held in portfolio or has an active order.</p>
+                    </div>
+                </div>
+
+                <!-- Capital Insufficiency Alert Banner (hidden by default) -->
+                <div id="manualOrderCapitalWarning" class="hidden rounded-xl bg-rose-500/15 border border-rose-500/30 p-3 text-xs text-rose-300 flex items-start space-x-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold">Insufficient Allocated Capital:</span>
+                        <p id="manualOrderCapitalWarningText" class="mt-0.5 text-neutral-300">Required trade amount exceeds your remaining allocated capital budget.</p>
                     </div>
                 </div>
 
@@ -1168,6 +1195,14 @@
                         <span>Free Available Balance:</span>
                         <span class="text-emerald-400 font-semibold">₹<span id="modalSettingBrokerAvailable">{{ "{:,.2f}".format(stats.broker_available_balance or 0.0) }}</span></span>
                     </div>
+                    <div class="flex items-center justify-between text-neutral-400">
+                        <span>Used in Positions:</span>
+                        <span class="text-amber-400 font-semibold">₹<span id="modalSettingBrokerUsed">{{ "{:,.2f}".format(stats.broker_used_capital or 0.0) }}</span></span>
+                    </div>
+                    <div class="flex items-center justify-between text-neutral-400 hairline-top pt-2">
+                        <span class="text-white font-semibold">Remaining to Trade:</span>
+                        <span class="text-emerald-400 font-bold text-sm">₹<span id="modalSettingAllocatedRemaining">{{ "{:,.2f}".format(stats.allocated_remaining_capital or 0.0) }}</span></span>
+                    </div>
                 </div>
 
                 <!-- Custom Limit Input Form -->
@@ -1202,6 +1237,7 @@
                         </div>
                         <ul class="list-disc pl-4 space-y-1 text-[11px] text-neutral-300 font-sans">
                             <li><strong>Under-limit threshold:</strong> If you set e.g. ₹1 Lakh, the engine strictly trades under ₹1 Lakh regardless of higher paper balance.</li>
+                            <li><strong>Allocated Remaining Guard:</strong> If ₹90,000 is used in holdings and threshold is ₹1 Lakh, exactly ₹10,000 remains. Trades requiring &gt; ₹10,000 are rejected.</li>
                             <li><strong>Over-limit safety:</strong> If you set more than total broker balance, the system automatically ignores the excess and caps at actual money.</li>
                             <li><strong>1% Risk rule:</strong> Every trade risks mathematically &le; 1.0% of this active capital.</li>
                             <li><strong>MongoDB storage:</strong> Saved instantly to MongoDB Atlas and shared across online &amp; offline apps.</li>
@@ -1856,7 +1892,12 @@
                                         <span>In Portfolio</span>
                                     </span>
                                 `
-                            ) : `
+                            ) : o.is_affordable === false ? `
+                                <button onclick="openPlaceOrderModal('${o.id}')" title="${o.capital_reason || 'Order exceeds remaining allocated capital'}" class="apple-spring px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-1">
+                                    <i data-lucide="alert-triangle" class="w-3 h-3 text-amber-400"></i>
+                                    <span>Cap Exceeded</span>
+                                </button>
+                            ` : `
                                 <button onclick="openPlaceOrderModal('${o.id}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                     <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
                                     <span>Place Order</span>
@@ -1962,6 +2003,7 @@
                 btnSell.className = 'flex-1 py-1 rounded text-center font-bold text-rose-400 bg-rose-500/20 border border-rose-500/30';
                 btnBuy.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-emerald-400';
             }
+            calculatePlaceOrderCapital();
         }
 
         function calculatePlaceOrderCapital() {
@@ -1969,6 +2011,33 @@
             const qty = parseInt(document.getElementById('placeOrderQty').value) || 0;
             const total = px * qty;
             document.getElementById('placeOrderCapitalDisplay').textContent = `₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Allocated Remaining Capital Guard
+            const remCap = (window.tradingSettings && typeof window.tradingSettings.allocated_remaining_capital === 'number') 
+                ? window.tradingSettings.allocated_remaining_capital 
+                : {{ stats.allocated_remaining_capital or 0.0 }};
+            const capWarnBox = document.getElementById('placeOrderCapitalWarning');
+            const capWarnText = document.getElementById('placeOrderCapitalWarningText');
+            const confirmBtn = document.getElementById('btnConfirmPlaceOrder');
+            const sym = currentPlacedOrder ? (currentPlacedOrder.symbol || '').toUpperCase() : '';
+            const isDup = currentPlacedOrder && (currentPlacedOrder.is_in_portfolio || portfolioSymbols.has(sym));
+
+            if (placedOrderAction === 'BUY' && total > remCap) {
+                if (capWarnBox) capWarnBox.classList.remove('hidden');
+                if (capWarnText) {
+                    capWarnText.textContent = `Order amount ₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2})} exceeds allocated remaining capital ₹${remCap.toLocaleString('en-IN', {minimumFractionDigits: 2})}. Order cannot be placed.`;
+                }
+                if (confirmBtn) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                if (capWarnBox) capWarnBox.classList.add('hidden');
+                if (!isDup && confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
         }
 
         function openPlaceOrderModal(orderId) {
@@ -2073,6 +2142,7 @@
                 btnSell.className = 'flex-1 py-1 rounded text-center font-bold text-rose-400 bg-rose-500/20 border border-rose-500/30';
                 btnBuy.className = 'flex-1 py-1 rounded text-center text-neutral-400 hover:text-emerald-400';
             }
+            calculateManualCapital();
         }
 
         function calculateManualCapital() {
@@ -2080,6 +2150,33 @@
             const qty = parseInt(document.getElementById('manualQty').value) || 0;
             const total = px * qty;
             document.getElementById('manualCapitalDisplay').textContent = `₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Allocated Remaining Capital Guard
+            const remCap = (window.tradingSettings && typeof window.tradingSettings.allocated_remaining_capital === 'number') 
+                ? window.tradingSettings.allocated_remaining_capital 
+                : {{ stats.allocated_remaining_capital or 0.0 }};
+            const capWarnBox = document.getElementById('manualOrderCapitalWarning');
+            const capWarnText = document.getElementById('manualOrderCapitalWarningText');
+            const confirmBtn = document.getElementById('btnConfirmManualOrder');
+            const sym = document.getElementById('manualSymbol').value.trim().toUpperCase();
+            const isDup = sym && portfolioSymbols.has(sym);
+
+            if (manualOrderAction === 'BUY' && total > remCap) {
+                if (capWarnBox) capWarnBox.classList.remove('hidden');
+                if (capWarnText) {
+                    capWarnText.textContent = `Order amount ₹${total.toLocaleString('en-IN', {minimumFractionDigits: 2})} exceeds allocated remaining capital ₹${remCap.toLocaleString('en-IN', {minimumFractionDigits: 2})}. Order cannot be placed.`;
+                }
+                if (confirmBtn) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                if (capWarnBox) capWarnBox.classList.add('hidden');
+                if (!isDup && confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
         }
 
         function checkManualSymbolDuplicate() {
@@ -2459,14 +2556,28 @@
 
         function updateCapitalUI(settings) {
             if (!settings) return;
+            window.tradingSettings = settings;
             const elBroker = document.getElementById('labelBrokerCapital');
             const elEffective = document.getElementById('labelEffectiveCapital');
+            const elUsed = document.getElementById('labelBrokerUsed');
+            const elRemaining = document.getElementById('labelAllocatedRemaining');
             const elRisk = document.getElementById('labelRiskPerTrade');
             const elBadge = document.getElementById('badgeCapitalLimitStatus');
 
             if (elBroker) elBroker.textContent = Number(settings.broker_total_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             if (elEffective) elEffective.textContent = Number(settings.effective_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (elUsed) elUsed.textContent = Number(settings.broker_used_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (elRemaining) elRemaining.textContent = Number(settings.allocated_remaining_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             if (elRisk) elRisk.textContent = Number(settings.risk_per_trade_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const mBroker = document.getElementById('modalSettingBrokerCapital');
+            const mAvail = document.getElementById('modalSettingBrokerAvailable');
+            const mUsed = document.getElementById('modalSettingBrokerUsed');
+            const mRem = document.getElementById('modalSettingAllocatedRemaining');
+            if (mBroker) mBroker.textContent = Number(settings.broker_total_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (mAvail) mAvail.textContent = Number(settings.broker_available_balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (mUsed) mUsed.textContent = Number(settings.broker_used_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (mRem) mRem.textContent = Number(settings.allocated_remaining_capital || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
             if (elBadge) {
                 if (settings.is_custom_limit_active) {

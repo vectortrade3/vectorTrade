@@ -89,6 +89,17 @@ class OrdersService:
             target_price = calc["target_1_2"]
         profit_at_target = float(doc.get("profit_at_target", round(abs(target_price - entry_price) * quantity, 2)))
 
+        # Capital Affordability Check against Allocated Remaining Capital
+        cap_check = risk_calculator.check_capital_for_trade(
+            quantity=quantity,
+            entry_price=entry_price,
+            action=action
+        )
+        is_affordable = bool(cap_check.get("allowed", True))
+        allocated_remaining = float(cap_check.get("allocated_remaining_capital", 0.0))
+        capital_shortfall = float(cap_check.get("shortfall", 0.0))
+        capital_reason = str(cap_check.get("reason", ""))
+
         loss_pct = float(doc.get("loss_pct", round((risk_per_share / entry_price * 100), 2) if entry_price > 0 else 0.0))
         profit_pct = float(doc.get("profit_pct", round(((target_price - entry_price) / entry_price * 100), 2) if entry_price > 0 else 0.0))
         risk_reward = str(doc.get("risk_reward", "1 : 2.00"))
@@ -156,7 +167,11 @@ class OrdersService:
             "synced_at": str(doc.get("synced_at", "")),
             "is_in_portfolio": bool(doc.get("is_in_portfolio", False)),
             "portfolio_status": str(doc.get("portfolio_status", "NONE")),
-            "portfolio_reason": doc.get("portfolio_reason")
+            "portfolio_reason": doc.get("portfolio_reason"),
+            "is_affordable": is_affordable,
+            "allocated_remaining_capital": allocated_remaining,
+            "capital_shortfall": capital_shortfall,
+            "capital_reason": capital_reason
         }
 
     def get_orders(
@@ -378,6 +393,11 @@ class OrdersService:
                 "custom_capital_limit": t_settings.get("custom_capital_limit"),
                 "broker_total_capital": t_settings.get("broker_total_capital", 500000.0),
                 "broker_available_balance": t_settings.get("broker_available_balance", 0.0),
+                "broker_used_capital": t_settings.get("broker_used_capital", 0.0),
+                "allocated_used_capital": t_settings.get("allocated_used_capital", 0.0),
+                "allocated_used_pct": t_settings.get("allocated_used_pct", 0.0),
+                "allocated_remaining_capital": t_settings.get("allocated_remaining_capital", 0.0),
+                "can_trade": t_settings.get("can_trade", True),
                 "risk_per_trade_inr": t_settings.get("risk_per_trade_inr", 5000.0),
                 "risk_pct_per_trade": t_settings.get("risk_pct_per_trade", 1.0),
                 "is_custom_limit_active": t_settings.get("is_custom_limit_active", False),

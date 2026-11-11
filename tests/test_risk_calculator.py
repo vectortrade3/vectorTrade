@@ -179,6 +179,121 @@ class TestRiskCalculator(unittest.TestCase):
         self.assertIn("effective_capital", stats)
         self.assertIn("risk_per_trade_inr", stats)
         self.assertIn("broker_total_capital", stats)
+        self.assertIn("broker_used_capital", stats)
+        self.assertIn("allocated_remaining_capital", stats)
+
+    @patch("online.services.megabull_service.megabull_service.get_account_details")
+    def test_06_allocated_remaining_capital_user_scenario(self, mock_acc):
+        """
+        Validates user's exact scenario:
+        - Overall broker capital = 5 Lakh (500,000)
+        - Remaining broker free cash = 4.10 Lakh (410,000)
+        - Broker used capital = 500,000 - 410,000 = 90,000
+        - User threshold = 1 Lakh (100,000)
+        - Remaining allocated capital = 100,000 - 90,000 = 10,000 (10k only!)
+        """
+        mock_acc.return_value = {
+            "status": "SUCCESS",
+            "virtual_money": 500000.00,
+            "virtual_money_left": 410000.00,
+            "virtual_money_blocked": 90000.00
+        }
+
+        calc = RiskCalculator()
+        calc._cached_broker_capital = 500000.00
+        calc._broker_cache_time = 9999999999.0
+
+        calc.update_trading_settings(custom_capital_limit=100000.0, risk_pct_per_trade=1.0)
+        settings = calc.get_trading_settings()
+
+        self.assertEqual(settings["broker_total_capital"], 500000.00)
+        self.assertEqual(settings["broker_available_balance"], 410000.00)
+        self.assertEqual(settings["broker_used_capital"], 90000.00)
+        self.assertEqual(settings["effective_capital"], 100000.00)
+        self.assertTrue(settings["is_custom_limit_active"])
+        # Exactly 10k remaining!
+        self.assertEqual(settings["allocated_remaining_capital"], 10000.00)
+        self.assertEqual(settings["allocated_used_capital"], 90000.00)
+        self.assertEqual(settings["allocated_used_pct"], 90.0)
+        self.assertTrue(settings["can_trade"])
+
+    @patch("online.services.megabull_service.megabull_service.get_account_details")
+    def test_07_check_capital_for_trade_boundaries(self, mock_acc):
+        """
+        Validates trade affordability under active allocated remaining capital:
+        - Remaining: 10,000
+        - Trade 1: Qty 10 @ 800 = 8,000 <= 10,000 -> Allowed (True)
+        - Trade 2: Qty 10 @ 1200 = 12,000 > 10,000 -> Rejected (False, shortfall 2,000)
+        - Trade 3: SELL (square off) Qty 10 @ 1200 -> Allowed (True, frees capital)
+        """
+        mock_acc.return_value = {
+            "status": "SUCCESS",
+            "virtual_money": 500000.00,
+            "virtual_money_left": 410000.00,
+            "virtual_money_blocked": 90000.00
+        }
+
+        calc = RiskCalculator()
+        calc._cached_broker_capital = 500000.00
+        calc._broker_cache_time = 9999999999.0
+        calc.update_trading_settings(custom_capital_limit=100000.0, risk_pct_per_trade=1.0)
+
+        # 1. Affordable trade: 8,000 <= 10,000
+        check1 = calc.check_capital_for_trade(quantity=10, entry_price=800.0, action="BUY")
+        self.assertTrue(check1["allowed"])
+        self.assertEqual(check1["trade_amount"], 8000.00)
+        self.assertEqual(check1["allocated_remaining_capital"], 10000.00)
+        self.assertEqual(check1["shortfall"], 0.0)
+
+        # 2. Exceeding trade: 12,000 > 10,000 -> strictly rejected
+        check2 = calc.check_capital_for_trade(quantity=10, entry_price=1200.0, action="BUY")
+        self.assertFalse(check2["allowed"])
+        self.assertEqual(check2["trade_amount"], 12000.00)
+        self.assertEqual(check2["allocated_remaining_capital"], 10000.00)
+        self.assertEqual(check2["shortfall"], 2000.00)
+        self.assertIn("exceeds allocated remaining capital", check2["reason"])
+
+        # 3. Square off / exit order (SELL): always allowed
+        check3 = calc.check_capital_for_trade(quantity=10, entry_price=1200.0, action="SELL")
+        self.assertTrue(check3["allowed"])
+
+    @patch("online.services.megabull_service.megabull_service.is_symbol_in_portfolio")
+    @patch("online.services.megabull_service.megabull_service.get_liquidation_status")
+    @patch("online.services.risk_calculator.risk_calculator.check_capital_for_trade")
+    def test_08_megabull_place_order_insufficient_allocated_capital_guard(
+        self,
+        mock_cap_check,
+        mock_liq,
+        mock_dup
+    ):
+        """
+        Validates that megabull_service.place_order strictly blocks buy orders
+        when trade amount exceeds remaining allocated capital.
+        """
+        from online.services.megabull_service import megabull_service
+
+        mock_dup.return_value = {"exists": False}
+        mock_liq.return_value = {"armed": False, "status": "NONE"}
+        mock_cap_check.return_value = {
+            "allowed": False,
+            "trade_amount": 15000.00,
+            "allocated_remaining_capital": 10000.00,
+            "shortfall": 5000.00,
+            "reason": "Trade amount ₹15,000 exceeds allocated remaining capital ₹10,000. Order cannot be placed."
+        }
+
+        res = megabull_service.place_order(
+            symbol="TITAN",
+            action="BUY",
+            quantity=5,
+            price=3000.0,
+            strategy="50 MA Setup"
+        )
+
+        self.assertEqual(res["status"], "ERROR")
+        self.assertEqual(res["code"], "INSUFFICIENT_ALLOCATED_CAPITAL")
+        self.assertEqual(res["shortfall"], 5000.00)
+        self.assertIn("exceeds allocated remaining capital", res["error"])
 
 
 if __name__ == "__main__":

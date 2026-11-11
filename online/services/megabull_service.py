@@ -1260,6 +1260,25 @@ class MegaBullService:
                 "details": liq
             }
 
+        # Allocated Remaining Capital Guard: Block trade if investment exceeds remaining capital under threshold
+        if act == "BUY":
+            from online.services.risk_calculator import risk_calculator
+            cap_check = risk_calculator.check_capital_for_trade(quantity=qty, entry_price=px, action=act)
+            if not cap_check.get("allowed", False):
+                err_msg = cap_check.get("reason", "Order rejected: Required capital exceeds allocated remaining budget.")
+                logger.warning(f"Order rejected for {sym}: {err_msg}")
+                return {
+                    "status": "ERROR",
+                    "code": "INSUFFICIENT_ALLOCATED_CAPITAL",
+                    "error": err_msg,
+                    "trade_amount": cap_check.get("trade_amount", 0.0),
+                    "allocated_remaining_capital": cap_check.get("allocated_remaining_capital", 0.0),
+                    "shortfall": cap_check.get("shortfall", 0.0),
+                    "symbol": sym,
+                    "quantity": qty,
+                    "price": px
+                }
+
         token = self.get_instrument_token(sym)
         target_px = round(float(target_price), 2) if target_price else round(px * (1.04 if act == "BUY" else 0.96), 2)
         sl_px = round(float(sl_price), 2) if sl_price else round(px * (0.98 if act == "BUY" else 1.02), 2)

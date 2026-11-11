@@ -245,6 +245,16 @@ class LiveSyncWorker:
                                 }}
                             )
                             amo_fired_count += 1
+                        elif order_res.get("code") == "INSUFFICIENT_ALLOCATED_CAPITAL":
+                            logger.warning(f"Staged AMO order for {s_sym} held: {order_res.get('error')}")
+                            col_staged.update_one(
+                                {"_id": s_id},
+                                {"$set": {
+                                    "status": "SKIPPED_INSUFFICIENT_CAPITAL",
+                                    "stage_reason": order_res.get("error"),
+                                    "checked_at": timestamp_str
+                                }}
+                            )
         except Exception as e:
             logger.error(f"Error handling STAGE 1 (WILL_BE_PUT_AMO): {e}")
 
@@ -371,7 +381,10 @@ class LiveSyncWorker:
         # Account for historical completed trades (e.g. TVSMOTOR)
         historical_closed = megabull_service.get_historical_completed_trades()
         for hc in historical_closed:
-            stg = hc.get("lifecycle_stage", OrderLifecycleStage.COMPLETED_BOUGHT_TO_SOLD)
+            if isinstance(hc, dict):
+                stg = hc.get("lifecycle_stage", OrderLifecycleStage.COMPLETED_BOUGHT_TO_SOLD)
+            else:
+                stg = OrderLifecycleStage.COMPLETED_BOUGHT_TO_SOLD
             if stg in orders_by_stage:
                 orders_by_stage[stg] += 1
 
