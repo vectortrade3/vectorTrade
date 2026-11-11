@@ -180,6 +180,24 @@ class LiveSyncWorker:
         }
 
         # ------------------------------------------------------------------
+        # EMERGENCY LIQUIDATION PROTOCOL (Single Execution when Armed & Market Open)
+        # ------------------------------------------------------------------
+        try:
+            liq_status = megabull_service.get_liquidation_status()
+            if liq_status.get("armed") and liq_status.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
+                if market_open:
+                    logger.info("Market is OPEN: Triggering single portfolio emergency liquidation execution.")
+                    liq_res = megabull_service.liquidate_all_positions(force_market_open=True)
+                    if db_manager.staged_orders is not None:
+                        db_manager.staged_orders.update_many(
+                            {"is_liquidation_order": True},
+                            {"$set": {"status": "EXECUTED", "executed_at": timestamp_str, "result": liq_res}}
+                        )
+                    amo_fired_count += 1
+        except Exception as e:
+            logger.error(f"Error handling scheduled emergency liquidation: {e}")
+
+        # ------------------------------------------------------------------
         # STAGE 1: WILL_BE_PUT_AMO (Staged Off-Market Orders)
         # ------------------------------------------------------------------
         try:
@@ -195,43 +213,38 @@ class LiveSyncWorker:
                     s_token = str(so.get("instrument_token", megabull_service.get_instrument_token(s_sym)))
                     is_liq = bool(so.get("is_liquidation_order", False))
 
+                    if is_liq:
+                        # Handled atomically above
+                        continue
+
                     orders_by_stage[OrderLifecycleStage.WILL_BE_PUT_AMO] += 1
 
                     # If market is OPEN, execute staged AMO order
                     if market_open:
-                        if is_liq:
-                            logger.info(f"Market is OPEN: Executing emergency liquidation market exit for {s_sym}.")
-                            liq_res = megabull_service.liquidate_all_positions(force_market_open=True)
+                        logger.info(f"Market is OPEN: Submitting staged AMO entry order for {s_sym} ({s_action} {s_qty} @ {s_price}).")
+                        order_res = megabull_service.place_order(
+                            symbol=s_sym,
+                            action=s_action,
+                            quantity=s_qty,
+                            price=s_price,
+                            target_price=so.get("target_price"),
+                            sl_price=so.get("sl_price"),
+                            strategy=so.get("strategy", "50 MA Setup"),
+                            product=so.get("product", "CNC"),
+                            order_type=so.get("order_type", "LIMIT"),
+                            enforce_duplicate_check=False
+                        )
+                        if order_res.get("status") == "SUCCESS":
                             col_staged.update_one(
                                 {"_id": s_id},
-                                {"$set": {"status": "EXECUTED", "executed_at": timestamp_str, "result": liq_res}}
+                                {"$set": {
+                                    "status": "PENDING" if order_res.get("case") != "FILLED" else "RUNNING",
+                                    "broker_order_id": order_res.get("order_id"),
+                                    "submitted_at": timestamp_str,
+                                    "order_response": order_res
+                                }}
                             )
                             amo_fired_count += 1
-                        else:
-                            logger.info(f"Market is OPEN: Submitting staged AMO entry order for {s_sym} ({s_action} {s_qty} @ {s_price}).")
-                            order_res = megabull_service.place_order(
-                                symbol=s_sym,
-                                action=s_action,
-                                quantity=s_qty,
-                                price=s_price,
-                                target_price=so.get("target_price"),
-                                sl_price=so.get("sl_price"),
-                                strategy=so.get("strategy", "50 MA Setup"),
-                                product=so.get("product", "CNC"),
-                                order_type=so.get("order_type", "LIMIT"),
-                                enforce_duplicate_check=False
-                            )
-                            if order_res.get("status") == "SUCCESS":
-                                col_staged.update_one(
-                                    {"_id": s_id},
-                                    {"$set": {
-                                        "status": "PENDING" if order_res.get("case") != "FILLED" else "RUNNING",
-                                        "broker_order_id": order_res.get("order_id"),
-                                        "submitted_at": timestamp_str,
-                                        "order_response": order_res
-                                    }}
-                                )
-                                amo_fired_count += 1
         except Exception as e:
             logger.error(f"Error handling STAGE 1 (WILL_BE_PUT_AMO): {e}")
 
