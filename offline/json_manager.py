@@ -1460,6 +1460,74 @@ def update_daily_analysis_progress(
     notify_progress_listeners("DAILY_ANALYSIS_PROGRESS", data)
 
 
+def record_auto_close_event(target_date: Optional[str] = None, reason: str = "") -> int:
+    """
+    Records an APP_AUTO_CLOSED lifecycle event into app_logs.json and daily_analysis.json.
+    Computes and returns the incremented auto_close_count for target_date.
+    """
+    today_str = target_date or datetime.now().strftime("%Y-%m-%d")
+    current_count = get_auto_close_count_for_date(today_str)
+    new_count = current_count + 1
+
+    # 1. Append to app_logs.json
+    log_app_event(
+        event="APP_AUTO_CLOSED",
+        status="Success",
+        message=reason or f"Application auto-closed after market analysis on {today_str}.",
+        extra={
+            "target_date": today_str,
+            "auto_close_count": new_count
+        }
+    )
+
+    # 2. Update daily_analysis.json
+    try:
+        data = read_json_file(DAILY_ANALYSIS_FILE, {})
+        data["auto_closed"] = True
+        data["auto_close_count"] = new_count
+        data["last_auto_close_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data["last_auto_close_date"] = today_str
+        write_json_file(DAILY_ANALYSIS_FILE, data)
+    except Exception:
+        pass
+
+    return new_count
+
+
+def get_auto_close_count_for_date(target_date: Optional[str] = None) -> int:
+    """
+    Returns the number of times the application has auto-closed for target_date.
+    """
+    today_str = target_date or datetime.now().strftime("%Y-%m-%d")
+    count_from_logs = 0
+
+    try:
+        logs_data = read_json_file(APP_LOGS_FILE, {"logs": []})
+        for entry in logs_data.get("logs", []):
+            if entry.get("event") == "APP_AUTO_CLOSED":
+                extra = entry.get("extra") or {}
+                entry_date = extra.get("target_date") or (entry.get("timestamp") or "")[:10]
+                if entry_date == today_str:
+                    count_from_logs += 1
+    except Exception:
+        pass
+
+    count_from_daily = 0
+    try:
+        daily_data = read_json_file(DAILY_ANALYSIS_FILE, {})
+        if daily_data.get("last_auto_close_date") == today_str:
+            count_from_daily = int(daily_data.get("auto_close_count", 0))
+    except Exception:
+        pass
+
+    return max(count_from_logs, count_from_daily)
+
+
+def has_auto_closed_for_date(target_date: Optional[str] = None) -> bool:
+    """Returns True if the application has already auto-closed at least once on target_date."""
+    return get_auto_close_count_for_date(target_date) >= 1
+
+
 # Auto-initialize state on import
 initialize_stocks_download_state()
 initialize_feature_gen_state()

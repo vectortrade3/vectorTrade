@@ -152,6 +152,16 @@ class VectorTradeTrayApp:
 
     def start_background_server(self):
         """Launches the VectorTrade Offline Flask App & Scheduler in a background daemon thread."""
+        try:
+            from offline import json_manager
+            json_manager.log_app_event(
+                event="APP_STARTED",
+                status="Success",
+                message=f"VectorTrade application started on port {self.port}."
+            )
+        except Exception:
+            pass
+
         if is_port_in_use(self.port):
             logger.info(f"Port {self.port} is already active. Assuming existing VectorTrade instance is running.")
             return
@@ -209,6 +219,15 @@ class VectorTradeTrayApp:
     def on_exit(self, icon=None, item=None):
         """Terminates tray application and exits."""
         logger.info("Exiting VectorTrade System Tray Application...")
+        try:
+            from offline import json_manager
+            json_manager.log_app_event(
+                event="APP_CLOSED",
+                status="Success",
+                message="VectorTrade application closed by user from system tray."
+            )
+        except Exception:
+            pass
         self._is_running = False
         if self._tray_icon:
             self._tray_icon.stop()

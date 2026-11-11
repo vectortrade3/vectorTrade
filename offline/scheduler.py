@@ -75,6 +75,42 @@ def check_internet_connection(timeout: float = 3.0) -> bool:
         return False
 
 
+def show_windows_close_prompt(
+    title: str = "VectorTrade - Daily Analysis Completed",
+    message: str = (
+        "Daily analysis for today has already completed and auto-closed.\n\n"
+        "Do you want to close VectorTrade now?\n\n"
+        "- Click YES to close the application.\n"
+        "- Click NO to keep it running so you can view the dashboard and orders."
+    )
+) -> str:
+    """
+    Displays a native Windows modal prompt with Yes/No buttons.
+    Returns:
+        "CLOSE" if user clicks Yes (IDYES = 6).
+        "KEEP_RUNNING" if user clicks No (IDNO = 7).
+    Supports headless/unit-test mocking via show_windows_close_prompt.mock_response.
+    """
+    mock = getattr(show_windows_close_prompt, "mock_response", None)
+    if mock is not None:
+        logger.info(f"[TEST_MODE] show_windows_close_prompt mocked response: {mock}")
+        return mock
+
+    try:
+        import ctypes
+        # MB_YESNO (0x04) | MB_ICONQUESTION (0x20) | MB_TOPMOST (0x40000) | MB_SETFOREGROUND (0x10000)
+        flags = 0x04 | 0x20 | 0x40000 | 0x10000
+        # IDYES = 6, IDNO = 7
+        response = ctypes.windll.user32.MessageBoxW(0, message, title, flags)
+        if response == 6:
+            return "CLOSE"
+        else:
+            return "KEEP_RUNNING"
+    except Exception as e:
+        logger.error(f"Error displaying Windows MessageBox: {e}")
+        return "KEEP_RUNNING"
+
+
 def trigger_self_close(delay_seconds: float = 3.0, reason: str = "") -> None:
     """
     Triggers a graceful delayed application self-close.
@@ -117,6 +153,7 @@ class OfflineDailyScheduler:
         self._self_close_scheduled = False
         self._last_tick_time: Optional[str] = None
         self._last_internet_status: Optional[bool] = None
+        self._user_opted_to_keep_running_for_date: Optional[str] = None
         self._status_message = "Scheduler initialized. Waiting for first tick."
 
     def get_time_window_info(self) -> Dict[str, Any]:
@@ -188,23 +225,97 @@ class OfflineDailyScheduler:
             done_info = self.check_today_completed(today_str)
             is_today_done = done_info["is_done"]
 
-            # Case 1: In Auto-Run window and today is ALREADY done -> SELF-CLOSE
+            # Case 1: In Auto-Run window and today is ALREADY done
             if win_info["is_active_window"] and is_today_done and not force_execution:
-                msg = f"Today's analysis ({today_str}) & MongoDB sync are already COMPLETED. Self-closing application."
-                self._status_message = msg
-                logger.info(msg)
-                if not self._self_close_scheduled:
-                    self._self_close_scheduled = True
-                    trigger_self_close(delay_seconds=3.0, reason=msg)
-                return {
-                    "action": "SELF_CLOSE_TRIGGERED",
-                    "window": win_info["window"],
-                    "is_today_done": True,
-                    "self_close_scheduled": True,
-                    "message": msg,
-                    "window_info": win_info,
-                    "enabled_strategies": enabled_strategies
-                }
+                # Check if user already dismissed/opted to keep running today
+                if self._user_opted_to_keep_running_for_date == today_str:
+                    msg = f"Today's analysis ({today_str}) completed. User opted to keep application running for this session."
+                    self._status_message = msg
+                    return {
+                        "action": "KEEP_RUNNING_USER_OPTED",
+                        "window": win_info["window"],
+                        "is_today_done": True,
+                        "self_close_scheduled": False,
+                        "message": msg,
+                        "window_info": win_info,
+                        "enabled_strategies": enabled_strategies
+                    }
+
+                # Check how many times the application has already auto-closed today
+                auto_close_count = json_manager.get_auto_close_count_for_date(today_str)
+
+                if auto_close_count >= 1:
+                    # User reopened the app after it had already auto-closed once today.
+                    # Prompt user via native Windows modal dialog: Close or Keep Running.
+                    prompt_title = f"VectorTrade - Daily Analysis Completed ({today_str})"
+                    prompt_msg = (
+                        f"Daily analysis and MongoDB Atlas sync for today ({today_str}) have already completed.\n"
+                        f"The application has previously auto-closed ({auto_close_count} time{'s' if auto_close_count > 1 else ''}).\n\n"
+                        f"Do you want to close VectorTrade now?\n\n"
+                        f"- Click YES to close the application.\n"
+                        f"- Click NO to keep it running until tomorrow so you can view the dashboard and trade book."
+                    )
+                    user_choice = show_windows_close_prompt(title=prompt_title, message=prompt_msg)
+
+                    if user_choice == "CLOSE":
+                        msg = f"User chose YES to close VectorTrade after prior auto-close on {today_str}."
+                        self._status_message = msg
+                        logger.info(msg)
+                        json_manager.record_auto_close_event(today_str, reason=msg)
+                        if not self._self_close_scheduled:
+                            self._self_close_scheduled = True
+                            trigger_self_close(delay_seconds=1.0, reason=msg)
+                        return {
+                            "action": "SELF_CLOSE_USER_CONFIRMED",
+                            "window": win_info["window"],
+                            "is_today_done": True,
+                            "self_close_scheduled": True,
+                            "message": msg,
+                            "window_info": win_info,
+                            "enabled_strategies": enabled_strategies
+                        }
+                    else:
+                        # User clicked NO -> Keep running until tomorrow!
+                        self._user_opted_to_keep_running_for_date = today_str
+                        msg = f"User clicked NO (keep running) for {today_str}. VectorTrade will stay running until tomorrow."
+                        self._status_message = msg
+                        logger.info(msg)
+                        try:
+                            json_manager.log_app_event(
+                                event="USER_KEPT_RUNNING",
+                                status="Success",
+                                message=msg,
+                                extra={"target_date": today_str}
+                            )
+                        except Exception:
+                            pass
+                        return {
+                            "action": "KEEP_RUNNING_USER_REQUESTED",
+                            "window": win_info["window"],
+                            "is_today_done": True,
+                            "self_close_scheduled": False,
+                            "message": msg,
+                            "window_info": win_info,
+                            "enabled_strategies": enabled_strategies
+                        }
+                else:
+                    # First time auto-closing today (auto_close_count == 0)
+                    msg = f"Today's analysis ({today_str}) & MongoDB sync are already COMPLETED. Auto-closing application for today."
+                    self._status_message = msg
+                    logger.info(msg)
+                    json_manager.record_auto_close_event(today_str, reason=msg)
+                    if not self._self_close_scheduled:
+                        self._self_close_scheduled = True
+                        trigger_self_close(delay_seconds=3.0, reason=msg)
+                    return {
+                        "action": "SELF_CLOSE_TRIGGERED",
+                        "window": win_info["window"],
+                        "is_today_done": True,
+                        "self_close_scheduled": True,
+                        "message": msg,
+                        "window_info": win_info,
+                        "enabled_strategies": enabled_strategies
+                    }
 
             # Case 2: In Idle window (00:00 - 15:59) -> Sit idle
             if not win_info["is_active_window"] and not force_execution:
@@ -275,6 +386,9 @@ class OfflineDailyScheduler:
                 )
                 self._status_message = success_msg
                 logger.info(success_msg)
+
+                # Record the auto-close event so logs have the lifecycle entry
+                json_manager.record_auto_close_event(today_str, reason=success_msg)
 
                 # Trigger self-close now that analysis + upload is completed
                 if not self._self_close_scheduled:
@@ -371,6 +485,8 @@ class OfflineDailyScheduler:
             "last_run_timestamp": done_info.get("last_run_timestamp", ""),
             "internet_connected": self._last_internet_status if self._last_internet_status is not None else check_internet_connection(timeout=1.5),
             "enabled_strategies": enabled_strats,
+            "auto_close_count": json_manager.get_auto_close_count_for_date(win_info["today_date"]),
+            "user_opted_to_keep_running": self._user_opted_to_keep_running_for_date == win_info["today_date"],
             "self_close_scheduled": self._self_close_scheduled,
             "is_executing_pipeline": self._is_executing_pipeline,
             "last_tick_time": self._last_tick_time,

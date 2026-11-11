@@ -26,6 +26,7 @@ from offline.scheduler import (
     OfflineDailyScheduler,
     check_internet_connection,
     trigger_self_close,
+    show_windows_close_prompt,
     get_daily_scheduler
 )
 from offline.app import app
@@ -40,6 +41,7 @@ class TestOfflineDailyScheduler(unittest.TestCase):
     def setUp(self):
         # ALWAYS disable actual process exit during tests
         trigger_self_close.disabled = True
+        show_windows_close_prompt.mock_response = "KEEP_RUNNING"
         self.scheduler = OfflineDailyScheduler(check_interval_seconds=60)
         self.client = app.test_client()
         # Backup daily_analysis.json state
@@ -47,6 +49,7 @@ class TestOfflineDailyScheduler(unittest.TestCase):
 
     def tearDown(self):
         self.scheduler.stop()
+        show_windows_close_prompt.mock_response = None
         # Restore daily_analysis.json state
         if hasattr(self, "_daily_analysis_backup") and self._daily_analysis_backup:
             json_manager.write_json_file(json_manager.DAILY_ANALYSIS_FILE, self._daily_analysis_backup)
@@ -119,7 +122,7 @@ class TestOfflineDailyScheduler(unittest.TestCase):
             self.assertIn("Idle mode", res["message"])
 
     def test_04_autorun_window_already_completed_triggers_self_close(self):
-        """If already completed today in 4PM window, scheduler detects it and triggers self-close."""
+        """If already completed today in 4PM window and count is 0, scheduler triggers initial self-close."""
         mock_evening = datetime(2026, 11, 11, 17, 30, 0, tzinfo=KOLKATA_TZ)
         with patch("offline.scheduler.datetime") as mock_dt:
             mock_dt.now.return_value = mock_evening
@@ -133,11 +136,11 @@ class TestOfflineDailyScheduler(unittest.TestCase):
                     "status": "COMPLETED",
                     "mongo_synced": True
                 }
-
-                res = self.scheduler.run_tick_once()
-                self.assertEqual(res["action"], "SELF_CLOSE_TRIGGERED")
-                self.assertTrue(res["self_close_scheduled"])
-                self.assertIn("already COMPLETED", res["message"])
+                with patch("offline.json_manager.get_auto_close_count_for_date", return_value=0):
+                    res = self.scheduler.run_tick_once()
+                    self.assertEqual(res["action"], "SELF_CLOSE_TRIGGERED")
+                    self.assertTrue(res["self_close_scheduled"])
+                    self.assertIn("already COMPLETED", res["message"])
 
     def test_05_autorun_window_no_internet_waits_without_crashing(self):
         """In 4PM window with no internet, scheduler reports WAITING_FOR_INTERNET and does not crash."""
@@ -242,6 +245,71 @@ class TestOfflineDailyScheduler(unittest.TestCase):
         # Check different date returns False
         check_diff = json_manager.is_daily_analysis_and_sync_done_for_today("2026-12-25")
         self.assertFalse(check_diff["is_done"])
+
+    def test_09_auto_close_lifecycle_logging_and_counts(self):
+        """Verifies record_auto_close_event records into logs and increments count."""
+        test_date = "2026-11-15"
+        initial_count = json_manager.get_auto_close_count_for_date(test_date)
+        
+        # Record auto-close event
+        new_count = json_manager.record_auto_close_event(test_date, reason="Test auto-close execution.")
+        self.assertEqual(new_count, initial_count + 1)
+        self.assertTrue(json_manager.has_auto_closed_for_date(test_date))
+        self.assertEqual(json_manager.get_auto_close_count_for_date(test_date), initial_count + 1)
+
+    def test_10_prompt_shown_when_already_auto_closed_user_chooses_close(self):
+        """When already auto-closed once today, user choosing YES in prompt triggers self-close."""
+        mock_evening = datetime(2026, 11, 11, 18, 0, 0, tzinfo=KOLKATA_TZ)
+        with patch("offline.scheduler.datetime") as mock_dt:
+            mock_dt.now.return_value = mock_evening
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+            with patch.object(self.scheduler, "check_today_completed") as mock_check:
+                mock_check.return_value = {
+                    "is_done": True,
+                    "today_date": "2026-11-11",
+                    "status": "COMPLETED",
+                    "mongo_synced": True
+                }
+                # Simulate app already auto-closed once today
+                with patch("offline.json_manager.get_auto_close_count_for_date", return_value=1):
+                    # Mock user clicking YES (Close)
+                    show_windows_close_prompt.mock_response = "CLOSE"
+                    res = self.scheduler.run_tick_once()
+
+                    self.assertEqual(res["action"], "SELF_CLOSE_USER_CONFIRMED")
+                    self.assertTrue(res["self_close_scheduled"])
+                    self.assertIn("User chose YES", res["message"])
+
+    def test_11_prompt_shown_when_already_auto_closed_user_chooses_keep_running(self):
+        """When already auto-closed once today, user choosing NO keeps app running until tomorrow."""
+        mock_evening = datetime(2026, 11, 11, 18, 30, 0, tzinfo=KOLKATA_TZ)
+        with patch("offline.scheduler.datetime") as mock_dt:
+            mock_dt.now.return_value = mock_evening
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+            with patch.object(self.scheduler, "check_today_completed") as mock_check:
+                mock_check.return_value = {
+                    "is_done": True,
+                    "today_date": "2026-11-11",
+                    "status": "COMPLETED",
+                    "mongo_synced": True
+                }
+                with patch("offline.json_manager.get_auto_close_count_for_date", return_value=1):
+                    # Mock user clicking NO (Keep Running)
+                    show_windows_close_prompt.mock_response = "KEEP_RUNNING"
+                    res = self.scheduler.run_tick_once()
+
+                    self.assertEqual(res["action"], "KEEP_RUNNING_USER_REQUESTED")
+                    self.assertFalse(res["self_close_scheduled"])
+                    self.assertIn("User clicked NO (keep running)", res["message"])
+                    self.assertEqual(self.scheduler._user_opted_to_keep_running_for_date, "2026-11-11")
+
+                    # Subsequent tick on same day must NOT prompt again, must return KEEP_RUNNING_USER_OPTED
+                    show_windows_close_prompt.mock_response = None  # Clear mock to ensure prompt is NOT called
+                    subsequent_res = self.scheduler.run_tick_once()
+                    self.assertEqual(subsequent_res["action"], "KEEP_RUNNING_USER_OPTED")
+                    self.assertFalse(subsequent_res["self_close_scheduled"])
 
 
 if __name__ == "__main__":
