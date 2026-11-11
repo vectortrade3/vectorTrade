@@ -1211,14 +1211,24 @@ class MegaBullService:
                     "details": dup
                 }
 
-        # Emergency Liquidation Guard: block any buying if emergency liquidation is scheduled
+        # Emergency Liquidation Guard: block any buying on the day of liquidation or while scheduled
         liq = self.get_liquidation_status()
-        if liq.get("armed") and liq.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
-            logger.warning(f"Order rejected for {sym}: Emergency liquidation is scheduled for market open.")
+        is_armed = bool(liq.get("armed", False))
+        today_str = time.strftime("%Y-%m-%d")
+        executed_today = str(liq.get("executed_at") or "").startswith(today_str)
+        status_str = str(liq.get("status", ""))
+
+        if (is_armed or (executed_today and "EXECUTED" in status_str)) and act == "BUY":
+            err_msg = (
+                "Emergency liquidation is currently scheduled for market open. Buying is halted until liquidation completes or is cancelled."
+                if is_armed
+                else f"Emergency liquidation was triggered for today ({today_str}). All new buying is halted for the remainder of the session."
+            )
+            logger.warning(f"Order rejected for {sym}: {err_msg}")
             return {
                 "status": "ERROR",
                 "code": "LIQUIDATION_ACTIVE",
-                "error": "Emergency liquidation is currently scheduled for market open. Buying is halted until liquidation completes or is cancelled.",
+                "error": err_msg,
                 "details": liq
             }
 
@@ -1398,18 +1408,23 @@ class MegaBullService:
         state["is_market_open_now"] = self.is_market_open()
         return state
 
-    def cancel_open_orders(self) -> Dict[str, Any]:
+    def cancel_open_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
-        Cancels all pending/open orders on MegaBull paper broker,
-        and marks all staged buy orders in MongoDB as CANCELLED.
+        Cancels pending/open orders on MegaBull paper broker (optionally filtered by symbol),
+        and marks staged buy orders in MongoDB as CANCELLED.
         """
         cancelled_broker_orders: List[str] = []
         orders = self.get_orders()
         open_orders = orders.get("open", [])
+        sym_filter = str(symbol).strip().upper() if symbol else None
+
         if self.api_key and open_orders:
             for o in open_orders:
                 o_id = str(o.get("orderId", o.get("id", "")))
                 if not o_id:
+                    continue
+                o_sym = str(o.get("instrumentName", o.get("symbol", ""))).strip().upper()
+                if sym_filter and o_sym != sym_filter:
                     continue
                 try:
                     url = f"{self.base_url}/api/order/cancel/{o_id}"
@@ -1430,11 +1445,14 @@ class MegaBullService:
             from online.db import db_manager
             col = db_manager.staged_orders
             if col is not None:
+                query = {"status": {"$in": ["STAGED_OFFMARKET", "PENDING"]}}
+                if sym_filter:
+                    query["symbol"] = sym_filter
                 res = col.update_many(
-                    {"status": {"$in": ["STAGED_OFFMARKET", "PENDING"]}},
+                    query,
                     {"$set": {
                         "status": "CANCELLED",
-                        "cancel_reason": "Emergency Liquidation - Order cancelled to prevent buying",
+                        "cancel_reason": f"Order cancelled ({f'Symbol {sym_filter}' if sym_filter else 'Emergency Liquidation'})",
                         "cancelled_at": time.strftime("%Y-%m-%d %H:%M:%S")
                     }}
                 )

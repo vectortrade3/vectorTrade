@@ -66,9 +66,12 @@ class TestLiveSyncWorker(unittest.TestCase):
 
             mock_place_order.return_value = {"status": "SUCCESS", "order_id": "ORD_123", "case": "PLACED"}
             mock_col = MagicMock()
-            mock_col.find.return_value = [
-                {"_id": "1", "symbol": "INFY", "status": "STAGED_OFFMARKET", "action": "BUY", "quantity": 5, "price": 1800.0}
-            ]
+            def mock_find(query=None, *args, **kwargs):
+                if query and "STAGED_OFFMARKET" in query.get("status", {}).get("$in", []):
+                    return [{"_id": "1", "symbol": "INFY", "status": "STAGED_OFFMARKET", "action": "BUY", "quantity": 5, "price": 1800.0}]
+                return []
+
+            mock_col.find.side_effect = mock_find
             mock_db.staged_orders = mock_col
             mock_db.signals_watchlist = MagicMock()
             mock_db.signals_watchlist.find.return_value = []
