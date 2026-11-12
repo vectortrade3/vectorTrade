@@ -1,15 +1,15 @@
 {
-  "status": "COMPLETED",
-  "heading": "Done",
-  "current_stock": "ALL",
+  "status": "SAVING",
+  "heading": "Saving Data",
+  "current_stock": "GLOBAL_DATASET",
   "current_index": 207,
   "total_stocks": 207,
-  "percentage": 100.0,
-  "message": "Data already combined and cleaned up to 2026-11-01 for all 207 constituents today (2026-11-11). Consolidation skipped.",
-  "elapsed_seconds": 0.0,
+  "percentage": 85.0,
+  "message": "Flushing 252,589 records into 5_year_final_data_global.csv and 5_year_final_data.csv...",
+  "elapsed_seconds": 130.4,
   "error": null,
-  "last_clean_date": "2026-11-01",
-  "total_rows": 248863,
-  "total_trades_50ma": 8667,
-  "updated_at": "2026-11-11T20:31:19.847958+05:30"
+  "last_clean_date": "2026-11-12",
+  "total_rows": 252589,
+  "total_trades_50ma": 8708,
+  "updated_at": "2026-11-12T18:23:17.720973+05:30"
 }

@@ -188,6 +188,16 @@ class RiskCalculator:
         except Exception as e:
             logger.error(f"Failed to persist trading settings to MongoDB: {e}")
 
+        # Automatically evaluate and allocate candidate orders with the updated capital limit
+        try:
+            self.evaluate_and_allocate_candidate_orders(
+                custom_capital_limit=cleaned_limit,
+                risk_pct=cleaned_risk_pct,
+                auto_stage_confirmed=True
+            )
+        except Exception as alloc_err:
+            logger.warning(f"Error auto-allocating candidate orders on settings update: {alloc_err}")
+
         return self.get_trading_settings()
 
     def get_effective_capital(self) -> float:
@@ -402,6 +412,304 @@ class RiskCalculator:
             "amt_1_2": amt_1_2,
             "amt_1_3": amt_1_3
         }
+
+    def get_candidate_setups(self) -> List[Dict[str, Any]]:
+        """
+        Retrieves candidate setups from MongoDB signals_watchlist,
+        with fallback to local daily_analysis.json.
+        Filters by enabled strategies and removes active holdings.
+        """
+        candidates: List[Dict[str, Any]] = []
+
+        # 1. Try reading from db_manager.signals_watchlist
+        try:
+            col = db_manager.signals_watchlist
+            if col is not None:
+                docs = list(col.find({"$or": [{"status": {"$in": ["ARMED", "ACTIVE", "READY"]}}, {"status": {"$exists": False}}]}))
+                if not docs:
+                    docs = list(col.find({}))
+                for d in docs:
+                    candidates.append(d)
+        except Exception as e:
+            logger.debug(f"Could not load candidates from MongoDB signals_watchlist: {e}")
+
+        # 2. Fallback to local daily_analysis.json if candidates empty
+        if not candidates:
+            try:
+                from offline import json_manager
+                info = json_manager.get_daily_analysis_info()
+                finalized = info.get("finalized_trades") or []
+                for f in finalized:
+                    candidates.append(f)
+            except Exception as e:
+                logger.debug(f"Could not load fallback candidates from daily_analysis.json: {e}")
+
+        # 3. Filter by enabled strategies
+        try:
+            from strategies.manager import StrategyManager
+            strat_mgr = StrategyManager()
+            active_strats = strat_mgr.get_enabled_strategies()
+            enabled_ids = {str(s.get("strategy_id", s.get("id"))).strip().lower() for s in active_strats}
+            enabled_names = {str(s.get("name", "")).strip().lower() for s in active_strats}
+
+            if enabled_ids or enabled_names:
+                filtered = []
+                for c in candidates:
+                    s_id = str(c.get("strategy_id", "")).strip().lower()
+                    s_name = str(c.get("strategy", "")).strip().lower()
+                    if (s_id in enabled_ids) or (s_name in enabled_names) or ("50" in s_name and any("50" in x for x in enabled_names)):
+                        filtered.append(c)
+                candidates = filtered
+        except Exception as e:
+            logger.debug(f"Could not filter candidates by enabled strategies: {e}")
+
+        # 4. Filter out active holdings (already owned stocks on MegaBull)
+        try:
+            from online.services.megabull_service import megabull_service
+            holdings = megabull_service.get_holdings(enrich_ltp=False)
+            held_symbols = {str(h.get("symbol", "")).strip().upper() for h in holdings if int(h.get("qty", 0)) != 0}
+            candidates = [c for c in candidates if str(c.get("symbol", "")).strip().upper() not in held_symbols]
+        except Exception as e:
+            logger.debug(f"Could not filter active holdings from candidates: {e}")
+
+        return candidates
+
+    def evaluate_and_allocate_candidate_orders(
+        self,
+        custom_capital_limit: Optional[float] = None,
+        risk_pct: float = 1.0,
+        auto_stage_confirmed: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Evaluates all candidate setups from enabled strategies, ranks them with the best orders
+        on top (ARMED status, highest predicted_r, highest profit_pct), and iterates down the list,
+        allocating capital according to the 1% risk-per-trade model until the available budget is exhausted.
+        Confirmed orders are automatically staged off-market (AMO) in MongoDB for 09:15 AM execution.
+        """
+        candidates = self.get_candidate_setups()
+
+        # Sort best orders on top:
+        # 1. ARMED / READY status on top
+        # 2. Predicted R multiple descending (AI expectancy)
+        # 3. Profit percentage descending
+        # 4. ML confidence descending
+        def _candidate_sort_key(c):
+            st = str(c.get("status", "ARMED")).upper()
+            is_armed = 1 if st in ("ARMED", "READY") else 0
+            pred_r = float(c.get("predicted_r", 0.0))
+            profit = float(c.get("profit_pct", 0.0))
+            conf = float(c.get("ml_confidence", 0.0))
+            return (is_armed, pred_r, profit, conf)
+
+        sorted_candidates = sorted(candidates, key=_candidate_sort_key, reverse=True)
+
+        # Settings resolution
+        settings = self.get_trading_settings()
+        broker_total = float(settings.get("broker_total_capital", DEFAULT_BASE_CAPITAL))
+        if custom_capital_limit is not None and float(custom_capital_limit) > 0:
+            if float(custom_capital_limit) < broker_total:
+                effective_cap = round(float(custom_capital_limit), 2)
+            else:
+                effective_cap = broker_total
+        else:
+            effective_cap = float(settings.get("effective_capital", broker_total))
+
+        broker_used = float(settings.get("broker_used_capital", 0.0))
+        broker_avail = float(settings.get("broker_available_balance", effective_cap))
+
+        # Remaining capital available to allocate
+        allocated_remaining = round(max(0.0, min(effective_cap - broker_used, broker_avail)), 2)
+
+        risk_pct_clean = max(0.1, min(10.0, float(risk_pct or settings.get("risk_pct_per_trade", 1.0))))
+        risk_per_trade = round(effective_cap * (risk_pct_clean / 100.0), 2)
+
+        budget_remaining = allocated_remaining
+        total_committed_capital = 0.0
+        total_risk_committed = 0.0
+        confirmed_orders: List[Dict[str, Any]] = []
+        skipped_orders: List[Dict[str, Any]] = []
+        seen_symbols: set = set()
+
+        for idx, cand in enumerate(sorted_candidates, start=1):
+            sym = str(cand.get("symbol", "")).strip().upper()
+            if not sym or sym in seen_symbols:
+                continue
+            seen_symbols.add(sym)
+
+            entry_px = float(cand.get("entry_price") or cand.get("buy_trigger") or 0.0)
+            sl_px = float(cand.get("sl_price") or 0.0)
+            act = str(cand.get("action") or "BUY").upper()
+
+            calc = self.calculate_quantity_and_targets(
+                entry_price=entry_px,
+                sl_price=sl_px,
+                action=act,
+                custom_portfolio=effective_cap,
+                risk_pct=risk_pct_clean
+            )
+
+            qty = calc["quantity"]
+            investment = calc["investment_amount"]
+            actual_risk = calc["actual_risk"]
+
+            if qty < 1 or investment <= 0:
+                skipped_orders.append({
+                    "priority_rank": idx,
+                    "symbol": sym,
+                    "name": cand.get("name", sym),
+                    "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
+                    "action": act,
+                    "entry_price": entry_px,
+                    "sl_price": sl_px,
+                    "quantity": qty,
+                    "investment_amount": investment,
+                    "actual_risk": actual_risk,
+                    "predicted_r": float(cand.get("predicted_r", 0.0)),
+                    "profit_pct": float(cand.get("profit_pct", 0.0)),
+                    "allocation_status": "SKIPPED_INVALID_PRICING",
+                    "can_take": False,
+                    "reason": "Calculated quantity is 0 or invalid entry/SL pricing."
+                })
+                continue
+
+            if investment <= budget_remaining:
+                # CONFIRMED!
+                budget_remaining = round(budget_remaining - investment, 2)
+                total_committed_capital = round(total_committed_capital + investment, 2)
+                total_risk_committed = round(total_risk_committed + actual_risk, 2)
+
+                order_doc = {
+                    "priority_rank": idx,
+                    "symbol": sym,
+                    "name": cand.get("name", sym),
+                    "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
+                    "action": act,
+                    "entry_price": entry_px,
+                    "sl_price": sl_px,
+                    "target_1_1": calc["target_1_1"],
+                    "target_1_2": calc["target_1_2"],
+                    "target_1_3": calc["target_1_3"],
+                    "amt_1_2": calc["amt_1_2"],
+                    "amt_1_3": calc["amt_1_3"],
+                    "sl_rupee_per_share": calc["sl_rupee_per_share"],
+                    "quantity": qty,
+                    "investment_amount": investment,
+                    "actual_risk": actual_risk,
+                    "risk_pct_per_trade": risk_pct_clean,
+                    "predicted_r": float(cand.get("predicted_r", 0.0)),
+                    "profit_pct": float(cand.get("profit_pct", 0.0)),
+                    "allocation_status": "CONFIRMED",
+                    "can_take": True,
+                    "remaining_budget_after": budget_remaining,
+                    "reason": f"Confirmed: ₹{investment:,.2f} allocated (Qty: {qty} @ ₹{entry_px:.2f}). Risk ₹{actual_risk:,.2f} <= ₹{risk_per_trade:,.2f}."
+                }
+                confirmed_orders.append(order_doc)
+            else:
+                # SKIPPED DUE TO INSUFFICIENT BUDGET
+                shortfall = round(investment - budget_remaining, 2)
+                skipped_orders.append({
+                    "priority_rank": idx,
+                    "symbol": sym,
+                    "name": cand.get("name", sym),
+                    "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
+                    "action": act,
+                    "entry_price": entry_px,
+                    "sl_price": sl_px,
+                    "target_1_2": calc["target_1_2"],
+                    "quantity": qty,
+                    "investment_amount": investment,
+                    "actual_risk": actual_risk,
+                    "predicted_r": float(cand.get("predicted_r", 0.0)),
+                    "profit_pct": float(cand.get("profit_pct", 0.0)),
+                    "allocation_status": "SKIPPED_INSUFFICIENT_BUDGET",
+                    "can_take": False,
+                    "shortfall": shortfall,
+                    "reason": f"Insufficient remaining capital (Requires ₹{investment:,.2f}, only ₹{budget_remaining:,.2f} available). Shortfall: ₹{shortfall:,.2f}."
+                })
+
+        # Auto-stage confirmed orders into db_manager.staged_orders if requested
+        if auto_stage_confirmed and db_manager.staged_orders is not None:
+            try:
+                # Clean up previous unexecuted auto-allocated orders
+                db_manager.staged_orders.delete_many({
+                    "is_auto_allocated": True,
+                    "status": "STAGED_OFFMARKET"
+                })
+                now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                today_tag = datetime.now().strftime("%Y%m%d")
+                staged_docs = []
+                for o in confirmed_orders:
+                    staged_docs.append({
+                        "_id": f"STAGED_{o['symbol']}_{today_tag}",
+                        "order_id": f"STAGED_{o['symbol']}_{today_tag}",
+                        "symbol": o["symbol"],
+                        "name": o["name"],
+                        "action": o["action"],
+                        "quantity": o["quantity"],
+                        "price": o["entry_price"],
+                        "entry_price": o["entry_price"],
+                        "sl_price": o["sl_price"],
+                        "target_price": o["target_1_2"],
+                        "target_1_1": o["target_1_1"],
+                        "target_1_2": o["target_1_2"],
+                        "target_1_3": o["target_1_3"],
+                        "amt_1_2": o["amt_1_2"],
+                        "amt_1_3": o["amt_1_3"],
+                        "strategy": o["strategy"],
+                        "predicted_r": o["predicted_r"],
+                        "profit_pct": o["profit_pct"],
+                        "investment_amount": o["investment_amount"],
+                        "actual_risk": o["actual_risk"],
+                        "status": "STAGED_OFFMARKET",
+                        "is_auto_allocated": True,
+                        "created_at": now_ts
+                    })
+                if staged_docs:
+                    db_manager.staged_orders.insert_many(staged_docs)
+                    logger.info(f"Auto-staged {len(staged_docs)} confirmed orders in MongoDB staged_orders.")
+            except Exception as stage_e:
+                logger.error(f"Failed to auto-stage confirmed orders: {stage_e}")
+
+        plan_summary = {
+            "effective_capital": effective_cap,
+            "allocated_remaining_capital": allocated_remaining,
+            "risk_pct_per_trade": risk_pct_clean,
+            "risk_per_trade": risk_per_trade,
+            "total_committed_capital": total_committed_capital,
+            "total_risk_committed": total_risk_committed,
+            "remaining_unallocated_cash": budget_remaining,
+            "confirmed_orders_count": len(confirmed_orders),
+            "skipped_orders_count": len(skipped_orders),
+            "total_candidates_evaluated": len(sorted_candidates),
+            "confirmed_orders": confirmed_orders,
+            "skipped_orders": skipped_orders,
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        # Persist plan in system_state
+        try:
+            if db_manager.system_state is not None:
+                db_manager.system_state.update_one(
+                    {"_id": "portfolio_allocation_plan"},
+                    {"$set": plan_summary},
+                    upsert=True
+                )
+        except Exception as save_e:
+            logger.debug(f"Could not persist allocation plan: {save_e}")
+
+        return plan_summary
+
+    def get_allocation_plan(self) -> Dict[str, Any]:
+        """Returns the latest persisted allocation plan or computes one on the fly."""
+        try:
+            if db_manager.system_state is not None:
+                doc = db_manager.system_state.find_one({"_id": "portfolio_allocation_plan"})
+                if doc:
+                    doc.pop("_id", None)
+                    return doc
+        except Exception:
+            pass
+        return self.evaluate_and_allocate_candidate_orders()
 
 
 # Global singleton instance

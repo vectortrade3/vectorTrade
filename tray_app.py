@@ -139,12 +139,29 @@ def load_tray_icon_image():
     return img
 
 
+_global_tray_app: Optional[VectorTradeTrayApp] = None
+
+
+def stop_tray_app():
+    """Cleanly stops the system tray icon so Windows Explorer immediately destroys it."""
+    global _global_tray_app
+    if _global_tray_app is not None:
+        try:
+            _global_tray_app._is_running = False
+            if _global_tray_app._tray_icon is not None:
+                _global_tray_app._tray_icon.stop()
+        except Exception:
+            pass
+
+
 class VectorTradeTrayApp:
     """
     Manages the Windows System Tray lifecycle, background Flask thread, and Brave browser dispatch.
     """
 
     def __init__(self, port: int = PORT):
+        global _global_tray_app
+        _global_tray_app = self
         self.port = port
         self._server_thread: Optional[threading.Thread] = None
         self._tray_icon = None
@@ -201,20 +218,35 @@ class VectorTradeTrayApp:
         open_in_brave_or_default(f"http://localhost:{self.port}#analysisTab")
 
     def on_trigger_schedule(self, icon=None, item=None):
-        """Triggers manual tick evaluation for the 4:00 PM scheduler."""
+        """Displays real-time status of the 4:00 PM automated scheduler without showing modal prompts."""
         try:
             from offline.scheduler import get_daily_scheduler
             sched = get_daily_scheduler()
-            res = sched.run_tick_once(force_execution=False)
-            msg = res.get("message", "Schedule evaluated.")
-            logger.info(f"Tray scheduler tick: {msg}")
+            st = sched.get_status()
+            is_done = st.get("today_analysis_done", False)
+            synced = st.get("mongo_synced", False)
+            synced_at = st.get("mongo_synced_at", "")
+            time_until = st.get("time_until_4pm", "")
+            msg = st.get("message", "")
+
+            if is_done and synced:
+                title = "VectorTrade: 4:00 PM Analysis Completed"
+                notice_msg = f"Today's analysis & MongoDB sync are 100% COMPLETE!\nFinalized setups uploaded: {synced_at[:16]}."
+            elif st.get("is_active_window"):
+                title = "VectorTrade: 4:00 PM Window Active"
+                notice_msg = f"Auto-run window is currently active.\nStatus: {msg}"
+            else:
+                title = "VectorTrade: Waiting for 4:00 PM"
+                notice_msg = f"Idle mode ({st.get('current_time_ist', '')}).\nCountdown to 4:00 PM: {time_until}."
+
+            logger.info(f"Tray schedule check: {notice_msg}")
             if self._tray_icon:
                 try:
-                    self._tray_icon.notify(title="VectorTrade Scheduler", message=msg)
+                    self._tray_icon.notify(title=title, message=notice_msg)
                 except Exception:
                     pass
         except Exception as e:
-            logger.error(f"Error triggering scheduler: {e}")
+            logger.error(f"Error checking scheduler from tray: {e}")
 
     def on_exit(self, icon=None, item=None):
         """Terminates tray application and exits."""

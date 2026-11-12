@@ -1,9 +1,9 @@
 {
   "status": "COMPLETED",
-  "market_session_date": "2026-11-11",
-  "market_status": "Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-11)",
-  "last_run_timestamp": "2026-11-11T20:38:33.630683+05:30",
-  "completed_at": "2026-11-11T20:38:33.630683+05:30",
+  "market_session_date": "2026-11-12",
+  "market_status": "Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-12)",
+  "last_run_timestamp": "2026-11-12T16:02:07.361560+05:30",
+  "completed_at": "2026-11-12T16:02:07.361560+05:30",
   "total_stocks_analyzed": 207,
   "total_bullish_candidates": 25,
   "finalized_trades_count": 25,
@@ -16,14 +16,14 @@
     "ma50_setup"
   ],
   "mongo_synced": true,
-  "mongo_synced_at": "2026-11-11T20:38:33.630683+05:30",
+  "mongo_synced_at": "2026-11-12T16:02:07.361560+05:30",
   "mongo_sync_details": {
     "status": "SUCCESS",
     "synced_count": 25,
     "armed_count": 3,
-    "upserted_count": 25,
-    "modified_count": 0,
-    "message": "Successfully synced 25 setups to MongoDB Atlas (Armed: 3, Upserted: 25, Modified: 0)."
+    "upserted_count": 0,
+    "modified_count": 25,
+    "message": "Successfully synced 25 setups to MongoDB Atlas (Armed: 3, Upserted: 0, Modified: 25)."
   },
   "execution_trigger": "AUTO_4PM_TIMER",
   "finalized_trades": [
@@ -778,7 +778,11 @@
       "rationale": "50MA Setup 1 (Confluence Zone). 50MA upward trending (>=7d), lower BB near candle low, green candle. AI Payoff: 2.27R."
     }
   ],
-  "duration_seconds": 28.94,
-  "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-11) in 28.9s.",
-  "updated_at": "2026-11-11T20:38:33.630683+05:30"
+  "duration_seconds": 103.86,
+  "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-12) in 103.9s.",
+  "updated_at": "2026-11-12T16:02:07.361560+05:30",
+  "auto_closed": true,
+  "auto_close_count": 1,
+  "last_auto_close_timestamp": "2026-11-12 16:02:07",
+  "last_auto_close_date": "2026-11-12"
 }

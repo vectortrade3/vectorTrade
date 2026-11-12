@@ -1421,14 +1421,46 @@ def offline_trading_settings_api():
             custom_capital_limit=limit,
             risk_pct_per_trade=risk_pct
         )
+        plan = risk_calculator.get_allocation_plan()
         return jsonify({
             "status": "SUCCESS",
-            "message": "Trading capital settings saved to MongoDB Atlas.",
-            "settings": updated
+            "message": "Trading capital settings saved to MongoDB Atlas and orders allocated.",
+            "settings": updated,
+            "allocation_plan": plan
         })
     return jsonify({
         "status": "SUCCESS",
         "settings": risk_calculator.get_trading_settings()
+    })
+
+
+@app.route("/api/trading-settings/allocation-plan", methods=["GET"])
+def offline_trading_allocation_plan_api():
+    """Returns the latest capital allocation and confirmed orders plan."""
+    from online.services.risk_calculator import risk_calculator
+    plan = risk_calculator.get_allocation_plan()
+    return jsonify({
+        "status": "SUCCESS",
+        "plan": plan
+    })
+
+
+@app.route("/api/trading-settings/allocate", methods=["POST"])
+def offline_trading_allocate_api():
+    """Evaluates candidate orders, sorts best orders on top, and confirms orders by budget."""
+    from online.services.risk_calculator import risk_calculator
+    data = request.get_json(silent=True) or {}
+    limit = data.get("custom_capital_limit")
+    risk_pct = float(data.get("risk_pct_per_trade", 1.0))
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(
+        custom_capital_limit=limit,
+        risk_pct=risk_pct,
+        auto_stage_confirmed=True
+    )
+    return jsonify({
+        "status": "SUCCESS",
+        "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for 09:15 AM execution.",
+        "plan": plan
     })
 
 

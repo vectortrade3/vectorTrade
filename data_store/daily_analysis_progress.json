@@ -6,9 +6,9 @@
   "current_index": 207,
   "total_stocks": 207,
   "percentage": 100.0,
-  "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-11) in 28.9s.",
-  "elapsed_seconds": 28.9,
+  "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-12) in 103.9s.",
+  "elapsed_seconds": 103.9,
   "finalized_count": 25,
   "error": null,
-  "updated_at": "2026-11-11T20:38:33.640507+05:30"
+  "updated_at": "2026-11-12T16:02:07.366054+05:30"
 }

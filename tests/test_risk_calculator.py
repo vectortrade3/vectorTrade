@@ -295,6 +295,148 @@ class TestRiskCalculator(unittest.TestCase):
         self.assertEqual(res["shortfall"], 5000.00)
         self.assertIn("exceeds allocated remaining capital", res["error"])
 
+    def test_09_candidate_sorting_best_orders_on_top(self):
+        """Verifies candidate setups are sorted with ARMED on top and highest predicted_r descending."""
+        raw_candidates = [
+            {"symbol": "ACTIVE_HIGH_R", "status": "ACTIVE", "predicted_r": 3.10, "profit_pct": 5.0, "entry_price": 500, "sl_price": 490},
+            {"symbol": "ARMED_MED_R", "status": "ARMED", "predicted_r": 2.27, "profit_pct": 4.0, "entry_price": 600, "sl_price": 585},
+            {"symbol": "ARMED_HIGH_R", "status": "ARMED", "predicted_r": 2.48, "profit_pct": 4.5, "entry_price": 700, "sl_price": 680},
+            {"symbol": "ARMED_LOW_R", "status": "ARMED", "predicted_r": 1.85, "profit_pct": 3.0, "entry_price": 400, "sl_price": 390},
+        ]
+        calc = RiskCalculator()
+        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
+            plan = calc.evaluate_and_allocate_candidate_orders(custom_capital_limit=100000.0, auto_stage_confirmed=False)
+            all_ranked = plan["confirmed_orders"] + plan["skipped_orders"]
+            all_ranked.sort(key=lambda x: x["priority_rank"])
+            symbols_in_order = [x["symbol"] for x in all_ranked]
+
+            # Highest ARMED first (2.48R > 2.27R > 1.85R), then non-ARMED
+            self.assertEqual(symbols_in_order[0], "ARMED_HIGH_R")
+            self.assertEqual(symbols_in_order[1], "ARMED_MED_R")
+            self.assertEqual(symbols_in_order[2], "ARMED_LOW_R")
+            self.assertEqual(symbols_in_order[3], "ACTIVE_HIGH_R")
+
+    def test_10_capital_allocation_greedy_budget_knapsack(self):
+        """
+        Validates sequential capital allocation:
+        - Portfolio: 30,000 (1% Risk = 300)
+        - Ord 1: ALPHA (Entry 1216, SL 1195 -> Diff 21, Qty 14, Inv 17,024) -> Fits (Remaining 12,976)
+        - Ord 2: BETA (Entry 1500, SL 1470 -> Diff 30, Qty 10, Inv 15,000) -> Exceeds 12,976 -> SKIPPED
+        - Ord 3: GAMMA (Entry 400, SL 390 -> Diff 10, Qty 30, Inv 12,000) -> Fits 12,976 -> CONFIRMED (Remaining 976)
+        """
+        raw_candidates = [
+            {"symbol": "ALPHA", "status": "ARMED", "predicted_r": 2.50, "profit_pct": 4.0, "entry_price": 1216.0, "sl_price": 1195.0},
+            {"symbol": "BETA", "status": "ARMED", "predicted_r": 2.40, "profit_pct": 3.5, "entry_price": 1500.0, "sl_price": 1470.0},
+            {"symbol": "GAMMA", "status": "ARMED", "predicted_r": 2.30, "profit_pct": 3.0, "entry_price": 400.0, "sl_price": 390.0},
+        ]
+        calc = RiskCalculator()
+        calc._cached_broker_capital = 500000.0
+        calc._broker_cache_time = 9999999999.0
+
+        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
+            plan = calc.evaluate_and_allocate_candidate_orders(
+                custom_capital_limit=30000.0,
+                risk_pct=1.0,
+                auto_stage_confirmed=False
+            )
+
+            self.assertEqual(plan["effective_capital"], 30000.0)
+            self.assertEqual(plan["risk_per_trade"], 300.0)
+            self.assertEqual(plan["confirmed_orders_count"], 2)
+            self.assertEqual(plan["skipped_orders_count"], 1)
+
+            # Confirmed orders
+            conf_syms = [x["symbol"] for x in plan["confirmed_orders"]]
+            self.assertEqual(conf_syms, ["ALPHA", "GAMMA"])
+
+            # ALPHA checks
+            alpha = plan["confirmed_orders"][0]
+            self.assertEqual(alpha["quantity"], 14)
+            self.assertEqual(alpha["investment_amount"], 17024.0)
+            self.assertEqual(alpha["actual_risk"], 294.0)
+            self.assertEqual(alpha["remaining_budget_after"], 12976.0)
+
+            # GAMMA checks
+            gamma = plan["confirmed_orders"][1]
+            self.assertEqual(gamma["quantity"], 30)
+            self.assertEqual(gamma["investment_amount"], 12000.0)
+            self.assertEqual(gamma["actual_risk"], 300.0)
+            self.assertEqual(gamma["remaining_budget_after"], 976.0)
+
+            # Skipped order: BETA
+            skip_syms = [x["symbol"] for x in plan["skipped_orders"]]
+            self.assertEqual(skip_syms, ["BETA"])
+            beta = plan["skipped_orders"][0]
+            self.assertEqual(beta["quantity"], 10)
+            self.assertEqual(beta["investment_amount"], 15000.0)
+            self.assertEqual(beta["shortfall"], 2024.0)
+            self.assertIn("Insufficient remaining capital", beta["reason"])
+
+            # Totals
+            self.assertEqual(plan["total_committed_capital"], 29024.0)
+            self.assertEqual(plan["remaining_unallocated_cash"], 976.0)
+            self.assertEqual(plan["total_risk_committed"], 594.0)
+
+    def test_11_allocation_plan_auto_stages_to_staged_orders(self):
+        """Verifies confirmed orders are staged off-market (AMO) into MongoDB staged_orders."""
+        from unittest.mock import PropertyMock
+        raw_candidates = [
+            {"symbol": "INFY", "status": "ARMED", "predicted_r": 2.2, "profit_pct": 3.0, "entry_price": 1500.0, "sl_price": 1470.0}
+        ]
+        calc = RiskCalculator()
+        mock_staged_col = MagicMock()
+        mock_system_state = MagicMock()
+
+        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
+            with patch("online.db.DatabaseManager.staged_orders", new_callable=PropertyMock, return_value=mock_staged_col):
+                with patch("online.db.DatabaseManager.system_state", new_callable=PropertyMock, return_value=mock_system_state):
+                    plan = calc.evaluate_and_allocate_candidate_orders(
+                        custom_capital_limit=50000.0,
+                        auto_stage_confirmed=True
+                    )
+                    self.assertEqual(plan["confirmed_orders_count"], 1)
+                    mock_staged_col.delete_many.assert_called_once_with({
+                        "is_auto_allocated": True,
+                        "status": "STAGED_OFFMARKET"
+                    })
+                    mock_staged_col.insert_many.assert_called_once()
+                    staged_arg = mock_staged_col.insert_many.call_args[0][0]
+                    self.assertEqual(len(staged_arg), 1)
+                    self.assertEqual(staged_arg[0]["symbol"], "INFY")
+                    self.assertEqual(staged_arg[0]["status"], "STAGED_OFFMARKET")
+                    self.assertTrue(staged_arg[0]["is_auto_allocated"])
+
+    def test_12_api_trading_settings_allocation_plan_endpoints(self):
+        """Verifies GET /api/trading-settings/allocation-plan and POST /api/trading-settings/allocate."""
+        from offline.app import app as flask_app
+        client = flask_app.test_client()
+
+        # 1. GET /api/trading-settings/allocation-plan
+        with patch("online.services.risk_calculator.risk_calculator.get_allocation_plan") as mock_get_plan:
+            mock_get_plan.return_value = {
+                "effective_capital": 100000.0,
+                "confirmed_orders_count": 3,
+                "confirmed_orders": []
+            }
+            res = client.get("/api/trading-settings/allocation-plan")
+            self.assertEqual(res.status_code, 200)
+            data = res.get_json()
+            self.assertEqual(data["status"], "SUCCESS")
+            self.assertEqual(data["plan"]["effective_capital"], 100000.0)
+
+        # 2. POST /api/trading-settings/allocate
+        with patch("online.services.risk_calculator.risk_calculator.evaluate_and_allocate_candidate_orders") as mock_eval:
+            mock_eval.return_value = {
+                "effective_capital": 80000.0,
+                "confirmed_orders_count": 2,
+                "confirmed_orders": []
+            }
+            res_post = client.post("/api/trading-settings/allocate", json={"custom_capital_limit": 80000.0})
+            self.assertEqual(res_post.status_code, 200)
+            data_post = res_post.get_json()
+            self.assertEqual(data_post["status"], "SUCCESS")
+            self.assertEqual(data_post["plan"]["confirmed_orders_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

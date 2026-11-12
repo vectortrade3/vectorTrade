@@ -311,6 +311,29 @@ class TestOfflineDailyScheduler(unittest.TestCase):
                     self.assertEqual(subsequent_res["action"], "KEEP_RUNNING_USER_OPTED")
                     self.assertFalse(subsequent_res["self_close_scheduled"])
 
+    def test_12_background_tick_suppresses_interactive_dialog(self):
+        """Background ticks (allow_interactive_prompt=False) never pop up Windows dialogs."""
+        mock_evening = datetime(2026, 11, 11, 19, 0, 0, tzinfo=KOLKATA_TZ)
+        with patch("offline.scheduler.datetime") as mock_dt:
+            mock_dt.now.return_value = mock_evening
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+            with patch.object(self.scheduler, "check_today_completed") as mock_check:
+                mock_check.return_value = {
+                    "is_done": True,
+                    "today_date": "2026-11-11",
+                    "status": "COMPLETED",
+                    "mongo_synced": True
+                }
+                with patch("offline.json_manager.get_auto_close_count_for_date", return_value=1):
+                    # Set mock_response to None to fail if show_windows_close_prompt is called
+                    show_windows_close_prompt.mock_response = None
+                    with patch("offline.scheduler.show_windows_close_prompt") as mock_prompt:
+                        res = self.scheduler.run_tick_once(force_execution=False, allow_interactive_prompt=False)
+                        self.assertEqual(res["action"], "ALREADY_COMPLETED_BACKGROUND_IDLE")
+                        self.assertFalse(res["self_close_scheduled"])
+                        mock_prompt.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

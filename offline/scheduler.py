@@ -132,6 +132,16 @@ def trigger_self_close(delay_seconds: float = 3.0, reason: str = "") -> None:
             )
         except Exception:
             pass
+        try:
+            from tray_app import stop_tray_app
+            stop_tray_app()
+        except Exception:
+            pass
+        try:
+            import subprocess
+            subprocess.Popen(f"taskkill /F /T /PID {os.getpid()}", shell=True)
+        except Exception:
+            pass
         os._exit(0)
 
     close_thread = threading.Thread(target=_worker, daemon=True, name="VectorTradeSelfCloseWorker")
@@ -201,12 +211,12 @@ class OfflineDailyScheduler:
         """
         return json_manager.is_daily_analysis_and_sync_done_for_today(target_date=target_date)
 
-    def run_tick_once(self, force_execution: bool = False) -> Dict[str, Any]:
+    def run_tick_once(self, force_execution: bool = False, allow_interactive_prompt: bool = True) -> Dict[str, Any]:
         """
         Executes a single evaluation tick:
         1. Evaluates IST time and active window.
         2. Evaluates daily_analysis.json completion state for today.
-        3. If 4:00 PM window and completed today -> triggers self-close.
+        3. If 4:00 PM window and completed today -> triggers self-close (or prompts if reopened).
         4. If 4:00 PM window and NOT completed -> checks internet; if connected, runs pipeline and self-closes.
         5. If idle window (00:00 - 15:59) -> stays idle.
         """
@@ -245,6 +255,20 @@ class OfflineDailyScheduler:
                 auto_close_count = json_manager.get_auto_close_count_for_date(today_str)
 
                 if auto_close_count >= 1:
+                    # If this tick was triggered by the background loop, do NOT show modal prompt
+                    if not allow_interactive_prompt:
+                        msg = f"Today's analysis ({today_str}) was completed and auto-closed {auto_close_count} time(s). Background scheduler is idle."
+                        self._status_message = msg
+                        return {
+                            "action": "ALREADY_COMPLETED_BACKGROUND_IDLE",
+                            "window": win_info["window"],
+                            "is_today_done": True,
+                            "self_close_scheduled": False,
+                            "message": msg,
+                            "window_info": win_info,
+                            "enabled_strategies": enabled_strategies
+                        }
+
                     # User reopened the app after it had already auto-closed once today.
                     # Prompt user via native Windows modal dialog: Close or Keep Running.
                     prompt_title = f"VectorTrade - Daily Analysis Completed ({today_str})"
@@ -262,9 +286,8 @@ class OfflineDailyScheduler:
                         self._status_message = msg
                         logger.info(msg)
                         json_manager.record_auto_close_event(today_str, reason=msg)
-                        if not self._self_close_scheduled:
-                            self._self_close_scheduled = True
-                            trigger_self_close(delay_seconds=1.0, reason=msg)
+                        self._self_close_scheduled = True
+                        trigger_self_close(delay_seconds=0.5, reason=msg)
                         return {
                             "action": "SELF_CLOSE_USER_CONFIRMED",
                             "window": win_info["window"],
@@ -431,7 +454,7 @@ class OfflineDailyScheduler:
         logger.info(f"OfflineDailyScheduler background thread started (Tick interval: {self.check_interval_seconds}s).")
         while self._running:
             try:
-                self.run_tick_once()
+                self.run_tick_once(force_execution=False, allow_interactive_prompt=False)
             except Exception as e:
                 logger.error(f"Error during scheduler tick: {e}", exc_info=True)
 

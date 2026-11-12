@@ -1,6 +1,222 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-12T18:21:07.309169+05:30",
+      "readable_time": "2026-11-12 18:21:07 India Standard Time",
+      "event": "DATA_CLEANING",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting data consolidation, 50MA forward trajectory extraction, and cleaning for 207 stocks up to 2026-11-12...",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.881218+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "USER_KEPT_RUNNING",
+      "status": "Success",
+      "message": "User clicked NO (keep running) for 2026-11-11. VectorTrade will stay running until tomorrow.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11"
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.854082+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "User chose YES to close VectorTrade after prior auto-close on 2026-11-11.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.793914+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Test auto-close execution.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-15",
+        "auto_close_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.729847+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "USER_KEPT_RUNNING",
+      "status": "Success",
+      "message": "User clicked NO (keep running) for 2026-11-12. VectorTrade will stay running until tomorrow.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-12"
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.638073+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Daily analysis finished successfully. Finalized 12 setups. MongoDB sync: SUCCESS. Initiating application self-close.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 5
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:49.564044+05:30",
+      "readable_time": "2026-11-12 18:11:49 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Today's analysis (2026-11-11) & MongoDB sync are already COMPLETED. Auto-closing application for today.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.336966+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "USER_KEPT_RUNNING",
+      "status": "Success",
+      "message": "User clicked NO (keep running) for 2026-11-11. VectorTrade will stay running until tomorrow.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11"
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.312372+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "User chose YES to close VectorTrade after prior auto-close on 2026-11-11.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.248747+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Test auto-close execution.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-15",
+        "auto_close_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.189071+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "USER_KEPT_RUNNING",
+      "status": "Success",
+      "message": "User clicked NO (keep running) for 2026-11-12. VectorTrade will stay running until tomorrow.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-12"
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.083215+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Daily analysis finished successfully. Finalized 12 setups. MongoDB sync: SUCCESS. Initiating application self-close.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-11-12T18:11:22.017304+05:30",
+      "readable_time": "2026-11-12 18:11:22 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Today's analysis (2026-11-11) & MongoDB sync are already COMPLETED. Auto-closing application for today.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-11",
+        "auto_close_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-12T16:02:11.387339+05:30",
+      "readable_time": "2026-11-12 16:02:11 India Standard Time",
+      "event": "APP_SELF_CLOSED",
+      "status": "Success",
+      "message": "Application self-closed automatically: Daily analysis finished successfully. Finalized 25 setups. MongoDB sync: SUCCESS. Initiating application self-close.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-12T16:02:07.379578+05:30",
+      "readable_time": "2026-11-12 16:02:07 India Standard Time",
+      "event": "APP_AUTO_CLOSED",
+      "status": "Success",
+      "message": "Daily analysis finished successfully. Finalized 25 setups. MongoDB sync: SUCCESS. Initiating application self-close.",
+      "error": null,
+      "extra": {
+        "target_date": "2026-11-12",
+        "auto_close_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-11-12T16:02:07.366054+05:30",
+      "readable_time": "2026-11-12 16:02:07 India Standard Time",
+      "event": "DAILY_ANALYSIS_COMPLETED",
+      "status": "Success",
+      "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Market Closed (Past 3:30 PM IST) | Today's EOD Finalized (2026-11-12) in 103.9s.",
+      "error": null,
+      "extra": {
+        "session_date": "2026-11-12",
+        "finalized_count": 25,
+        "strategies_breakdown": {
+          "50 MA Setup": 23,
+          "50 MA + Global Regime": 2
+        },
+        "outcomes_breakdown": {
+          "ACTIVE": 16,
+          "TARGET_HIT": 2,
+          "NO_TRIGGER": 3,
+          "SL_HIT": 1,
+          "ARMED": 3
+        },
+        "duration": 103.86
+      }
+    },
+    {
+      "timestamp": "2026-11-12T16:01:42.693516+05:30",
+      "readable_time": "2026-11-12 16:01:42 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[COMPLETED] Successfully appended 207 new market bars across 207 stocks up to 2026-11-12.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-12T16:01:42.678982+05:30",
+      "readable_time": "2026-11-12 16:01:42 India Standard Time",
+      "event": "STOCKS_DOWNLOAD_COMPLETED",
+      "status": "Everything fine",
+      "message": "Successfully appended 207 new market bars across 207 stocks up to 2026-11-12.",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-12T16:00:17.686394+05:30",
+      "readable_time": "2026-11-12 16:00:17 India Standard Time",
+      "event": "STOCKS_DOWNLOAD",
+      "status": "Everything fine",
+      "message": "[RUNNING] Starting market data sync for 207 stocks from 2026-11-12 to 2026-11-12...",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-11T20:38:33.643286+05:30",
       "readable_time": "2026-11-11 20:38:33 India Standard Time",
       "event": "DAILY_ANALYSIS_COMPLETED",
@@ -3170,5 +3386,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-11T20:38:33.643286+05:30"
+  "last_event_time": "2026-11-12T18:21:07.309169+05:30"
 }

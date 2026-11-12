@@ -1,10 +1,19 @@
 {
-  "last_downloaded_date": "2026-11-11",
+  "last_downloaded_date": "2026-11-12",
   "status": "COMPLETED",
   "total_stocks": 207,
-  "last_updated": "2026-11-11T20:38:02.580404+05:30",
-  "message": "Market data already downloaded and appended today (2026-11-11). Dataset is up-to-date.",
+  "last_updated": "2026-11-12T16:01:42.677977+05:30",
+  "message": "Successfully appended 207 new market bars across 207 stocks up to 2026-11-12.",
   "download_history": [
+    {
+      "timestamp": "2026-11-12T16:01:42.677977+05:30",
+      "date_synced": "2026-11-12",
+      "last_append_date": "2026-11-12",
+      "status": "COMPLETED",
+      "stocks_updated": 207,
+      "duration_seconds": 85.01,
+      "message": "Successfully appended 207 new market bars across 207 stocks up to 2026-11-12."
+    },
     {
       "timestamp": "2026-11-11T20:38:02.580404+05:30",
       "date_synced": "2026-11-11",
@@ -151,7 +160,7 @@
       "message": "Appended records up to 2026-10-30 across 207 constituents in 90.2s."
     }
   ],
-  "last_append_date": "2026-11-11",
-  "last_download_run_date": "2026-11-11",
-  "last_run_timestamp": "2026-11-11T20:38:02.580404+05:30"
+  "last_append_date": "2026-11-12",
+  "last_download_run_date": "2026-11-12",
+  "last_run_timestamp": "2026-11-12T16:01:42.677977+05:30"
 }

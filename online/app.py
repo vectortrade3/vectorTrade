@@ -512,10 +512,47 @@ async def update_trading_settings_api(req: UpdateTradingSettingsRequest):
         custom_capital_limit=req.custom_capital_limit,
         risk_pct_per_trade=req.risk_pct_per_trade or 1.0
     )
+    plan = risk_calculator.get_allocation_plan()
     return JSONResponse({
         "status": "SUCCESS",
-        "message": "Trading capital settings successfully saved to MongoDB Atlas.",
-        "settings": updated
+        "message": "Trading capital settings successfully saved to MongoDB Atlas and candidate orders allocated.",
+        "settings": updated,
+        "allocation_plan": plan
+    })
+
+
+@app.get("/api/trading-settings/allocation-plan")
+async def get_trading_allocation_plan_api():
+    """
+    Returns the latest capital allocation and confirmed orders plan (best orders on top,
+    1% risk sizing, budget check against remaining money).
+    """
+    from online.services.risk_calculator import risk_calculator
+    plan = risk_calculator.get_allocation_plan()
+    return JSONResponse({
+        "status": "SUCCESS",
+        "plan": plan
+    })
+
+
+@app.post("/api/trading-settings/allocate")
+async def trigger_trading_allocation_api(req: Optional[UpdateTradingSettingsRequest] = None):
+    """
+    Evaluates candidate orders, sorts best orders on top, sizes them with the 1% risk model,
+    confirms orders within remaining money, and stages them for 09:15 AM execution.
+    """
+    from online.services.risk_calculator import risk_calculator
+    custom_limit = req.custom_capital_limit if req else None
+    risk_pct = (req.risk_pct_per_trade or 1.0) if req else 1.0
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(
+        custom_capital_limit=custom_limit,
+        risk_pct=risk_pct,
+        auto_stage_confirmed=True
+    )
+    return JSONResponse({
+        "status": "SUCCESS",
+        "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for 09:15 AM execution.",
+        "plan": plan
     })
 
 
