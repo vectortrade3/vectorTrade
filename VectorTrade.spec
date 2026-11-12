@@ -7,6 +7,7 @@ project_root = Path.cwd()
 datas = [
     (str(project_root / "assets"), "assets"),
     (str(project_root / "offline" / "templates"), "offline/templates"),
+    (str(project_root / "strategies"), "strategies"),
 ]
 
 hiddenimports = [
@@ -32,10 +33,13 @@ hiddenimports = [
     "offline.daily_analyzer",
     "offline.mongo_syncer",
     "offline.ma50_service",
+    "strategies",
+    "strategies.base",
     "strategies.manager",
-    "strategies.base_strategy",
-    "strategies.global_regime_strategy",
-    "strategies.ma50_strategy",
+    "strategies.global_regime",
+    "strategies.global_regime.strategy",
+    "strategies.ma50_setup",
+    "strategies.ma50_setup.strategy",
     "online.services.risk_calculator",
     "online.services.megabull_service",
     "online.services.orders_service",
