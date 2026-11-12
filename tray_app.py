@@ -187,7 +187,7 @@ class VectorTradeTrayApp:
             try:
                 from offline.app import run_app
                 logger.info(f"Starting VectorTrade Offline Engine on port {self.port}...")
-                run_app(host="0.0.0.0", port=self.port)
+                run_app(host="127.0.0.1", port=self.port)
             except Exception as e:
                 logger.error(f"Flask server error: {e}", exc_info=True)
 
@@ -199,7 +199,7 @@ class VectorTradeTrayApp:
         self._server_thread.start()
 
         # Brief pause to verify socket readiness
-        for _ in range(20):
+        for _ in range(30):
             if is_port_in_use(self.port):
                 logger.info(f"VectorTrade server is successfully listening on port {self.port}.")
                 break
@@ -207,10 +207,14 @@ class VectorTradeTrayApp:
 
     def on_open_dashboard(self, icon=None, item=None):
         """Opens main dashboard in Brave browser."""
+        if not is_port_in_use(self.port):
+            self.start_background_server()
         open_in_brave_or_default(f"http://localhost:{self.port}")
 
     def on_open_orders(self, icon=None, item=None):
         """Opens orders & trade book in Brave browser."""
+        if not is_port_in_use(self.port):
+            self.start_background_server()
         open_in_brave_or_default(f"http://localhost:{self.port}/orders")
 
     def on_open_analysis(self, icon=None, item=None):

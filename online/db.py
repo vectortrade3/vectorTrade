@@ -42,6 +42,9 @@ class DatabaseManager:
         self._client: Optional[MongoClient] = None
         self._db = None
         self._mock_mode = False
+        self._cached_ping: Optional[Dict[str, Any]] = None
+        self._ping_cache_time: float = 0.0
+        self.ping_cache_ttl: float = 5.0
 
     @property
     def client(self) -> Optional[MongoClient]:
@@ -94,8 +97,8 @@ class DatabaseManager:
         self._db = None
         self._mock_mode = False
 
-    def ping(self) -> Dict[str, Any]:
-        """Pings the database and returns health metadata."""
+    def ping(self, force: bool = False) -> Dict[str, Any]:
+        """Pings the database and returns health metadata (cached for 5s)."""
         if self._mock_mode:
             return {
                 "status": "ok",
@@ -103,6 +106,10 @@ class DatabaseManager:
                 "database": self.db_name,
                 "latency_ms": 0.0
             }
+
+        now = time.time()
+        if not force and self._cached_ping is not None and (now - self._ping_cache_time) < self.ping_cache_ttl:
+            return self._cached_ping
 
         start = time.time()
         client = self.client
@@ -120,7 +127,7 @@ class DatabaseManager:
             cols = db.list_collection_names() if db is not None else []
             signals_count = db.signals_watchlist.count_documents({}) if db is not None and "signals_watchlist" in cols else 0
 
-            return {
+            res = {
                 "status": "ok",
                 "mode": "live_atlas",
                 "database": self.db_name,
@@ -128,6 +135,9 @@ class DatabaseManager:
                 "collections_count": len(cols),
                 "signals_count": signals_count
             }
+            self._cached_ping = res
+            self._ping_cache_time = now
+            return res
         except Exception as e:
             return {
                 "status": "error",

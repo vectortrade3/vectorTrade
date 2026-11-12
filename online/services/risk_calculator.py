@@ -31,6 +31,9 @@ class RiskCalculator:
     def __init__(self):
         self._cached_broker_capital: Optional[float] = None
         self._broker_cache_time: float = 0.0
+        self._cached_trading_settings: Optional[Dict[str, Any]] = None
+        self._settings_cache_time: float = 0.0
+        self.settings_cache_ttl: float = 5.0
 
     def _fetch_broker_total_capital(self) -> float:
         """Pulls total capital from MegaBull paper account with 10s caching."""
@@ -52,11 +55,16 @@ class RiskCalculator:
         # Fallback to default if broker offline
         return DEFAULT_BASE_CAPITAL
 
-    def get_trading_settings(self) -> Dict[str, Any]:
+    def get_trading_settings(self, force_refresh: bool = False) -> Dict[str, Any]:
         """
         Retrieves current trading capital settings from MongoDB Atlas
         and computes effective capital against the paper trading broker balance.
+        Cached in-memory with a 5-second TTL to eliminate latency spikes.
         """
+        now = time.time()
+        if not force_refresh and self._cached_trading_settings is not None and (now - self._settings_cache_time) < self.settings_cache_ttl:
+            return self._cached_trading_settings
+
         custom_capital_limit: Optional[float] = None
         risk_pct_per_trade: float = DEFAULT_RISK_PCT
         updated_at: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -132,7 +140,7 @@ class RiskCalculator:
 
         risk_per_trade_inr = round(effective_capital * (risk_pct_per_trade / 100.0), 2)
 
-        return {
+        res = {
             "custom_capital_limit": custom_capital_limit,
             "broker_total_capital": broker_total_capital,
             "broker_available_balance": broker_available,
@@ -148,6 +156,9 @@ class RiskCalculator:
             "limit_status": limit_status,
             "updated_at": updated_at
         }
+        self._cached_trading_settings = res
+        self._settings_cache_time = now
+        return res
 
     def update_trading_settings(
         self,
@@ -198,7 +209,9 @@ class RiskCalculator:
         except Exception as alloc_err:
             logger.warning(f"Error auto-allocating candidate orders on settings update: {alloc_err}")
 
-        return self.get_trading_settings()
+        self._cached_trading_settings = None
+        self._settings_cache_time = 0.0
+        return self.get_trading_settings(force_refresh=True)
 
     def get_effective_capital(self) -> float:
         """Returns the effective trading capital (in INR) taking into account custom limits."""
@@ -214,7 +227,8 @@ class RiskCalculator:
         self,
         quantity: int,
         entry_price: float,
-        action: str = "BUY"
+        action: str = "BUY",
+        trading_settings: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Validates whether a trade is affordable under the active capital threshold.
@@ -240,7 +254,7 @@ class RiskCalculator:
             px = 0.0
 
         trade_amount = round(qty * px, 2)
-        settings = self.get_trading_settings()
+        settings = trading_settings if trading_settings is not None else self.get_trading_settings()
         allocated_remaining = float(settings.get("allocated_remaining_capital", 0.0))
         effective_capital = float(settings.get("effective_capital", 0.0))
         broker_used = float(settings.get("broker_used_capital", 0.0))
@@ -290,7 +304,8 @@ class RiskCalculator:
         sl_price: float,
         action: str = "BUY",
         custom_portfolio: Optional[float] = None,
-        risk_pct: float = 1.0
+        risk_pct: float = 1.0,
+        trading_settings: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Calculates position quantity and multi-target payoffs exactly matching the Excel model:
@@ -324,6 +339,8 @@ class RiskCalculator:
         # 1. Determine Portfolio Base Capital
         if custom_portfolio is not None and float(custom_portfolio) > 0:
             portfolio = round(float(custom_portfolio), 2)
+        elif trading_settings is not None:
+            portfolio = float(trading_settings.get("effective_capital", DEFAULT_BASE_CAPITAL))
         else:
             portfolio = self.get_effective_capital()
 
@@ -667,6 +684,11 @@ class RiskCalculator:
                 if staged_docs:
                     db_manager.staged_orders.insert_many(staged_docs)
                     logger.info(f"Auto-staged {len(staged_docs)} confirmed orders in MongoDB staged_orders.")
+                    try:
+                        from online.services.orders_service import orders_service
+                        orders_service.invalidate_cache()
+                    except Exception:
+                        pass
             except Exception as stage_e:
                 logger.error(f"Failed to auto-stage confirmed orders: {stage_e}")
 

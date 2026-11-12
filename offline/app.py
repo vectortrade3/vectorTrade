@@ -1625,7 +1625,7 @@ def run_offline_headless(output_format: str = "text") -> Dict[str, Any]:
     return diagnostics
 
 
-def run_app(host: str = "0.0.0.0", port: int = 30307):
+def run_app(host: str = "127.0.0.1", port: int = 30307):
     """Starts the application and logs boot event."""
     env_port = os.environ.get("PORT")
     if env_port:

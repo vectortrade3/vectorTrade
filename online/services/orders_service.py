@@ -19,8 +19,23 @@ logger.setLevel(logging.INFO)
 class OrdersService:
     """Service for querying and analyzing live orders from MongoDB."""
 
+    def __init__(self):
+        self._cached_summary_stats: Optional[Dict[str, Any]] = None
+        self._stats_cache_time: float = 0.0
+        self.stats_cache_ttl: float = 3.0
+        self._cached_trade_journal: Optional[List[Dict[str, Any]]] = None
+        self._journal_cache_time: float = 0.0
+        self.journal_cache_ttl: float = 4.0
+
+    def invalidate_cache(self):
+        """Invalidates internal in-memory caches on mutations."""
+        self._cached_summary_stats = None
+        self._stats_cache_time = 0.0
+        self._cached_trade_journal = None
+        self._journal_cache_time = 0.0
+
     @staticmethod
-    def normalize_order(doc: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_order(doc: Dict[str, Any], trading_settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Converts MongoDB document into a normalized UI/API order object.
         Gracefully handles both legacy and modern schema variations.
@@ -71,7 +86,8 @@ class OrdersService:
         calc = risk_calculator.calculate_quantity_and_targets(
             entry_price=entry_price,
             sl_price=sl_price,
-            action=action
+            action=action,
+            trading_settings=trading_settings
         )
 
         risk_per_share = calc["sl_rupee_per_share"]
@@ -93,7 +109,8 @@ class OrdersService:
         cap_check = risk_calculator.check_capital_for_trade(
             quantity=quantity,
             entry_price=entry_price,
-            action=action
+            action=action,
+            trading_settings=trading_settings
         )
         is_affordable = bool(cap_check.get("allowed", True))
         allocated_remaining = float(cap_check.get("allocated_remaining_capital", 0.0))
@@ -228,7 +245,9 @@ class OrdersService:
         try:
             cursor = col.find(query).limit(limit)
             raw_docs = list(cursor)
-            orders = [self.normalize_order(doc) for doc in raw_docs]
+            from online.services.risk_calculator import risk_calculator
+            t_settings = risk_calculator.get_trading_settings()
+            orders = [self.normalize_order(doc, trading_settings=t_settings) for doc in raw_docs]
 
             # Enrich orders with live MegaBull portfolio presence (duplicate check)
             try:
@@ -300,8 +319,13 @@ class OrdersService:
             logger.error(f"Error finding order {order_id}: {e}")
             return None
 
-    def get_order_summary_stats(self) -> Dict[str, Any]:
-        """Computes summary KPI statistics across all current signals."""
+    def get_order_summary_stats(self, force_refresh: bool = False) -> Dict[str, Any]:
+        """Computes summary KPI statistics across all current signals (cached for 3s)."""
+        import time
+        now = time.time()
+        if not force_refresh and self._cached_summary_stats is not None and (now - self._stats_cache_time) < self.stats_cache_ttl:
+            return self._cached_summary_stats
+
         col = db_manager.signals_watchlist
         if col is None:
             return {
@@ -322,7 +346,7 @@ class OrdersService:
         try:
             all_docs = list(col.find({}))
             if not all_docs:
-                return {
+                empty_res = {
                     "total_orders": 0,
                     "armed_orders_count": 0,
                     "active_orders_count": 0,
@@ -336,59 +360,103 @@ class OrdersService:
                     "latest_date": "",
                     "last_sync_timestamp": ""
                 }
+                self._cached_summary_stats = empty_res
+                self._stats_cache_time = now
+                return empty_res
 
-            normalized = [self.normalize_order(d) for d in all_docs]
-            total_orders = len(normalized)
-
-            armed_orders = [o for o in normalized if o["status"] == "ARMED"]
-            active_orders = [o for o in normalized if o["status"] == "ACTIVE"]
-
-            armed_count = len(armed_orders)
-            active_count = len(active_orders)
-
-            # For KPIs, focus on ARMED setups ready for market execution
-            kpi_subset = armed_orders if armed_orders else normalized
-
-            pred_r_vals = [o["predicted_r"] for o in kpi_subset if o["predicted_r"] > 0]
-            avg_pred_r = round(sum(pred_r_vals) / len(pred_r_vals), 2) if pred_r_vals else 0.0
-
-            profit_pct_vals = [o["profit_pct"] for o in kpi_subset if o["profit_pct"] > 0]
-            avg_profit_pct = round(sum(profit_pct_vals) / len(profit_pct_vals), 2) if profit_pct_vals else 0.0
-
-            loss_pct_vals = [o["loss_pct"] for o in kpi_subset if o["loss_pct"] > 0]
-            avg_loss_pct = round(sum(loss_pct_vals) / len(loss_pct_vals), 2) if loss_pct_vals else 0.0
-
-            total_capital = round(sum(o["total_capital_required"] for o in armed_orders), 2)
-            total_risk = round(sum(o["loss_at_sl"] for o in armed_orders), 2)
-
-            # Breakdown by strategy and setup
-            strat_counts: Dict[str, int] = {}
-            setup_counts: Dict[str, int] = {}
-            for o in normalized:
-                s = o["strategy"]
-                strat_counts[s] = strat_counts.get(s, 0) + 1
-                sub = o["setup_subclass"]
-                setup_counts[sub] = setup_counts.get(sub, 0) + 1
-
-            dates = [o["valid_for_date"] for o in normalized if o["valid_for_date"]]
-            latest_date = max(dates) if dates else ""
-
-            synced_times = [o["synced_at"] for o in normalized if o["synced_at"]]
-            last_sync = max(synced_times) if synced_times else ""
-
-            # Capital allocation & risk settings
             from online.services.risk_calculator import risk_calculator
             t_settings = risk_calculator.get_trading_settings()
+            risk_per_trade_budget = float(t_settings.get("risk_per_trade_inr", 300.0))
 
-            return {
+            total_orders = len(all_docs)
+            armed_count = 0
+            active_count = 0
+            total_capital = 0.0
+            total_risk = 0.0
+
+            pred_r_vals = []
+            profit_pct_vals = []
+            loss_pct_vals = []
+
+            strat_counts: Dict[str, int] = {}
+            setup_counts: Dict[str, int] = {}
+            dates = []
+            synced_times = []
+
+            for d in all_docs:
+                st = str(d.get("status", d.get("outcome", "ARMED"))).strip().upper()
+                if st == "ARMED":
+                    armed_count += 1
+                elif st == "ACTIVE":
+                    active_count += 1
+
+                # Strategy name clean up
+                strat = str(d.get("strategy", d.get("strategy_id", "50 MA Setup"))).strip()
+                if strat in ("50MA_PULLBACK", "50_MA_SETUP"):
+                    strat = "50 MA Setup"
+                elif strat == "GLOBAL_FORECAST":
+                    strat = "Global Forecast"
+                strat_counts[strat] = strat_counts.get(strat, 0) + 1
+
+                setup_sub = str(d.get("setup_subclass", "")).strip()
+                if not setup_sub:
+                    s_num = int(d.get("setup_num", 1))
+                    setup_sub = f"50MA Setup {s_num}" if s_num in (1, 2, 3) else f"Setup {s_num}"
+                setup_counts[setup_sub] = setup_counts.get(setup_sub, 0) + 1
+
+                dt = str(d.get("valid_for_date", d.get("date", ""))).strip()
+                if dt:
+                    dates.append(dt)
+                st_time = str(d.get("synced_at", "")).strip()
+                if st_time:
+                    synced_times.append(st_time)
+
+                entry = float(d.get("entry_price", d.get("buy_trigger", 0.0)))
+                sl = float(d.get("sl_price", 0.0))
+                tgt = float(d.get("target_price", 0.0))
+                sl_diff = abs(entry - sl) if entry > 0 and sl > 0 else 0.0
+                if tgt <= 0 and entry > 0 and sl_diff > 0:
+                    tgt = entry + (2.0 * sl_diff)
+
+                raw_qty = d.get("quantity")
+                if raw_qty is not None and int(raw_qty) > 0:
+                    qty = int(raw_qty)
+                elif sl_diff > 0:
+                    qty = max(1, int(risk_per_trade_budget // sl_diff))
+                else:
+                    qty = 1
+
+                pr_r = float(d.get("predicted_r", 0.0))
+                if pr_r > 0:
+                    pred_r_vals.append(pr_r)
+
+                if entry > 0:
+                    p_pct = float(d.get("profit_pct", round(((tgt - entry) / entry * 100), 2)))
+                    l_pct = float(d.get("loss_pct", round((sl_diff / entry * 100), 2)))
+                    if p_pct > 0:
+                        profit_pct_vals.append(p_pct)
+                    if l_pct > 0:
+                        loss_pct_vals.append(l_pct)
+
+                if st == "ARMED":
+                    total_capital += round(entry * qty, 2)
+                    total_risk += round(sl_diff * qty, 2)
+
+            avg_pred_r = round(sum(pred_r_vals) / len(pred_r_vals), 2) if pred_r_vals else 0.0
+            avg_profit_pct = round(sum(profit_pct_vals) / len(profit_pct_vals), 2) if profit_pct_vals else 0.0
+            avg_loss_pct = round(sum(loss_pct_vals) / len(loss_pct_vals), 2) if loss_pct_vals else 0.0
+            latest_date = max(dates) if dates else ""
+            last_sync = max(synced_times) if synced_times else ""
+
+            res = {
                 "total_orders": total_orders,
                 "armed_orders_count": armed_count,
                 "active_orders_count": active_count,
                 "avg_predicted_r": avg_pred_r,
                 "avg_profit_pct": avg_profit_pct,
                 "avg_loss_pct": avg_loss_pct,
-                "total_capital_required": total_capital,
-                "total_risk_budget": total_risk,
+                "total_capital_required": round(total_capital, 2),
+                "total_risk_budget": round(total_risk, 2),
                 "effective_capital": t_settings.get("effective_capital", 500000.0),
                 "custom_capital_limit": t_settings.get("custom_capital_limit"),
                 "broker_total_capital": t_settings.get("broker_total_capital", 500000.0),
@@ -407,6 +475,9 @@ class OrdersService:
                 "latest_date": latest_date,
                 "last_sync_timestamp": last_sync
             }
+            self._cached_summary_stats = res
+            self._stats_cache_time = now
+            return res
         except Exception as e:
             logger.error(f"Error computing order summary stats: {e}")
             return {
@@ -595,12 +666,17 @@ class OrdersService:
             "current_ltp": float(trade.get("ltp", entry))
         }
 
-    def get_trade_journal(self, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_trade_journal(self, status_filter: Optional[str] = None, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         Retrieves all running holdings and completed trades, cross-references
         MongoDB Atlas signals for exact 4 parameters (Stock Name, Entry, SL, Target),
-        and dynamically computes all 17 journal columns.
+        and dynamically computes all 17 journal columns (cached for 4s).
         """
+        import time
+        now = time.time()
+        if not force_refresh and not status_filter and self._cached_trade_journal is not None and (now - self._journal_cache_time) < self.journal_cache_ttl:
+            return self._cached_trade_journal
+
         from online.services.megabull_service import megabull_service
 
         # 1. Gather all running holdings from MegaBull
@@ -714,6 +790,10 @@ class OrdersService:
                 "exit_price": s.get("target_price", s.get("price", 0.0))
             }
             journal_rows.append(self.calculate_trade_journal_row(trade_raw))
+
+        if not status_filter:
+            self._cached_trade_journal = journal_rows
+            self._journal_cache_time = now
 
         if status_filter:
             sf = status_filter.strip().upper()
