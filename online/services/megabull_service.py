@@ -1210,6 +1210,8 @@ class MegaBullService:
             qty = calc_q["quantity"] if calc_q["quantity"] > 0 else 1
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
+        if o_type == "MARKET":
+            o_type = "MKT"
 
         # Strategy Enablement Guard: block order if strategy is deselected
         if strategy and str(strategy).strip() not in ("Manual Setup", "Manual", ""):
@@ -1558,6 +1560,47 @@ class MegaBullService:
             "disarmed_at": timestamp_str
         }
 
+    def reset_liquidation_state(self) -> Dict[str, Any]:
+        """
+        Resets emergency liquidation status completely to IDLE.
+        Cleans any past execution markers so trading can begin fresh with zero restrictions.
+        """
+        timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        self._liquidation_state = {
+            "armed": False,
+            "status": "IDLE",
+            "armed_at": None,
+            "market_open_at_stage": False,
+            "holdings_count": 0,
+            "holdings_snapshot": [],
+            "executed_at": None,
+            "disarmed_at": timestamp_str,
+            "orders_fired": [],
+            "failed_orders": [],
+            "message": "Liquidation state idle. Normal trading active."
+        }
+
+        try:
+            from online.db import db_manager
+            col = db_manager.system_state
+            if col is not None:
+                col.update_one(
+                    {"_id": "emergency_liquidation"},
+                    {"$set": self._liquidation_state},
+                    upsert=True
+                )
+            col_staged = db_manager.staged_orders
+            if col_staged is not None:
+                col_staged.delete_many({"is_liquidation_order": True})
+        except Exception as e:
+            logger.debug(f"Could not persist reset liquidation state to MongoDB: {e}")
+
+        return {
+            "status": "SUCCESS",
+            "message": "Liquidation state reset to IDLE. Normal trading active.",
+            "state": self._liquidation_state
+        }
+
     def liquidate_all_positions(self, force_market_open: Optional[bool] = None) -> Dict[str, Any]:
         """
         Executes emergency square off of all active portfolio holdings and positions:
@@ -1691,10 +1734,10 @@ class MegaBullService:
 
             # CASE 1: MARKET OPEN (Live Trading Hours)
             if market_open:
-                # Disarm liquidation state immediately before firing orders to prevent race conditions
+                # Keep armed=True during execution; disarm only once all targets are cleanly closed
                 self._liquidation_state = {
-                    "armed": False,
-                    "status": "EXECUTED_IMMEDIATELY" if force_market_open is None else "EXECUTED_AT_MARKET_OPEN",
+                    "armed": True,
+                    "status": "EXECUTING",
                     "armed_at": self._liquidation_state.get("armed_at", timestamp_str),
                     "market_open_at_stage": True,
                     "holdings_count": len(targets_to_close),
@@ -1727,15 +1770,16 @@ class MegaBullService:
                     exit_action = t["exit_action"]
                     duration = t["duration"]
                     token = t["instrument_token"]
-                    ltp = t["ltp"]
+                    # Fetch fresh live LTP if available, fallback to snapshot ltp
+                    live_ltp = self.get_ltp(token) or t.get("ltp") or 0.0
 
                     exit_payload = {
                         "instrumentToken": token,
-                        "price": ltp,
+                        "price": round(float(live_ltp), 2),
                         "qty": abs_qty,
                         "type": exit_action,
                         "duration": duration,
-                        "orderType": "MARKET"
+                        "orderType": "MKT"  # MegaBull paper broker backend Enum expects "MKT"
                     }
 
                     order_id = f"MKT_EXIT_{sym}_{int(time.time())}"
@@ -1752,8 +1796,10 @@ class MegaBullService:
                                 success = True
                             else:
                                 broker_resp = resp.text[:150]
+                                logger.error(f"MegaBull liquidation exit order failed for {sym}: {resp.status_code} - {broker_resp}")
                         except Exception as e:
                             broker_resp = str(e)
+                            logger.error(f"MegaBull liquidation request exception for {sym}: {e}")
                     else:
                         success = True
 
@@ -1765,8 +1811,8 @@ class MegaBullService:
                         "original_qty": t["qty"],
                         "duration": duration,
                         "type": t["type"],
-                        "execution_price": ltp,
-                        "order_type": "MARKET",
+                        "execution_price": live_ltp,
+                        "order_type": "MKT",
                         "order_id": order_id,
                         "status": "EXECUTED" if success else "FAILED",
                         "broker_response": broker_resp,
@@ -1778,9 +1824,20 @@ class MegaBullService:
                     else:
                         failed_orders.append(order_summary)
 
+                all_succeeded = (len(failed_orders) == 0)
                 self._liquidation_state["orders_fired"] = orders_fired
                 self._liquidation_state["failed_orders"] = failed_orders
-                self._liquidation_state["message"] = f"Market Open: Squared off {len(orders_fired)}/{len(targets_to_close)} active positions at market price."
+                self._liquidation_state["armed"] = not all_succeeded  # Keep armed if any order failed so background sync retries
+                self._liquidation_state["status"] = (
+                    ("EXECUTED_IMMEDIATELY" if force_market_open is None else "EXECUTED_AT_MARKET_OPEN")
+                    if all_succeeded
+                    else "PARTIAL_RETRYING"
+                )
+                self._liquidation_state["message"] = (
+                    f"Market Open: Successfully squared off all {len(orders_fired)} active positions at market price."
+                    if all_succeeded
+                    else f"Market Open: Squared off {len(orders_fired)}/{len(targets_to_close)} positions. {len(failed_orders)} failed (retrying)."
+                )
 
                 try:
                     from online.db import db_manager
@@ -1792,7 +1849,7 @@ class MegaBullService:
                             upsert=True
                         )
                     col_staged = db_manager.staged_orders
-                    if col_staged is not None:
+                    if col_staged is not None and all_succeeded:
                         col_staged.delete_many({"is_liquidation_order": True})
                 except Exception as e:
                     logger.debug(f"Could not persist liquidation state to MongoDB: {e}")
@@ -1802,10 +1859,10 @@ class MegaBullService:
                 self._cache.pop("positions", None)
 
                 return {
-                    "status": "SUCCESS",
+                    "status": "SUCCESS" if all_succeeded else "PARTIAL",
                     "case": "CASE_1_MARKET_OPEN",
                     "market_open": True,
-                    "message": f"Successfully executed market exit orders for {len(orders_fired)} holdings at current price.",
+                    "message": self._liquidation_state["message"],
                     "holdings_squared_off": len(orders_fired),
                     "orders_fired": orders_fired,
                     "failed_orders": failed_orders,

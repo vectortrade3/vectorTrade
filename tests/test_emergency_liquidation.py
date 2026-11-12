@@ -112,12 +112,12 @@ class TestEmergencyLiquidation(unittest.TestCase):
             titan_order = next(o for o in orders if o["symbol"] == "TITAN")
             self.assertEqual(titan_order["action"], "SELL")
             self.assertEqual(titan_order["quantity"], 12)
-            self.assertEqual(titan_order["order_type"], "MARKET")
+            self.assertIn(titan_order["order_type"], ["MARKET", "MKT"])
 
             infy_order = next(o for o in orders if o["symbol"] == "INFY")
             self.assertEqual(infy_order["action"], "BUY")
             self.assertEqual(infy_order["quantity"], 66)
-            self.assertEqual(infy_order["order_type"], "MARKET")
+            self.assertIn(infy_order["order_type"], ["MARKET", "MKT"])
 
             # Check that staged orders were cancelled
             self.mock_staged_orders.update_many.assert_called()
@@ -305,6 +305,17 @@ class TestEmergencyLiquidation(unittest.TestCase):
             self.assertEqual(res_second["status"], "SUCCESS")
             self.assertEqual(res_second["case"], "CASE_2_MARKET_CLOSED")
             self.assertIn("already armed", res_second["message"].lower())
+
+    def test_12_reset_liquidation_state(self):
+        """Verifies reset_liquidation_state resets status to IDLE and clears armed flag."""
+        self.service._liquidation_state["armed"] = True
+        self.service._liquidation_state["status"] = "SCHEDULED_FOR_MARKET_OPEN"
+
+        res = self.service.reset_liquidation_state()
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertFalse(self.service._liquidation_state["armed"])
+        self.assertEqual(self.service._liquidation_state["status"], "IDLE")
+        self.assertEqual(self.service._liquidation_state["holdings_count"], 0)
 
 
 if __name__ == "__main__":

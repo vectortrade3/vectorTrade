@@ -72,7 +72,8 @@ class TestLiveSyncWorker(unittest.TestCase):
             mock_place_order.return_value = {"status": "SUCCESS", "order_id": "ORD_123", "case": "PLACED"}
             mock_col = MagicMock()
             def mock_find(query=None, *args, **kwargs):
-                if query and "STAGED_OFFMARKET" in query.get("status", {}).get("$in", []):
+                status_filter = query.get("status") if isinstance(query, dict) else {}
+                if isinstance(status_filter, dict) and "STAGED_OFFMARKET" in status_filter.get("$in", []):
                     return [{"_id": "1", "symbol": "INFY", "status": "STAGED_OFFMARKET", "action": "BUY", "quantity": 5, "price": 1800.0}]
                 return []
 

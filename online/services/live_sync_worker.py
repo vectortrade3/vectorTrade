@@ -180,20 +180,21 @@ class LiveSyncWorker:
         }
 
         # ------------------------------------------------------------------
-        # EMERGENCY LIQUIDATION PROTOCOL (Single Execution when Armed & Market Open)
+        # EMERGENCY LIQUIDATION PROTOCOL (Execution when Armed & Market Open)
         # ------------------------------------------------------------------
+        is_liq_armed = False
         try:
             liq_status = megabull_service.get_liquidation_status()
-            if liq_status.get("armed") and liq_status.get("status") == "SCHEDULED_FOR_MARKET_OPEN":
-                if market_open:
-                    logger.info("Market is OPEN: Triggering single portfolio emergency liquidation execution.")
-                    liq_res = megabull_service.liquidate_all_positions(force_market_open=True)
-                    if db_manager.staged_orders is not None:
-                        db_manager.staged_orders.update_many(
-                            {"is_liquidation_order": True},
-                            {"$set": {"status": "EXECUTED", "executed_at": timestamp_str, "result": liq_res}}
-                        )
-                    amo_fired_count += 1
+            is_liq_armed = bool(liq_status.get("armed", False))
+            if is_liq_armed and market_open:
+                logger.info("Market is OPEN & Liquidation Armed: Executing portfolio emergency liquidation.")
+                liq_res = megabull_service.liquidate_all_positions(force_market_open=True)
+                if db_manager.staged_orders is not None and liq_res.get("status") == "SUCCESS":
+                    db_manager.staged_orders.update_many(
+                        {"is_liquidation_order": True},
+                        {"$set": {"status": "EXECUTED", "executed_at": timestamp_str, "result": liq_res}}
+                    )
+                amo_fired_count += 1
         except Exception as e:
             logger.error(f"Error handling scheduled emergency liquidation: {e}")
 
@@ -322,7 +323,8 @@ class LiveSyncWorker:
             )
 
             # If market is open and brackets are not currently placed, place them automatically!
-            if market_open and not has_open_bracket and target_px > 0 and sl_px > 0:
+            # Guard: DO NOT place new bracket orders if emergency liquidation is armed
+            if market_open and not is_liq_armed and not has_open_bracket and target_px > 0 and sl_px > 0:
                 logger.info(f"Automating Bracket Orders for running holding {sym}: Target @ {target_px}, SL @ {sl_px}")
                 bracket_res = megabull_service.place_bracket_orders(sym, holding, target_px, sl_px)
                 brackets_placed_count += 1
@@ -350,6 +352,8 @@ class LiveSyncWorker:
             if col_staged is not None:
                 active_tracked = list(col_staged.find({"status": "ACTIVE"}))
                 for tracked in active_tracked:
+                    if not isinstance(tracked, dict):
+                        continue
                     t_sym = str(tracked.get("symbol", "")).strip().upper()
                     if t_sym not in active_symbols_map:
                         # Holding has been closed (Target hit, SL hit, or squared off)
