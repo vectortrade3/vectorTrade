@@ -308,13 +308,15 @@ class MegaBullService:
 
         return quotes
 
-    def get_holdings(self, enrich_ltp: bool = True) -> List[Dict[str, Any]]:
+    def get_holdings(self, enrich_ltp: bool = True, include_zero_qty: bool = False) -> List[Dict[str, Any]]:
         """
         Fetches current equity holdings and enriches with live market pricing and P&L.
         Endpoint: GET /api/holding/my
         """
         cached = self._get_cached("holdings")
         if cached is not None:
+            if not include_zero_qty:
+                return [h for h in cached if int(h.get("qty", 0)) != 0]
             return cached
 
         if not self.api_key:
@@ -336,6 +338,8 @@ class MegaBullService:
                 token = str(item.get("instrumentToken", ""))
                 symbol = str(item.get("instrumentName", "")).strip().upper()
                 qty = int(item.get("qty", 0))
+                if not include_zero_qty and qty == 0:
+                    continue
                 lot_size = int(item.get("lotSize", 1))
                 h_type = str(item.get("type", "LONG")).upper()
                 avg_buy_price = round(float(item.get("priceAvg", item.get("avgBuyPrice", 0.0))), 2)
@@ -581,7 +585,9 @@ class MegaBullService:
         for h in holdings:
             token = str(h.get("instrument_token", ""))
             symbol = str(h.get("symbol", ""))
-            qty = int(h.get("qty", 1))
+            qty = int(h.get("qty", 0))
+            if qty == 0:
+                continue
             is_long = qty >= 0
             avg_buy_price = float(h.get("avg_buy_price", 0.0))
             ltp = float(h.get("ltp", avg_buy_price))
@@ -1459,6 +1465,20 @@ class MegaBullService:
 
         if not self.api_key:
             return results
+
+        # Safety check: On MegaBull Free tier (and accounts without native OCO bracket orders),
+        # remote LIMIT orders for stop-loss execute immediately if placed below LTP, and LIMIT targets
+        # are rejected with HTTP 402. Bracket management is therefore handled synthetically in-memory
+        # by LiveSyncWorker.
+        acct = self.get_account_details()
+        is_free_tier = acct.get("premium_type", "FREE").upper() == "FREE"
+        if is_free_tier:
+            logger.info(f"MegaBull Free Tier: Bracket orders for {sym} (Target @ ₹{target_price:.2f}, SL @ ₹{sl_price:.2f}) tracked synthetically by LiveSyncWorker.")
+            return {
+                "target_order": {"type": "SYNTHETIC_TARGET", "price": round(float(target_price), 2), "status": "SYNTHETIC"},
+                "sl_order": {"type": "SYNTHETIC_SL", "price": round(float(sl_price), 2), "status": "SYNTHETIC"},
+                "status": "TRACKING_SYNTHETIC"
+            }
 
         url = f"{self.base_url}/api/order/buysell"
         headers = self._get_headers()

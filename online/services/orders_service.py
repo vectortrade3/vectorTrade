@@ -538,13 +538,11 @@ class OrdersService:
         tf = str(trade.get("tf", "Daily")).strip() or "Daily"
 
         # 5. QTY
-        raw_qty = trade.get("quantity", trade.get("qty", 1))
+        raw_qty = trade.get("quantity", trade.get("qty", 0))
         try:
             qty = abs(int(raw_qty))
         except (ValueError, TypeError):
-            qty = 1
-        if qty == 0:
-            qty = 1
+            qty = 0
 
         is_short = int(raw_qty) < 0 or "SHORT" in str(trade.get("action", "")).upper() or str(trade.get("action", "")).upper() == "SELL"
 

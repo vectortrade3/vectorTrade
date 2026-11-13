@@ -333,31 +333,56 @@ class LiveSyncWorker:
             sl_px = 0.0
 
             # 1. Try reading staged order for current trade
+            stg_doc = None
             try:
                 if db_manager.staged_orders is not None:
-                    stg_doc = db_manager.staged_orders.find_one({"symbol": sym, "status": {"$in": ["RUNNING", "FILLED", "ACTIVE"]}})
+                    stg_doc = db_manager.staged_orders.find_one({"symbol": sym, "status": {"$in": ["RUNNING", "FILLED", "ACTIVE", "COMPLETED"]}})
                     if stg_doc:
                         target_px = float(stg_doc.get("target_price", 0.0))
                         sl_px = float(stg_doc.get("sl_price", 0.0))
+                        if entry_px <= 0:
+                            entry_px = float(stg_doc.get("fill_price") or stg_doc.get("entry_price") or stg_doc.get("price") or 0.0)
             except Exception:
                 pass
 
+            # 1b. Fallback for entry_px from executed broker orders
+            if entry_px <= 0:
+                for eo in executed_orders:
+                    if str(eo.get("instrumentName", eo.get("symbol", ""))).strip().upper() == sym:
+                        entry_px = float(eo.get("price") or eo.get("priceAvg") or 0.0)
+                        if entry_px > 0:
+                            break
+
+            # 1c. Final fallback for entry_px from holding LTP
+            if entry_px <= 0:
+                entry_px = float(holding.get("ltp") or self.price_cache.get(sym, {}).get("ltp") or 0.0)
+
             # 2. Try signals_watchlist
+            sig = signals_map.get(sym, {})
             if target_px <= 0 or sl_px <= 0:
-                sig = signals_map.get(sym, {})
                 target_px = float(sig.get("target_price", 0.0))
                 sl_px = float(sig.get("sl_price", 0.0))
 
+            profit_pct = float(sig.get("profit_pct", 0.0)) if sig else 0.0
+            loss_pct = float(sig.get("loss_pct", 0.0)) if sig else 0.0
+
             # 3. Mathematical validation: ensure target > entry > SL for Long (or vice-versa for Short)
+            # Re-anchor target & stoploss to actual execution entry price if stale setup targets conflict!
             if entry_px > 0:
                 if is_long:
-                    if target_px <= entry_px or sl_px >= entry_px or sl_px <= 0:
-                        sl_px = round(entry_px * 0.98, 2)
-                        target_px = round(entry_px * 1.04, 2)
+                    if target_px <= entry_px:
+                        pct = profit_pct if profit_pct > 0 else 4.0
+                        target_px = round(entry_px * (1.0 + pct / 100.0), 2)
+                    if sl_px >= entry_px or sl_px <= 0:
+                        pct = loss_pct if loss_pct > 0 else 2.0
+                        sl_px = round(entry_px * (1.0 - pct / 100.0), 2)
                 else:
-                    if target_px >= entry_px or sl_px <= entry_px or sl_px <= 0:
-                        sl_px = round(entry_px * 1.02, 2)
-                        target_px = round(entry_px * 0.96, 2)
+                    if target_px >= entry_px:
+                        pct = profit_pct if profit_pct > 0 else 4.0
+                        target_px = round(entry_px * (1.0 - pct / 100.0), 2)
+                    if sl_px <= entry_px or sl_px <= 0:
+                        pct = loss_pct if loss_pct > 0 else 2.0
+                        sl_px = round(entry_px * (1.0 + pct / 100.0), 2)
 
             has_open_bracket = any(
                 str(bo.get("instrumentName", bo.get("symbol", ""))).strip().upper() == sym
@@ -367,15 +392,22 @@ class LiveSyncWorker:
             # Synthetic / Dynamic Target & Stop-loss execution
             # Especially vital for Free-tier accounts where broker restricts remote LIMIT/SL brackets
             ltp = float(holding.get("ltp") or self.price_cache.get(sym, {}).get("ltp") or entry_px)
-            if market_open and not is_liq_armed and ltp > 0 and target_px > 0 and sl_px > 0 and sym not in self._exiting_symbols:
+
+            # Guard: ensure geometry is strictly valid before evaluating hit
+            geom_valid = (
+                (is_long and target_px > entry_px and sl_px < entry_px) or
+                (not is_long and target_px < entry_px and sl_px > entry_px)
+            )
+
+            if market_open and not is_liq_armed and geom_valid and ltp > 0 and entry_px > 0 and sym not in self._exiting_symbols:
                 target_hit = (is_long and ltp >= target_px) or (not is_long and ltp <= target_px)
                 sl_hit = (is_long and ltp <= sl_px) or (not is_long and ltp >= sl_px)
 
                 if target_hit or sl_hit:
                     hit_reason = (
-                        f"TARGET HIT (LTP ₹{ltp:.2f} >= Target ₹{target_px:.2f})"
+                        f"TARGET HIT (LTP ₹{ltp:.2f} >= Target ₹{target_px:.2f}, Entry: ₹{entry_px:.2f})"
                         if target_hit
-                        else f"STOP LOSS HIT (LTP ₹{ltp:.2f} <= SL ₹{sl_px:.2f})"
+                        else f"STOP LOSS HIT (LTP ₹{ltp:.2f} <= SL ₹{sl_px:.2f}, Entry: ₹{entry_px:.2f})"
                     )
                     logger.info(f"Synthetic Exit Trigger for {sym}: {hit_reason}. Executing MARKET square off.")
                     self._exiting_symbols.add(sym)
