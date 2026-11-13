@@ -523,25 +523,9 @@ class RiskCalculator:
         """
         candidates = self.get_candidate_setups()
 
-        # Sort best orders on top:
-        # 1. ARMED / READY status on top
-        # 2. Multi-Strategy Confluence priority (stocks selected by >1 strategy on top)
-        # 3. Predicted R multiple descending (AI expectancy / per-stock temp model score)
-        # 4. Profit percentage descending
-        # 5. ML confidence descending
-        # 6. Alphabetical tie-breaker (A before Z)
-        def _candidate_sort_key(c):
-            st = str(c.get("status", "ARMED")).upper()
-            is_armed = 1 if st in ("ARMED", "READY") else 0
-            is_multi = 1 if (c.get("is_multi_strategy") or (" + " in str(c.get("strategy", "")))) else 0
-            pred_r = float(c.get("stock_temp_model_score") or c.get("predicted_r") or 0.0)
-            profit = float(c.get("profit_pct", 0.0))
-            conf = float(c.get("ml_confidence", 0.0))
-            sym = str(c.get("symbol", "")).upper()
-            sym_inv = ''.join(chr(255 - ord(ch)) for ch in sym)
-            return (is_armed, is_multi, pred_r, profit, conf, sym_inv)
-
-        sorted_candidates = sorted(candidates, key=_candidate_sort_key, reverse=True)
+        # Rank candidates using the configurable interactive filter workflow pipeline:
+        from online.services.filter_pipeline_service import filter_pipeline_service
+        sorted_candidates = filter_pipeline_service.apply_pipeline(candidates)
 
         # Settings resolution
         settings = self.get_trading_settings()

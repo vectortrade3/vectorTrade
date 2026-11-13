@@ -1464,6 +1464,53 @@ def offline_trading_allocate_api():
     })
 
 
+@app.route("/api/trading-settings/filter-pipeline", methods=["GET"])
+def offline_get_filter_pipeline_api():
+    """Returns the configured filter & prioritization workflow pipeline with full model metrics."""
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    stages = filter_pipeline_service.get_pipeline_configuration()
+    return jsonify({
+        "status": "SUCCESS",
+        "pipeline": stages
+    })
+
+
+@app.route("/api/trading-settings/filter-pipeline", methods=["POST"])
+def offline_update_filter_pipeline_api():
+    """Updates the sequence, enabled status, and thresholds of the filter pipeline stages."""
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    from online.services.risk_calculator import risk_calculator
+    data = request.get_json(silent=True) or {}
+    stages = data.get("stages", [])
+
+    updated_stages = filter_pipeline_service.update_pipeline_configuration(stages)
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+
+    return jsonify({
+        "status": "SUCCESS",
+        "message": "Filter workflow pipeline updated and candidate orders re-allocated.",
+        "pipeline": updated_stages,
+        "plan": plan
+    })
+
+
+@app.route("/api/trading-settings/filter-pipeline/reset", methods=["POST"])
+def offline_reset_filter_pipeline_api():
+    """Resets the filter workflow pipeline to factory defaults and recalculates orders."""
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    from online.services.risk_calculator import risk_calculator
+
+    default_stages = filter_pipeline_service.reset_pipeline_configuration()
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+
+    return jsonify({
+        "status": "SUCCESS",
+        "message": "Filter workflow pipeline reset to factory defaults.",
+        "pipeline": default_stages,
+        "plan": plan
+    })
+
+
 @app.route("/api/trading/execute-confirmed", methods=["POST"])
 def offline_trading_execute_confirmed_api():
     """Evaluates and immediately executes all confirmed orders from the capital allocation plan on MegaBull."""

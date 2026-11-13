@@ -278,10 +278,12 @@ async def execution_plan_page(request: Request):
         return RedirectResponse(url="/login?next=/plan", status_code=303)
 
     from online.services.risk_calculator import risk_calculator
+    from online.services.filter_pipeline_service import filter_pipeline_service
     stats = orders_service.get_order_summary_stats()
     db_health = db_manager.ping()
     plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=False)
     trading_settings = risk_calculator.get_trading_settings()
+    pipeline_config = filter_pipeline_service.get_pipeline_configuration()
     liquidation_status = megabull_service.get_liquidation_status()
     is_market_open = megabull_service.is_market_open()
 
@@ -295,6 +297,7 @@ async def execution_plan_page(request: Request):
             "stats": stats,
             "db_health": db_health,
             "trading_settings": trading_settings,
+            "filter_pipeline": pipeline_config,
             "liquidation_status": liquidation_status,
             "is_market_open": is_market_open,
             "armed_orders_count": stats.get("armed_orders_count", 0),
@@ -586,6 +589,61 @@ async def trigger_trading_allocation_api(req: Optional[UpdateTradingSettingsRequ
     return JSONResponse({
         "status": "SUCCESS",
         "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for execution.",
+        "plan": plan
+    })
+
+
+class FilterPipelineUpdateRequest(BaseModel):
+    stages: List[Dict[str, Any]] = Field(..., description="Ordered list of filter pipeline stage objects")
+
+
+@app.get("/api/trading-settings/filter-pipeline")
+async def get_filter_pipeline_api():
+    """
+    Returns the configured filter & prioritization workflow pipeline with full
+    model metrics, accuracy, win rates, and stage enable toggles.
+    """
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    stages = filter_pipeline_service.get_pipeline_configuration()
+    return JSONResponse({
+        "status": "SUCCESS",
+        "pipeline": stages
+    })
+
+
+@app.post("/api/trading-settings/filter-pipeline")
+async def update_filter_pipeline_api(req: FilterPipelineUpdateRequest):
+    """
+    Updates the sequence, enabled status, and thresholds of the filter pipeline stages.
+    Persists to MongoDB Atlas and recalculates confirmed execution orders dynamically.
+    """
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    from online.services.risk_calculator import risk_calculator
+
+    updated_stages = filter_pipeline_service.update_pipeline_configuration(req.stages)
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+
+    return JSONResponse({
+        "status": "SUCCESS",
+        "message": "Filter workflow pipeline updated and candidate orders re-allocated.",
+        "pipeline": updated_stages,
+        "plan": plan
+    })
+
+
+@app.post("/api/trading-settings/filter-pipeline/reset")
+async def reset_filter_pipeline_api():
+    """Resets the filter workflow pipeline to factory defaults and recalculates orders."""
+    from online.services.filter_pipeline_service import filter_pipeline_service
+    from online.services.risk_calculator import risk_calculator
+
+    default_stages = filter_pipeline_service.reset_pipeline_configuration()
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+
+    return JSONResponse({
+        "status": "SUCCESS",
+        "message": "Filter workflow pipeline reset to factory defaults.",
+        "pipeline": default_stages,
         "plan": plan
     })
 

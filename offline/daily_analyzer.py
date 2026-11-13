@@ -830,22 +830,22 @@ def process_per_stock_temporary_validation_and_confluence(
         t["stock_temp_model_score"] = pred_score
         t["stock_temp_model_r"] = formatted_r
 
-    # 2. Sort armed candidates:
-    # If multiple strategies checked:
-    #   Priority 1: Multi-strategy confluence descending (Confluence first)
-    #   Secondary: Alphabetical symbol ascending (A -> Z)
-    # If single strategy checked:
-    #   Alphabetical symbol ascending (A -> Z)
-    if multiple_strats_checked:
-        armed_sorted = sorted(
-            armed_trades,
-            key=lambda x: (-x.get("confluence_priority", 0), str(x.get("symbol", "")).upper())
-        )
-    else:
-        armed_sorted = sorted(
-            armed_trades,
-            key=lambda x: str(x.get("symbol", "")).upper()
-        )
+    # 2. Sort armed candidates using the configurable interactive filter workflow pipeline:
+    try:
+        from online.services.filter_pipeline_service import filter_pipeline_service
+        armed_sorted = filter_pipeline_service.apply_pipeline(armed_trades)
+    except Exception as pipe_err:
+        logger.debug(f"Filter pipeline service fallback: {pipe_err}")
+        if multiple_strats_checked:
+            armed_sorted = sorted(
+                armed_trades,
+                key=lambda x: (-x.get("confluence_priority", 0), str(x.get("symbol", "")).upper())
+            )
+        else:
+            armed_sorted = sorted(
+                armed_trades,
+                key=lambda x: str(x.get("symbol", "")).upper()
+            )
 
     return armed_sorted + other_trades
 

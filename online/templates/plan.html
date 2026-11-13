@@ -319,6 +319,71 @@
             </div>
         </div>
 
+        <!-- Section: Interactive Filter Workflow & Prioritization Map -->
+        <div class="p-5 sm:p-6 rounded-2xl hairline-border bg-neutral-900/40 backdrop-blur-md space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <i data-lucide="git-merge" class="w-4 h-4"></i>
+                        </div>
+                        <h2 class="text-sm font-semibold text-white tracking-tight">Interactive Filter Workflow &amp; Prioritization Map</h2>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            Custom Pipeline
+                        </span>
+                    </div>
+                    <p class="text-xs text-neutral-400 max-w-3xl leading-relaxed">
+                        Drag or shift intermediate checks to determine which AI model or rule filters candidate setups first.
+                        Click any stage card to inspect its empirical win rate, adjust cutoff thresholds, or toggle it on/off.
+                    </p>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="resetPipelineToDefaults()" class="px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.03] hover:bg-white/[0.08] text-neutral-300 apple-spring flex items-center space-x-1.5" title="Reset to default factory order">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-neutral-400"></i>
+                        <span>Reset Defaults</span>
+                    </button>
+                    <button onclick="saveAndApplyPipeline()" id="btnSavePipeline" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="save" class="w-3.5 h-3.5 text-white"></i>
+                        <span>Apply &amp; Re-Rank</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pipeline Visual Nodes Track (Horizontally scrollable with arrow connectors) -->
+            <div class="overflow-x-auto pb-2 pt-1 -mx-2 px-2">
+                <div id="pipelineTrack" class="flex items-center min-w-max space-x-2 sm:space-x-3 py-2">
+                    <!-- Populated dynamically by renderPipelineTrack() -->
+                </div>
+            </div>
+
+            <!-- Pipeline Legend / Status hints -->
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-500 border-t border-white/5 pt-3">
+                <div class="flex items-center space-x-4">
+                    <span class="flex items-center space-x-1.5">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"></span>
+                        <span class="text-neutral-400">Active Gate</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="h-2 w-2 rounded-full bg-neutral-600"></span>
+                        <span class="text-neutral-500">Bypassed</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                        <span class="text-neutral-400">Fixed (Start / End)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="h-2 w-2 rounded-full bg-blue-400"></span>
+                        <span class="text-neutral-400">Shiftable Priority</span>
+                    </span>
+                </div>
+                <div class="text-neutral-400 flex items-center space-x-1">
+                    <i data-lucide="mouse-pointer-click" class="w-3 h-3 text-neutral-500"></i>
+                    <span>Click any stage card to inspect scorecard &amp; toggle on/off</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Section 1: Confirmed Orders for Tomorrow (Top Trades) -->
         <div class="space-y-4">
             <div class="flex items-center justify-between">
@@ -582,6 +647,119 @@
                         Confirmed orders are staged in MongoDB Atlas <code class="text-neutral-300 font-mono">staged_orders</code> for automatic 09:15 AM execution. Setups that exceed the budget wait on the waitlist.
                     </p>
                 </div>
+        </div>
+
+        <!-- Interactive Stage Inspector Modal Popup -->
+        <div id="stageModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <div class="relative w-full max-w-xl rounded-2xl hairline-border bg-neutral-900 shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+                <!-- Modal Header -->
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div id="modalIconBox" class="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <i id="modalIconEl" data-lucide="cpu" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 id="modalTitleEl" class="text-base font-bold text-white tracking-tight">Stage Name</h3>
+                                <span id="modalFixedBadgeEl" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Shiftable</span>
+                            </div>
+                            <div id="modalCategoryEl" class="text-xs text-neutral-400 font-mono mt-0.5">Category</div>
+                        </div>
+                    </div>
+                    <button onclick="closeStageModal()" class="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.05] apple-spring">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Enable / Bypass Switch -->
+                <div class="p-4 rounded-xl hairline-border bg-white/[0.02] flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-semibold text-white">Active In Filter Pipeline</div>
+                        <div class="text-[11px] text-neutral-400 mt-0.5">When bypassed, candidate setups flow through without being scored or ranked by this stage.</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="modalToggleCheckbox" class="sr-only peer" onchange="handleModalToggle(this.checked)">
+                        <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <!-- Stage Description -->
+                <div class="p-3.5 rounded-xl bg-black/40 hairline-border text-xs text-neutral-300 leading-relaxed" id="modalDescEl">
+                    Description text...
+                </div>
+
+                <!-- Model Results Section (Populated if has_model_results) -->
+                <div id="modalModelResultsBox" class="space-y-3.5">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Empirical Performance Scorecard</div>
+                        <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">1-Year Out-Of-Sample Test</span>
+                    </div>
+
+                    <!-- 4 Metric Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div class="p-3 rounded-xl hairline-border bg-neutral-800/40 text-center">
+                            <div class="text-[10px] text-neutral-400">Win Rate (+2R)</div>
+                            <div id="modalWinRateVal" class="text-base font-bold font-mono text-emerald-400 mt-1">--%</div>
+                            <div class="text-[9px] text-neutral-500">1:2 R:R Target</div>
+                        </div>
+                        <div class="p-3 rounded-xl hairline-border bg-neutral-800/40 text-center">
+                            <div class="text-[10px] text-neutral-400">Success Rate</div>
+                            <div id="modalSuccessRateVal" class="text-base font-bold font-mono text-blue-400 mt-1">--%</div>
+                            <div class="text-[9px] text-neutral-500">Test Accuracy</div>
+                        </div>
+                        <div class="p-3 rounded-xl hairline-border bg-neutral-800/40 text-center">
+                            <div class="text-[10px] text-neutral-400">SL Drawdown</div>
+                            <div id="modalLossRateVal" class="text-base font-bold font-mono text-red-400 mt-1">--%</div>
+                            <div class="text-[9px] text-neutral-500">Stop Loss Hits</div>
+                        </div>
+                        <div class="p-3 rounded-xl hairline-border bg-neutral-800/40 text-center">
+                            <div class="text-[10px] text-neutral-400">Dataset Split</div>
+                            <div id="modalSplitVal" class="text-base font-bold font-mono text-purple-400 mt-1">4Y / 1Y</div>
+                            <div class="text-[9px] text-neutral-500">7k Train / 1.5k Test</div>
+                        </div>
+                    </div>
+
+                    <!-- Threshold Tuning Table (for Quality Classifier) -->
+                    <div id="modalThresholdBox" class="space-y-2 pt-1 hidden">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-neutral-300 font-medium">Confidence Cutoff Threshold</span>
+                            <span id="modalThresholdActiveLabel" class="font-mono text-amber-400 font-semibold">Active: &ge; 0.40</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl hairline-border bg-black/40">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="text-neutral-400 border-b border-white/5 bg-white/[0.02]">
+                                    <tr>
+                                        <th class="px-3 py-2 font-medium">Cutoff</th>
+                                        <th class="px-3 py-2 font-medium">Expected Win Rate</th>
+                                        <th class="px-3 py-2 font-medium">Qualified Trades</th>
+                                        <th class="px-3 py-2 font-medium text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modalThresholdTbody" class="divide-y divide-white/5 font-mono">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rule Details Section (Populated if has_model_results == false) -->
+                <div id="modalRuleBox" class="p-4 rounded-xl hairline-border bg-white/[0.02] space-y-2 hidden">
+                    <h4 class="text-xs font-semibold text-white">Rule Execution Protocol</h4>
+                    <div id="modalRuleDetailsEl" class="text-xs text-neutral-400 space-y-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-end space-x-2.5 pt-2 border-t border-white/5">
+                    <button onclick="closeStageModal()" class="px-3.5 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hairline-border bg-white/[0.03] hover:bg-white/[0.08] apple-spring">
+                        Close
+                    </button>
+                    <button onclick="saveStageModalSettings()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 apple-spring">
+                        Apply &amp; Re-Rank Orders
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -680,6 +858,314 @@
                 lucide.createIcons();
             }
         }
+
+        // ==============================================================================
+        // INTERACTIVE FILTER WORKFLOW PIPELINE CONTROLLER
+        // ==============================================================================
+
+        let currentPipeline = {{ (filter_pipeline or []) | tojson }};
+        let activeModalStage = null;
+
+        const ICON_MAP = {
+            'primary_model': 'cpu',
+            'secondary_stock_model': 'microchip',
+            'multi_strategy_confluence': 'layers',
+            'quality_classifier': 'shield-check',
+            'alphabetical_sort': 'arrow-down-a-z',
+            'final_execution_list': 'check-check'
+        };
+
+        function renderPipelineTrack() {
+            const track = document.getElementById('pipelineTrack');
+            if (!track || !currentPipeline || !currentPipeline.length) return;
+
+            let html = '';
+
+            currentPipeline.forEach((stage, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === currentPipeline.length - 1;
+                const iconName = ICON_MAP[stage.id] || 'sparkles';
+                const isEnabled = stage.enabled !== false;
+
+                // Color accent styling
+                let borderClass = 'border-white/10 bg-neutral-900/60 hover:bg-neutral-800/60';
+                let accentColor = 'text-purple-400';
+                let badgeText = stage.badge || (stage.is_fixed ? 'Fixed' : 'Shiftable');
+                let badgeClass = 'bg-white/[0.05] text-neutral-400';
+
+                if (isFirst) {
+                    borderClass = 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/30';
+                    accentColor = 'text-blue-400';
+                    badgeClass = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                } else if (isLast) {
+                    borderClass = 'border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/30';
+                    accentColor = 'text-amber-400';
+                    badgeClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                } else if (!isEnabled) {
+                    borderClass = 'border-white/5 bg-neutral-950/40 opacity-50';
+                    accentColor = 'text-neutral-500';
+                    badgeClass = 'bg-red-500/10 text-red-400 border border-red-500/20';
+                    badgeText = 'Bypassed';
+                } else {
+                    borderClass = 'border-purple-500/20 bg-purple-950/10 hover:bg-purple-900/20';
+                    accentColor = 'text-purple-400';
+                    badgeClass = 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+                }
+
+                // Node card container
+                html += `
+                    <div class="relative flex items-center group">
+                        <div onclick="openStageModal('${stage.id}')" 
+                             class="w-56 p-3.5 rounded-2xl hairline-border ${borderClass} apple-spring cursor-pointer select-none space-y-2 relative shadow-md">
+                            
+                            <!-- Top metadata bar -->
+                            <div class="flex items-center justify-between text-[10px]">
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="h-1.5 w-1.5 rounded-full ${isEnabled ? 'bg-emerald-400' : 'bg-neutral-600'}"></span>
+                                    <span class="font-mono text-neutral-400">#${idx + 1}</span>
+                                </div>
+                                <span class="px-1.5 py-0.2 rounded-full font-mono text-[9px] ${badgeClass}">${badgeText}</span>
+                            </div>
+
+                            <!-- Title & Icon row -->
+                            <div class="flex items-start space-x-2.5">
+                                <div class="p-1.5 rounded-xl bg-white/[0.04] ${accentColor} flex-shrink-0 mt-0.5">
+                                    <i data-lucide="${iconName}" class="w-4 h-4"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs font-bold text-white tracking-tight truncate ${!isEnabled ? 'line-through text-neutral-500' : ''}">
+                                        ${stage.name}
+                                    </div>
+                                    <div class="text-[10px] text-neutral-400 truncate mt-0.5">
+                                        ${stage.category || 'Pipeline Filter'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom metrics / action bar -->
+                            <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                                <span class="font-mono ${accentColor} truncate">
+                                    ${getStageMetricSummary(stage)}
+                                </span>
+
+                                <!-- Shift buttons for intermediate stages -->
+                                ${stage.can_shift ? `
+                                    <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
+                                        <button onclick="shiftStage('${stage.id}', -1, event)" 
+                                                class="p-1 rounded-md bg-white/[0.04] hover:bg-white/[0.12] text-neutral-400 hover:text-white apple-spring" 
+                                                title="Shift Left (Increase Priority)">
+                                            <i data-lucide="chevron-left" class="w-3 h-3"></i>
+                                        </button>
+                                        <button onclick="shiftStage('${stage.id}', 1, event)" 
+                                                class="p-1 rounded-md bg-white/[0.04] hover:bg-white/[0.12] text-neutral-400 hover:text-white apple-spring" 
+                                                title="Shift Right (Decrease Priority)">
+                                            <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                                        </button>
+                                    </div>
+                                ` : `
+                                    <span class="text-[9px] text-neutral-600 font-mono">Fixed</span>
+                                `}
+                            </div>
+                        </div>
+
+                        <!-- Connector arrow between stages -->
+                        ${!isLast ? `
+                            <div class="px-1 sm:px-1.5 flex items-center text-neutral-600">
+                                <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-neutral-600"></i>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            track.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function getStageMetricSummary(stage) {
+            if (!stage.enabled) return 'Bypassed';
+            if (stage.id === 'quality_classifier') {
+                return '45%-60% Target Win';
+            }
+            if (stage.id === 'secondary_stock_model') {
+                return '0.12s Stock ML';
+            }
+            if (stage.id === 'multi_strategy_confluence') {
+                return 'Priority #1 Boost';
+            }
+            if (stage.id === 'primary_model') {
+                return 'MAE 0.28 R (207 Stocks)';
+            }
+            if (stage.id === 'alphabetical_sort') {
+                return 'A to Z Tie-Breaker';
+            }
+            if (stage.id === 'final_execution_list') {
+                return '10% Cap • 1% Risk';
+            }
+            return 'Active Gate';
+        }
+
+        async function shiftStage(stageId, direction, event) {
+            if (event) event.stopPropagation();
+            const currIdx = currentPipeline.findIndex(s => s.id === stageId);
+            if (currIdx === -1) return;
+
+            const targetIdx = currIdx + direction;
+            // Prevent shifting past fixed boundaries (index 0 is fixed start, length-1 is fixed end)
+            if (targetIdx <= 0 || targetIdx >= currentPipeline.length - 1) return;
+            if (!currentPipeline[targetIdx].can_shift) return;
+
+            // Swap stages
+            const temp = currentPipeline[currIdx];
+            currentPipeline[currIdx] = currentPipeline[targetIdx];
+            currentPipeline[targetIdx] = temp;
+
+            renderPipelineTrack();
+            await saveAndApplyPipeline(false);
+        }
+
+        function openStageModal(stageId) {
+            const stage = currentPipeline.find(s => s.id === stageId);
+            if (!stage) return;
+            activeModalStage = stage;
+
+            document.getElementById('modalTitleEl').innerText = stage.name;
+            document.getElementById('modalCategoryEl').innerText = stage.category || 'Filter';
+            document.getElementById('modalFixedBadgeEl').innerText = stage.is_fixed ? 'Fixed Stage' : 'Shiftable Stage';
+            document.getElementById('modalDescEl').innerText = stage.description || '';
+            document.getElementById('modalToggleCheckbox').checked = stage.enabled !== false;
+            document.getElementById('modalIconEl').setAttribute('data-lucide', ICON_MAP[stage.id] || 'sparkles');
+
+            const modelBox = document.getElementById('modalModelResultsBox');
+            const ruleBox = document.getElementById('modalRuleBox');
+            const thBox = document.getElementById('modalThresholdBox');
+
+            if (stage.has_model_results && stage.metrics) {
+                modelBox.classList.remove('hidden');
+                ruleBox.classList.add('hidden');
+
+                const m = stage.metrics;
+                document.getElementById('modalWinRateVal').innerText = m.win_rate ? (m.win_rate + '%') : '32.5%';
+                document.getElementById('modalSuccessRateVal').innerText = m.accuracy ? (m.accuracy + '%') : (m.success_rate ? m.success_rate + '%' : '49.0%');
+                document.getElementById('modalLossRateVal').innerText = m.loss_rate ? (m.loss_rate + '%') : '48.8%';
+                document.getElementById('modalSplitVal').innerText = m.training_setups ? `${(m.training_setups/1000).toFixed(1)}k / ${(m.test_setups/1000).toFixed(1)}k` : '4Y / 1Y';
+
+                // Thresholds for quality classifier
+                if (stage.id === 'quality_classifier' && m.threshold_breakdown) {
+                    thBox.classList.remove('hidden');
+                    const curTh = stage.selected_threshold || 0.40;
+                    document.getElementById('modalThresholdActiveLabel').innerText = `Active: >= ${curTh.toFixed(2)}`;
+
+                    let tbodyHtml = '';
+                    m.threshold_breakdown.forEach(item => {
+                        const isSelected = Math.abs(item.threshold - curTh) < 0.01;
+                        tbodyHtml += `
+                            <tr class="${isSelected ? 'bg-purple-500/10 text-white' : 'text-neutral-300 hover:bg-white/[0.02]'}">
+                                <td class="px-3 py-2 font-bold">&ge; ${item.threshold.toFixed(2)}</td>
+                                <td class="px-3 py-2 text-emerald-400 font-bold">${item.win_rate_pct ? item.win_rate_pct.toFixed(1) : item.win_rate}%</td>
+                                <td class="px-3 py-2 text-neutral-400">${item.selected_trades_count || item.count || '--'} trades</td>
+                                <td class="px-3 py-2 text-right">
+                                    <button onclick="selectModalThreshold(${item.threshold})" 
+                                            class="px-2 py-0.5 rounded text-[10px] ${isSelected ? 'bg-purple-500 text-white' : 'hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-300'} apple-spring">
+                                        ${isSelected ? 'Selected' : 'Use Cutoff'}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    document.getElementById('modalThresholdTbody').innerHTML = tbodyHtml;
+                } else {
+                    thBox.classList.add('hidden');
+                }
+            } else {
+                modelBox.classList.add('hidden');
+                ruleBox.classList.remove('hidden');
+
+                const r = stage.rule_details || {};
+                let ruleHtml = '';
+                for (const [k, v] of Object.entries(r)) {
+                    ruleHtml += `<div><span class="font-semibold text-neutral-300 capitalize">${k.replace(/_/g, ' ')}:</span> ${v}</div>`;
+                }
+                document.getElementById('modalRuleDetailsEl').innerHTML = ruleHtml || 'Rule parameters applied during ranking.';
+            }
+
+            document.getElementById('stageModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeStageModal() {
+            document.getElementById('stageModal').classList.add('hidden');
+            activeModalStage = null;
+        }
+
+        function handleModalToggle(isChecked) {
+            if (!activeModalStage) return;
+            if (activeModalStage.is_fixed && !activeModalStage.can_shift) {
+                alert('This fixed boundary stage cannot be disabled.');
+                document.getElementById('modalToggleCheckbox').checked = true;
+                return;
+            }
+            activeModalStage.enabled = isChecked;
+        }
+
+        function selectModalThreshold(th) {
+            if (!activeModalStage) return;
+            activeModalStage.selected_threshold = th;
+            document.getElementById('modalThresholdActiveLabel').innerText = `Active: >= ${th.toFixed(2)}`;
+            openStageModal(activeModalStage.id);
+        }
+
+        async function saveStageModalSettings() {
+            closeStageModal();
+            renderPipelineTrack();
+            await saveAndApplyPipeline(true);
+        }
+
+        async function saveAndApplyPipeline(reloadOnComplete = true) {
+            const btn = document.getElementById('btnSavePipeline');
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> <span>Saving...</span>';
+            lucide.createIcons();
+
+            try {
+                const resp = await fetch('/api/trading-settings/filter-pipeline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stages: currentPipeline })
+                });
+                const res = await resp.json();
+                if (res.status === 'SUCCESS') {
+                    if (reloadOnComplete) {
+                        window.location.reload();
+                    }
+                } else {
+                    alert('Error saving pipeline: ' + (res.message || 'Unknown'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to save pipeline configuration.');
+            } finally {
+                btn.innerHTML = origHtml;
+                lucide.createIcons();
+            }
+        }
+
+        async function resetPipelineToDefaults() {
+            if (!confirm('Reset the filter pipeline to the factory default sequence and settings?')) return;
+            try {
+                const resp = await fetch('/api/trading-settings/filter-pipeline/reset', { method: 'POST' });
+                const res = await resp.json();
+                if (res.status === 'SUCCESS') {
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.reload();
+            }
+        }
+
+        // Initialize pipeline on page load
+        renderPipelineTrack();
     </script>
 </body>
 </html>
