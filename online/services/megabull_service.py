@@ -74,10 +74,11 @@ class MegaBullService:
             headers["user-id"] = self.user_id
         return headers
 
-    def _get_cached(self, key: str) -> Optional[Any]:
+    def _get_cached(self, key: str, ttl: Optional[float] = None) -> Optional[Any]:
         """Retrieves cached item if within TTL."""
+        effective_ttl = ttl if ttl is not None else self.cache_ttl
         if key in self._cache:
-            if time.time() - self._cache_time.get(key, 0) < self.cache_ttl:
+            if time.time() - self._cache_time.get(key, 0) < effective_ttl:
                 return self._cache[key]
         return None
 
@@ -455,16 +456,18 @@ class MegaBullService:
             logger.error(f"Error fetching MegaBull orders: {e}")
             return {"open": [], "executed": []}
 
-    def get_historical_completed_trades(self) -> List[Dict[str, Any]]:
+    def get_historical_completed_trades(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         Fetches historical closed/settled trades from MegaBull reports.
         Uses /api/report/virtual/{start}/{end} to identify balance settlement dates,
         and /api/report/monthly/day/{date} to retrieve closed trade execution records.
+        Cached for 300s to eliminate redundant sequential HTTP roundtrips.
         Example: TVSMOTOR settled on 2026-10-29 with +INR 1,800.02 net realized profit.
         """
-        cached = self._get_cached("historical_completed_trades")
-        if cached is not None:
-            return cached
+        if not force_refresh:
+            cached = self._get_cached("historical_completed_trades", ttl=300.0)
+            if cached is not None:
+                return cached
 
         if not self.api_key:
             return []
@@ -851,17 +854,18 @@ class MegaBullService:
 
         return valid_orders
 
-    def get_account_transactions(self) -> List[Dict[str, Any]]:
+    def get_account_transactions(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         Fetches and constructs the comprehensive account transactions / ledger history:
         1. Initial Virtual Capital Allocation Grant (₹500,000.00).
         2. Historical settled trade profits/losses with ledger transaction IDs (e.g. TVSMOTOR settlement on 2026-10-29).
         3. Running margin commitments and cash balance progression.
-        Returns ledger transactions ordered chronologically.
+        Returns ledger transactions ordered chronologically. Cached for 300s.
         """
-        cached = self._get_cached("account_transactions")
-        if cached is not None:
-            return cached
+        if not force_refresh:
+            cached = self._get_cached("account_transactions", ttl=300.0)
+            if cached is not None:
+                return cached
 
         transactions: List[Dict[str, Any]] = []
 
@@ -885,64 +889,39 @@ class MegaBullService:
             "status": "SETTLED"
         })
 
-        # 2. Historical Trade Settlements from MegaBull reports
+        # 2. Historical Trade Settlements from MegaBull reports (reusing cached historical trades)
         settlements_found = 0
         try:
-            today_str = time.strftime("%Y-%m-%d")
-            url = f"{self.base_url}/api/report/virtual/2026-01-01/{today_str}"
-            resp = requests.get(url, headers=self._get_headers(), timeout=self.timeout) if self.api_key else None
-            settlement_dates = resp.json() if (resp and resp.status_code == 200 and isinstance(resp.json(), list)) else []
+            hist_trades = self.get_historical_completed_trades(force_refresh=force_refresh)
+            for t in hist_trades:
+                sym = str(t.get("symbol", "EQUITY")).upper()
+                qty = abs(int(t.get("quantity", 0)))
+                gross_pl = float(t.get("gross_pnl", 0.0))
+                brokerage = float(t.get("brokerage", 0.0))
+                taxes = float(t.get("taxes", 0.0))
+                net_pl = float(t.get("net_pnl", 0.0))
+                duration = str(t.get("product", "CNC"))
+                d = str(t.get("closed_date", "2026-10-29"))
+                tx_id = str(t.get("order_id", f"CLOSED_{sym}"))
 
-            for item in settlement_dates:
-                d = str(item.get("date", ""))
-                tx_id = str(item.get("id", ""))
-
-                day_url = f"{self.base_url}/api/report/monthly/day/{d}"
-                d_resp = requests.get(day_url, headers=self._get_headers(), timeout=self.timeout) if self.api_key else None
-                day_trades = d_resp.json() if (d_resp and d_resp.status_code == 200 and isinstance(d_resp.json(), list)) else []
-
-                for t in day_trades:
-                    sym = str(t.get("instrumentName", "EQUITY")).upper()
-                    qty = abs(int(t.get("qty", 0)))
-                    gross_pl = round(float(t.get("pl", 0.0)), 2)
-                    duration = str(t.get("duration", "CNC")).upper()
-                    buy_px = float(t.get("avgBuyPrice", 0.0))
-                    sell_px = float(t.get("avgSellPrice", 0.0))
-
-                    charges = self.calculate_regulatory_charges(
-                        buy_price=buy_px,
-                        sell_price=sell_px,
-                        quantity=qty,
-                        product="CNC" if "CNC" in duration else "MIS"
-                    )
-
-                    if sym == "TVSMOTOR" and d == "2026-10-29":
-                        brokerage = 40.00
-                        taxes = 147.48
-                        net_pl = 1800.02
-                    else:
-                        brokerage = charges["brokerage"]
-                        taxes = charges["total_taxes"]
-                        net_pl = round(gross_pl - (brokerage + taxes), 2)
-
-                    running_balance = round(running_balance + net_pl, 2)
-                    transactions.append({
-                        "transaction_id": f"TX_{tx_id or 'SETTLE'}_{sym}",
-                        "date": d,
-                        "time": "15:30:00",
-                        "type": "TRADE_SETTLEMENT",
-                        "badge": "PROFIT" if net_pl >= 0 else "LOSS",
-                        "particulars": f"Trade Settlement: {sym} ({qty} Qty {duration} Closed)",
-                        "symbol": sym,
-                        "action": "CREDIT" if net_pl >= 0 else "DEBIT",
-                        "gross_amount": gross_pl,
-                        "brokerage": brokerage,
-                        "taxes": taxes,
-                        "net_amount": net_pl,
-                        "running_balance": running_balance,
-                        "status": "SETTLED"
-                    })
-                    settlements_found += 1
+                running_balance = round(running_balance + net_pl, 2)
+                transactions.append({
+                    "transaction_id": f"TX_{tx_id}",
+                    "date": d,
+                    "time": "15:30:00",
+                    "type": "TRADE_SETTLEMENT",
+                    "badge": "PROFIT" if net_pl >= 0 else "LOSS",
+                    "particulars": f"Trade Settlement: {sym} ({qty} Qty {duration})",
+                    "symbol": sym,
+                    "action": "CREDIT" if net_pl >= 0 else "DEBIT",
+                    "gross_amount": gross_pl,
+                    "brokerage": brokerage,
+                    "taxes": taxes,
+                    "net_amount": net_pl,
+                    "running_balance": running_balance,
+                    "status": "SETTLED"
+                })
+                settlements_found += 1
         except Exception as e:
             logger.error(f"Error fetching account settlement transactions: {e}")
 
@@ -994,8 +973,13 @@ class MegaBullService:
         self._set_cached("account_transactions", transactions)
         return transactions
 
-    def get_portfolio_summary(self) -> Dict[str, Any]:
-        """Aggregates account details, holdings valuation, and positions into unified payload."""
+    def get_portfolio_summary(self, force_refresh: bool = False) -> Dict[str, Any]:
+        """Aggregates account details, holdings valuation, and positions into unified payload (cached for 10s)."""
+        if not force_refresh:
+            cached = self._get_cached("portfolio_summary", ttl=10.0)
+            if cached is not None:
+                return cached
+
         account = self.get_account_details()
         holdings = self.get_holdings(enrich_ltp=True)
         positions = self.get_positions()
@@ -1039,7 +1023,7 @@ class MegaBullService:
         gross_realized_pnl = round(sum(t.get("gross_amount", 0.0) for t in settlement_txs), 2)
         net_realized_pnl = round(sum(t.get("net_amount", 0.0) for t in settlement_txs), 2)
 
-        return {
+        summary = {
             "status": account.get("status", "SUCCESS"),
             "account": account,
             "ledger_breakdown": ledger_breakdown,
@@ -1079,6 +1063,8 @@ class MegaBullService:
             "net_realized_pnl": net_realized_pnl,
             "last_synced": time.strftime("%Y-%m-%d %H:%M:%S")
         }
+        self._set_cached("portfolio_summary", summary)
+        return summary
 
     @staticmethod
     def is_market_open() -> bool:

@@ -22,10 +22,10 @@ class OrdersService:
     def __init__(self):
         self._cached_summary_stats: Optional[Dict[str, Any]] = None
         self._stats_cache_time: float = 0.0
-        self.stats_cache_ttl: float = 3.0
+        self.stats_cache_ttl: float = 15.0
         self._cached_trade_journal: Optional[List[Dict[str, Any]]] = None
         self._journal_cache_time: float = 0.0
-        self.journal_cache_ttl: float = 4.0
+        self.journal_cache_ttl: float = 15.0
 
     def invalidate_cache(self):
         """Invalidates internal in-memory caches on mutations."""

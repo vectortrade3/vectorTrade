@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} — AI Execution Plan • Tomorrow's Orders</title>
+    <!-- Tailwind CSS (Restrained Dark Palette) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        apple: {
+                            canvas: '#000000',
+                            card: 'rgba(28, 28, 30, 0.55)',
+                            cardHover: 'rgba(44, 44, 46, 0.65)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            borderStrong: 'rgba(255, 255, 255, 0.16)',
+                            blue: '#0A84FF',
+                            green: '#30D158',
+                            amber: '#FF9F0A',
+                            red: '#FF453A',
+                            purple: '#BF5AF2',
+                            subtext: '#8E8E93',
+                            mono: '#E5E5EA'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #F5F5F7;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-spring {
+            transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+        .hairline-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hairline-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-amber-600/30 selection:text-amber-200">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 backdrop-blur-2xl bg-black/75 hairline-bottom">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand & Nav Tabs -->
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                        <i data-lucide="target" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Execution Plan</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Nav Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
+                        Home
+                    </a>
+                    <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="crosshair" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>Orders</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            {{ stats.armed_orders_count }}
+                        </span>
+                    </a>
+                    <a href="/plan" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Execution Plan</span>
+                        <span id="navConfirmedBadge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            {{ plan.confirmed_orders_count }} Confirmed
+                        </span>
+                    </a>
+                    <a href="/megabull" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>MegaBull</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Header Controls & Telemetry -->
+            <div class="flex items-center space-x-3">
+                <!-- Market Status Badge -->
+                <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-mono hairline-border bg-white/[0.02]">
+                    <span class="h-2 w-2 rounded-full {{ 'bg-emerald-400 animate-pulse' if is_market_open else 'bg-amber-400' }}"></span>
+                    <span class="text-neutral-300">Market: <span class="{{ 'text-emerald-400' if is_market_open else 'text-amber-400' }} font-semibold">{{ 'OPEN' if is_market_open else 'CLOSED (AMO Active)' }}</span></span>
+                </div>
+
+                <!-- Atlas Latency -->
+                <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-mono hairline-border bg-white/[0.02]">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-neutral-400">Atlas: <span class="text-emerald-400 font-semibold">{{ db_health.latency_ms if db_health.latency_ms > 0 else 'Online' }} ms</span></span>
+                </div>
+
+                <!-- User profile / logout -->
+                <div class="flex items-center space-x-2 border-l border-white/10 pl-3">
+                    <span class="text-xs text-neutral-400 hidden lg:inline">{{ user.username if user else 'Trader' }}</span>
+                    <a href="/logout" class="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.05] apple-spring" title="Sign Out">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Page Header & Overview -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <div class="flex items-center space-x-2.5">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        AI Capital Allocation Engine
+                    </span>
+                    <span class="text-xs text-neutral-500 font-mono">Updated: <span id="lastUpdatedTs">{{ plan.updated_at }}</span></span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-1.5">
+                    AI Execution Plan • Tomorrow's Orders
+                </h1>
+                <p class="text-sm text-neutral-400 mt-1 max-w-3xl">
+                    Our offline scanner analyzes the entire market and uploads all qualified setups to MongoDB Atlas. 
+                    This online allocation engine automatically ranks the best setups on top (by AI Expectancy &amp; profit edge), 
+                    sizes each order strictly to your 1% risk rule, and commits only what fits inside your available capital.
+                </p>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <button onclick="recalculatePlan()" class="px-3.5 py-2 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.08] text-white apple-spring flex items-center space-x-1.5">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-neutral-400"></i>
+                    <span>Recalculate</span>
+                </button>
+                <button onclick="executeConfirmedOrders()" id="btnExecuteConfirmed" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20 apple-spring flex items-center space-x-2">
+                    <i data-lucide="zap" class="w-4 h-4 fill-black"></i>
+                    <span>Auto-Execute Confirmed ({{ plan.confirmed_orders_count }})</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notification Banner / Execution Feedback -->
+        <div id="executionAlert" class="hidden p-4 rounded-2xl hairline-border bg-emerald-500/10 border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                <span id="executionAlertMsg">Confirmed orders processed successfully.</span>
+            </div>
+            <button onclick="this.parentElement.classList.add('hidden')" class="text-neutral-400 hover:text-white">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- 6 KPI Stat Metric Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <!-- 1. Active Trading Capital -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>Active Capital</span>
+                    <i data-lucide="wallet" class="w-3.5 h-3.5 text-blue-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-white mt-1.5">
+                    ₹{{ "{:,.2f}".format(plan.effective_capital) }}
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5 truncate">
+                    Threshold Active
+                </div>
+            </div>
+
+            <!-- 2. 1% Risk / Trade -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>1% Max Risk</span>
+                    <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-red-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-white mt-1.5">
+                    ₹{{ "{:,.2f}".format(plan.risk_per_trade) }}
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                    {{ plan.risk_pct_per_trade }}% Risk Ceiling
+                </div>
+            </div>
+
+            <!-- 3. Tomorrow Committed Capital -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>Tomorrow Capital</span>
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-amber-400 mt-1.5">
+                    ₹{{ "{:,.2f}".format(plan.total_committed_capital) }}
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                    {{ "{:.1f}%".format((plan.total_committed_capital / plan.effective_capital * 100) if plan.effective_capital > 0 else 0) }} of active capital
+                </div>
+            </div>
+
+            <!-- 4. Remaining Cash Buffer -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>Remaining Buffer</span>
+                    <i data-lucide="piggy-bank" class="w-3.5 h-3.5 text-emerald-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-emerald-400 mt-1.5">
+                    ₹{{ "{:,.2f}".format(plan.remaining_unallocated_cash) }}
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                    Free Unallocated Cash
+                </div>
+            </div>
+
+            <!-- 5. Confirmed Orders -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>Confirmed Orders</span>
+                    <i data-lucide="check-check" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-white mt-1.5">
+                    {{ plan.confirmed_orders_count }} <span class="text-xs text-neutral-500 font-normal">/ {{ plan.total_candidates_evaluated }}</span>
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                    Armed for 09:15 AM
+                </div>
+            </div>
+
+            <!-- 6. AI Payoff Expectancy -->
+            <div class="p-4 rounded-2xl hairline-border bg-neutral-900/50 backdrop-blur-md">
+                <div class="flex items-center justify-between text-neutral-400 text-xs">
+                    <span>AI Expectancy</span>
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5 text-purple-400"></i>
+                </div>
+                <div class="text-lg font-bold font-mono text-purple-400 mt-1.5">
+                    +{{ "{:.2f}".format(plan.confirmed_orders[0].predicted_r) if plan.confirmed_orders else '1.77' }} R
+                </div>
+                <div class="text-[10px] text-neutral-500 mt-0.5">
+                    1 : 2.00 R:R Geometry
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Capital Budget Threshold Adjuster -->
+        <div class="p-5 rounded-2xl hairline-border bg-neutral-900/40 backdrop-blur-md">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-amber-400"></i>
+                        <h2 class="text-sm font-semibold text-white">Interactive Trading Capital &amp; Risk Adjuster</h2>
+                    </div>
+                    <p class="text-xs text-neutral-400 max-w-2xl">
+                        Change how much money you want VectorTrade to trade with. 
+                        The allocation engine will instantly re-rank setups and confirm how many fit within your new budget.
+                    </p>
+                </div>
+
+                <!-- Input Controls & Presets -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Presets -->
+                    <div class="flex items-center space-x-1.5">
+                        <button onclick="setCapitalPreset(50000)" class="px-2.5 py-1.5 rounded-lg text-xs font-mono hairline-border bg-white/[0.03] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                            ₹50k
+                        </button>
+                        <button onclick="setCapitalPreset(100000)" class="px-2.5 py-1.5 rounded-lg text-xs font-mono hairline-border bg-amber-500/10 text-amber-400 border border-amber-500/30 apple-spring">
+                            ₹100k
+                        </button>
+                        <button onclick="setCapitalPreset(200000)" class="px-2.5 py-1.5 rounded-lg text-xs font-mono hairline-border bg-white/[0.03] hover:bg-white/[0.08] text-neutral-300 apple-spring">
+                            ₹200k
+                        </button>
+                        <button onclick="setCapitalPreset(null)" class="px-2.5 py-1.5 rounded-lg text-xs font-mono hairline-border bg-white/[0.03] hover:bg-white/[0.08] text-neutral-300 apple-spring" title="Use Full Paper Account (₹5,32,721.76)">
+                            Full Account
+                        </button>
+                    </div>
+
+                    <!-- Custom Input & Submit -->
+                    <form onsubmit="handleCapitalSubmit(event)" class="flex items-center space-x-2">
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-xs font-mono text-neutral-500">₹</span>
+                            <input type="number" id="capitalInput" step="1000" min="5000" value="{{ plan.effective_capital }}" 
+                                class="w-36 pl-7 pr-3 py-1.5 rounded-xl text-xs font-mono bg-black/60 hairline-border text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <button type="submit" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.14] text-white hairline-border apple-spring">
+                            Apply Limit
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Confirmed Orders for Tomorrow (Top Trades) -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <h2 class="text-base font-bold text-white tracking-tight">
+                        Confirmed Orders for Tomorrow Morning (09:15 AM)
+                    </h2>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {{ plan.confirmed_orders_count }} Confirmed
+                    </span>
+                </div>
+                <span class="text-xs text-neutral-500 hidden sm:inline">
+                    Budget Committed: <span class="text-neutral-300 font-mono font-semibold">₹{{ "{:,.2f}".format(plan.total_committed_capital) }}</span>
+                </span>
+            </div>
+
+            <!-- Confirmed Orders Table -->
+            <div class="overflow-x-auto rounded-2xl hairline-border bg-neutral-900/30 backdrop-blur-md">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="hairline-bottom bg-white/[0.02] text-neutral-400 font-medium">
+                            <th class="py-3.5 px-4 font-normal">Rank</th>
+                            <th class="py-3.5 px-4 font-normal">Stock / Symbol</th>
+                            <th class="py-3.5 px-4 font-normal">Action &amp; Rule</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Buy Trigger</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Stop Loss (SL)</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Target (1:2 R:R)</th>
+                            <th class="py-3.5 px-4 font-normal text-center">Scheduled Qty</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Capital Required</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Risk at SL</th>
+                            <th class="py-3.5 px-4 font-normal text-center">AI Expectancy</th>
+                            <th class="py-3.5 px-4 font-normal text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="confirmedTableBody" class="divide-y divide-white/[0.04]">
+                        {% if plan.confirmed_orders and plan.confirmed_orders|length > 0 %}
+                            {% for ord in plan.confirmed_orders %}
+                            <tr class="hover:bg-white/[0.02] apple-spring">
+                                <!-- Rank -->
+                                <td class="py-3.5 px-4">
+                                    <span class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        #{{ ord.priority_rank }}
+                                    </span>
+                                </td>
+                                <!-- Stock -->
+                                <td class="py-3.5 px-4">
+                                    <div class="flex items-center space-x-2.5">
+                                        <div class="h-7 w-7 rounded-lg bg-neutral-800 flex items-center justify-center font-mono font-bold text-[11px] text-neutral-300 border border-white/10">
+                                            {{ ord.symbol[:2] }}
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-white tracking-tight flex items-center space-x-1.5">
+                                                <span>{{ ord.symbol }}</span>
+                                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-white/[0.05] text-neutral-400 font-mono">50 MA</span>
+                                            </div>
+                                            <div class="text-[11px] text-neutral-400 truncate max-w-[160px]">
+                                                {{ ord.name }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <!-- Action -->
+                                <td class="py-3.5 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        {{ ord.action }}
+                                    </span>
+                                    <div class="text-[10px] text-neutral-500 mt-0.5">High + ₹1.00</div>
+                                </td>
+                                <!-- Buy Trigger -->
+                                <td class="py-3.5 px-4 text-right font-mono font-semibold text-white">
+                                    ₹{{ "{:,.2f}".format(ord.entry_price) }}
+                                </td>
+                                <!-- Stop Loss -->
+                                <td class="py-3.5 px-4 text-right font-mono text-red-400">
+                                    ₹{{ "{:,.2f}".format(ord.sl_price) }}
+                                    <div class="text-[10px] text-neutral-500 font-sans">Low - ₹1.00</div>
+                                </td>
+                                <!-- Target -->
+                                <td class="py-3.5 px-4 text-right font-mono text-emerald-400">
+                                    ₹{{ "{:,.2f}".format(ord.target_1_2) }}
+                                    <div class="text-[10px] text-emerald-500/80 font-sans">+{{ "{:.1f}%".format(ord.profit_pct) }} (2x Risk)</div>
+                                </td>
+                                <!-- Scheduled Qty -->
+                                <td class="py-3.5 px-4 text-center font-mono font-bold text-amber-400">
+                                    {{ ord.quantity }} shares
+                                </td>
+                                <!-- Capital Required -->
+                                <td class="py-3.5 px-4 text-right font-mono font-semibold text-white">
+                                    ₹{{ "{:,.2f}".format(ord.investment_amount) }}
+                                </td>
+                                <!-- Risk at SL -->
+                                <td class="py-3.5 px-4 text-right font-mono text-neutral-300">
+                                    ₹{{ "{:,.2f}".format(ord.actual_risk) }}
+                                    <div class="text-[10px] text-neutral-500 font-sans">Strictly &le; 1%</div>
+                                </td>
+                                <!-- AI Expectancy -->
+                                <td class="py-3.5 px-4 text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        +{{ "{:.2f}".format(ord.predicted_r) }} R
+                                    </span>
+                                </td>
+                                <!-- Status -->
+                                <td class="py-3.5 px-4 text-center">
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center space-x-1 mx-auto w-max">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span>CONFIRMED</span>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="11" class="py-8 text-center text-neutral-500">
+                                    No orders confirmed under current capital threshold. Increase capital limit to unlock trades.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 2: Waitlist & Budget-Constrained Candidate Setups -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="h-2 w-2 rounded-full bg-amber-400"></div>
+                    <h2 class="text-base font-bold text-white tracking-tight">
+                        Waitlist &amp; Budget-Constrained Setups (Next in Rank)
+                    </h2>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-white/[0.05] text-neutral-400 border border-white/10">
+                        {{ plan.skipped_orders_count }} Setups
+                    </span>
+                </div>
+                <span class="text-xs text-neutral-500">
+                    Remaining Buffer: <span class="text-emerald-400 font-mono font-semibold">₹{{ "{:,.2f}".format(plan.remaining_unallocated_cash) }}</span>
+                </span>
+            </div>
+
+            <p class="text-xs text-neutral-400 max-w-3xl">
+                These candidate trades scored high and were uploaded by the offline scanner, but their required capital exceeds the current remaining buffer. 
+                They are ordered by rank; if you increase your capital threshold, they will automatically be promoted to Confirmed.
+            </p>
+
+            <!-- Skipped / Waitlist Table -->
+            <div class="overflow-x-auto rounded-2xl hairline-border bg-neutral-900/30 backdrop-blur-md">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="hairline-bottom bg-white/[0.02] text-neutral-400 font-medium">
+                            <th class="py-3.5 px-4 font-normal">Rank</th>
+                            <th class="py-3.5 px-4 font-normal">Stock / Symbol</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Buy Trigger</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Target (1:2)</th>
+                            <th class="py-3.5 px-4 font-normal text-center">1% Sizing</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Capital Required</th>
+                            <th class="py-3.5 px-4 font-normal text-right">Shortfall</th>
+                            <th class="py-3.5 px-4 font-normal text-center">AI Expectancy</th>
+                            <th class="py-3.5 px-4 font-normal">Reason / Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="waitlistTableBody" class="divide-y divide-white/[0.04]">
+                        {% if plan.skipped_orders and plan.skipped_orders|length > 0 %}
+                            {% for ord in plan.skipped_orders[:15] %}
+                            <tr class="hover:bg-white/[0.02] apple-spring opacity-75 hover:opacity-100">
+                                <!-- Rank -->
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono text-neutral-400 bg-white/[0.04]">
+                                        #{{ ord.priority_rank }}
+                                    </span>
+                                </td>
+                                <!-- Stock -->
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-white">{{ ord.symbol }}</div>
+                                    <div class="text-[10px] text-neutral-400 truncate max-w-[140px]">{{ ord.name }}</div>
+                                </td>
+                                <!-- Buy Trigger -->
+                                <td class="py-3 px-4 text-right font-mono text-neutral-300">
+                                    ₹{{ "{:,.2f}".format(ord.entry_price) }}
+                                </td>
+                                <!-- Target -->
+                                <td class="py-3 px-4 text-right font-mono text-emerald-400/90">
+                                    ₹{{ "{:,.2f}".format(ord.target_1_2) }}
+                                </td>
+                                <!-- Sizing -->
+                                <td class="py-3 px-4 text-center font-mono text-neutral-300">
+                                    {{ ord.quantity }} shares
+                                </td>
+                                <!-- Capital Required -->
+                                <td class="py-3 px-4 text-right font-mono text-neutral-200">
+                                    ₹{{ "{:,.2f}".format(ord.investment_amount) }}
+                                </td>
+                                <!-- Shortfall -->
+                                <td class="py-3 px-4 text-right font-mono text-amber-400">
+                                    ₹{{ "{:,.2f}".format(ord.shortfall) }}
+                                </td>
+                                <!-- AI Expectancy -->
+                                <td class="py-3 px-4 text-center">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono text-purple-300 bg-purple-500/10">
+                                        +{{ "{:.2f}".format(ord.predicted_r) }} R
+                                    </span>
+                                </td>
+                                <!-- Reason -->
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/20">
+                                        Budget Exceeded (Need +₹{{ "{:,.2f}".format(ord.shortfall) }})
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="9" class="py-6 text-center text-neutral-500">
+                                    No waitlisted orders. All candidates fit within budget.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 3: Architecture & Sizing Explanation -->
+        <div class="p-6 rounded-2xl hairline-border bg-neutral-900/30 backdrop-blur-md space-y-4">
+            <div class="flex items-center space-x-2.5">
+                <i data-lucide="info" class="w-4 h-4 text-blue-400"></i>
+                <h3 class="text-sm font-semibold text-white tracking-tight">How the Offline-to-Online Trade Selection Protocol Works</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-neutral-400 leading-relaxed">
+                <div class="p-3.5 rounded-xl bg-white/[0.02] hairline-border space-y-1.5">
+                    <div class="font-bold text-white flex items-center space-x-1.5">
+                        <span class="h-4 w-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-mono text-[10px]">1</span>
+                        <span>Offline Scanning &amp; Ranking</span>
+                    </div>
+                    <p>
+                        The offline scanner runs at market close (4:00 PM), processes 500+ NSE symbols with XGBoost ML models, and uploads candidate setups to MongoDB Atlas <code class="text-neutral-300 font-mono">signals_watchlist</code>. 
+                        Candidates are sorted with the highest AI Expectancy (+R) and profit potential on top.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-white/[0.02] hairline-border space-y-1.5">
+                    <div class="font-bold text-white flex items-center space-x-1.5">
+                        <span class="h-4 w-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-mono text-[10px]">2</span>
+                        <span>1% Mathematical Risk Sizing</span>
+                    </div>
+                    <p>
+                        Every candidate order is sized using: <br>
+                        <code class="text-amber-300 font-mono text-[11px]">Qty = floor(1% Capital / (Buy Trigger - SL))</code><br>
+                        This guarantees that even if a trade hits its stop loss, the loss cannot exceed your 1% risk threshold (e.g., ₹1,000 max loss on a ₹1 Lakh account).
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-white/[0.02] hairline-border space-y-1.5">
+                    <div class="font-bold text-white flex items-center space-x-1.5">
+                        <span class="h-4 w-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono text-[10px]">3</span>
+                        <span>Capital Budget Confirmation</span>
+                    </div>
+                    <p>
+                        The engine walks down the ranked list and commits capital until the available balance is exhausted. 
+                        Confirmed orders are staged in MongoDB Atlas <code class="text-neutral-300 font-mono">staged_orders</code> for automatic 09:15 AM execution. Setups that exceed the budget wait on the waitlist.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="hairline-bottom border-t border-white/5 py-4 mt-8 bg-black">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500">
+            <div>VectorTrade Online Engine • 1% Risk Allocation &amp; Confirmed Execution Plan</div>
+            <div class="mt-2 sm:mt-0 font-mono">Connected to MongoDB Atlas &amp; MegaBull Paper</div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Interactions -->
+    <script>
+        lucide.createIcons();
+
+        function setCapitalPreset(amount) {
+            document.getElementById('capitalInput').value = amount !== null ? amount : '';
+            handleCapitalUpdate(amount);
+        }
+
+        async function handleCapitalSubmit(event) {
+            event.preventDefault();
+            const val = document.getElementById('capitalInput').value;
+            const amount = val ? parseFloat(val) : null;
+            await handleCapitalUpdate(amount);
+        }
+
+        async function handleCapitalUpdate(amount) {
+            const btn = document.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>';
+            lucide.createIcons();
+
+            try {
+                const resp = await fetch('/api/trading-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        custom_capital_limit: amount,
+                        risk_pct_per_trade: 1.0
+                    })
+                });
+                const res = await resp.json();
+                if (res.status === 'SUCCESS') {
+                    window.location.reload();
+                } else {
+                    alert('Error updating capital: ' + (res.message || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to update trading capital.');
+            } finally {
+                btn.innerHTML = origText;
+                lucide.createIcons();
+            }
+        }
+
+        async function recalculatePlan() {
+            try {
+                const resp = await fetch('/api/trading-settings/allocate', { method: 'POST' });
+                const res = await resp.json();
+                if (res.status === 'SUCCESS') {
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.reload();
+            }
+        }
+
+        async function executeConfirmedOrders() {
+            const btn = document.getElementById('btnExecuteConfirmed');
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>Processing Execution...</span>';
+            lucide.createIcons();
+
+            try {
+                const resp = await fetch('/api/trading/execute-confirmed', { method: 'POST' });
+                const res = await resp.json();
+                const alertEl = document.getElementById('executionAlert');
+                const alertMsg = document.getElementById('executionAlertMsg');
+
+                alertEl.classList.remove('hidden');
+                alertMsg.innerText = res.message || 'Confirmed orders processed.';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => window.location.reload(), 2500);
+            } catch (err) {
+                console.error(err);
+                alert('Failed to execute confirmed orders: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -80,6 +80,10 @@
                             {{ armed_orders_count or 0 }}
                         </span>
                     </a>
+                    <a href="/plan" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="target" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Execution Plan</span>
+                    </a>
                     <a href="/megabull" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-1.5">
                         <i data-lucide="wallet" class="w-3.5 h-3.5 text-blue-400"></i>
                         <span>MegaBull</span>
@@ -120,8 +124,8 @@
             </p>
         </div>
 
-        <!-- 2 Gateway Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl text-left">
+        <!-- 3 Gateway Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl text-left">
             
             <!-- Gateway 1: Orders Board -->
             <a href="/orders" class="group rounded-3xl hairline-border bg-white/[0.03] hover:bg-white/[0.06] p-7 backdrop-blur-2xl apple-spring hover:border-white/25 flex flex-col justify-between space-y-6 shadow-2xl">
@@ -145,7 +149,29 @@
                 </div>
             </a>
 
-            <!-- Gateway 2: MegaBull Account -->
+            <!-- Gateway 2: Tomorrow's AI Execution Plan -->
+            <a href="/plan" class="group rounded-3xl hairline-border bg-white/[0.03] hover:bg-white/[0.06] p-7 backdrop-blur-2xl apple-spring hover:border-amber-500/30 flex flex-col justify-between space-y-6 shadow-2xl border-amber-500/10">
+                <div class="space-y-3">
+                    <div class="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                        <i data-lucide="target" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-white tracking-tight flex items-center space-x-2">
+                            <span>Execution Plan</span>
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-apple-subtext group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 apple-spring"></i>
+                        </h2>
+                        <p class="text-xs text-apple-subtext mt-1.5 leading-relaxed">
+                            Best trades ranked on top by AI expectancy. Sized to your strict 1% risk rule and budgeted within your active trading capital for tomorrow morning (09:15 AM).
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-xs font-mono text-apple-subtext pt-3 border-t border-white/[0.06]">
+                    <span>Status: <strong class="text-amber-400">Tomorrow</strong></span>
+                    <span class="text-white font-semibold">Review Plan →</span>
+                </div>
+            </a>
+
+            <!-- Gateway 3: MegaBull Account -->
             <a href="/megabull" class="group rounded-3xl hairline-border bg-white/[0.03] hover:bg-white/[0.06] p-7 backdrop-blur-2xl apple-spring hover:border-white/25 flex flex-col justify-between space-y-6 shadow-2xl">
                 <div class="space-y-3">
                     <div class="h-12 w-12 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center border border-blue-500/30">

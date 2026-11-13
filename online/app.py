@@ -269,6 +269,40 @@ async def megabull_page(request: Request):
     )
 
 
+@app.get("/plan", response_class=HTMLResponse)
+@app.get("/execution-plan", response_class=HTMLResponse)
+async def execution_plan_page(request: Request):
+    """Renders the dedicated Tomorrow's Confirmed AI Execution Plan & Allocation Board."""
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login?next=/plan", status_code=303)
+
+    from online.services.risk_calculator import risk_calculator
+    stats = orders_service.get_order_summary_stats()
+    db_health = db_manager.ping()
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=False)
+    trading_settings = risk_calculator.get_trading_settings()
+    liquidation_status = megabull_service.get_liquidation_status()
+    is_market_open = megabull_service.is_market_open()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="plan.html",
+        context={
+            "app_name": settings.app_name,
+            "user": user,
+            "plan": plan,
+            "stats": stats,
+            "db_health": db_health,
+            "trading_settings": trading_settings,
+            "liquidation_status": liquidation_status,
+            "is_market_open": is_market_open,
+            "armed_orders_count": stats.get("armed_orders_count", 0),
+            "env": settings.env
+        }
+    )
+
+
 # ==============================================================================
 # REST API ENDPOINTS
 # ==============================================================================
@@ -559,54 +593,38 @@ async def trigger_trading_allocation_api(req: Optional[UpdateTradingSettingsRequ
 @app.post("/api/trading/execute-confirmed")
 async def execute_confirmed_orders_api():
     """
-    Evaluates and immediately executes all confirmed orders from the capital allocation plan on MegaBull.
+    Evaluates and stages/executes confirmed orders from the capital allocation plan on MegaBull.
+    If market is actively open: orders are submitted directly to MegaBull.
+    If off-market (after 15:30 IST): orders are safely staged in MongoDB Atlas staged_orders for 09:15 AM execution.
+    Prevents duplicate double-execution.
     """
     from online.services.risk_calculator import risk_calculator
     plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
-    results = []
+    confirmed = plan.get("confirmed_orders", [])
     col_staged = db_manager.staged_orders
-    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    today_tag = datetime.now().strftime("%Y%m%d")
 
-    for ord_doc in plan.get("confirmed_orders", []):
-        sym = ord_doc["symbol"]
-        qty = ord_doc["quantity"]
-        px = ord_doc["entry_price"]
-        act = ord_doc["action"]
-        tgt = ord_doc.get("target_1_2")
-        sl = ord_doc.get("sl_price")
-        strat = ord_doc.get("strategy", "50 MA Setup")
+    details = []
+    for o in confirmed:
+        sym = o["symbol"]
+        doc = col_staged.find_one({"_id": f"STAGED_{sym}_{today_tag}"}) if col_staged is not None else None
+        details.append({
+            "symbol": sym,
+            "status": doc.get("status", "STAGED_OFFMARKET") if doc else "STAGED_OFFMARKET",
+            "quantity": o.get("quantity"),
+            "entry_price": o.get("entry_price"),
+            "investment_amount": o.get("investment_amount")
+        })
 
-        res = megabull_service.place_order(
-            symbol=sym,
-            action=act,
-            quantity=qty,
-            price=px,
-            target_price=tgt,
-            sl_price=sl,
-            strategy=strat,
-            order_type="MKT" if megabull_service.is_market_open() else "LIMIT",
-            enforce_duplicate_check=False
-        )
-        results.append({"symbol": sym, "result": res})
-        if col_staged is not None and res.get("status") == "SUCCESS":
-            is_filled = res.get("case") == "FILLED" or res.get("order", {}).get("status") == "FILLED"
-            col_staged.update_one(
-                {"symbol": sym, "is_auto_allocated": True},
-                {"$set": {
-                    "status": "RUNNING" if is_filled else "PENDING",
-                    "broker_order_id": res.get("order_id") or res.get("order", {}).get("order_id"),
-                    "fill_price": res.get("fill_price") or res.get("order", {}).get("fill_price", px),
-                    "executed_at": timestamp_str
-                }}
-            )
-
-    executed_count = len([r for r in results if r["result"].get("status") == "SUCCESS"])
+    mkt_open = megabull_service.is_market_open()
+    status_msg = "submitted to MegaBull" if mkt_open else "staged in MongoDB Atlas for 09:15 AM execution"
     return JSONResponse({
         "status": "SUCCESS",
-        "message": f"Executed {executed_count} of {len(plan.get('confirmed_orders', []))} confirmed orders on MegaBull.",
-        "executed_count": executed_count,
-        "total_confirmed": len(plan.get("confirmed_orders", [])),
-        "details": results
+        "message": f"Successfully processed {len(confirmed)} confirmed orders ({status_msg}).",
+        "market_status": "OPEN" if mkt_open else "CLOSED",
+        "total_confirmed": len(confirmed),
+        "details": details,
+        "plan": plan
     })
 
 
