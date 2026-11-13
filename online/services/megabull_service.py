@@ -40,6 +40,17 @@ class MegaBullService:
         self._liquidation_lock = threading.Lock()
         self._last_liquidation_time = 0.0
 
+        # Token cache pre-population
+        self._token_cache: Dict[str, str] = {}
+        try:
+            import json
+            from pathlib import Path
+            tok_path = Path(__file__).resolve().parent.parent.parent / "assets" / "stock_tokens.json"
+            if tok_path.exists():
+                self._token_cache = json.loads(tok_path.read_text(encoding="utf-8"))
+        except Exception as _tk_err:
+            logger.debug(f"Could not pre-load token cache from assets: {_tk_err}")
+
         # In-memory liquidation state fallback
         self._liquidation_state: Dict[str, Any] = {
             "armed": False,
@@ -1126,55 +1137,74 @@ class MegaBullService:
         }
 
     def get_instrument_token(self, symbol: str) -> str:
-        """Resolves instrument token from holdings, MongoDB signals, or registry."""
+        """Resolves instrument token from memory cache, holdings, MongoDB signals/instruments_cache, or assets."""
         sym = str(symbol).strip().upper()
-        # 1. Check holdings
+        if not sym:
+            return ""
+
+        # 1. In-memory cache
+        if sym in self._token_cache and self._token_cache[sym]:
+            return str(self._token_cache[sym])
+
+        # 2. Check holdings
         for h in self.get_holdings(enrich_ltp=False):
             if str(h.get("symbol", "")).strip().upper() == sym and h.get("instrument_token"):
-                return str(h["instrument_token"])
+                tok = str(h["instrument_token"])
+                self._token_cache[sym] = tok
+                return tok
 
-        # 2. Check MongoDB signals_watchlist
+        # 3. Check MongoDB instruments_cache or signals_watchlist
         try:
             from online.db import db_manager
-            col = db_manager.signals_watchlist
-            if col is not None:
-                doc = col.find_one({"symbol": sym})
+            if db_manager.db is not None:
+                doc = db_manager.db["instruments_cache"].find_one({"symbol": sym})
                 if doc and doc.get("instrument_token"):
-                    return str(doc["instrument_token"])
+                    tok = str(doc["instrument_token"])
+                    self._token_cache[sym] = tok
+                    return tok
+                col = db_manager.signals_watchlist
+                if col is not None:
+                    s_doc = col.find_one({"symbol": sym})
+                    if s_doc and s_doc.get("instrument_token"):
+                        tok = str(s_doc["instrument_token"])
+                        self._token_cache[sym] = tok
+                        return tok
         except Exception:
             pass
 
-        # 3. Known NSE Token Registry
+        # 4. Fallback: check assets/stock_tokens.json if cache was empty
+        try:
+            import json
+            from pathlib import Path
+            tok_file = Path(__file__).resolve().parent.parent.parent / "assets" / "stock_tokens.json"
+            if tok_file.exists():
+                loaded = json.loads(tok_file.read_text(encoding="utf-8"))
+                if sym in loaded and loaded[sym]:
+                    tok = str(loaded[sym])
+                    self._token_cache[sym] = tok
+                    return tok
+        except Exception:
+            pass
+
+        # 5. Known baseline registry
         registry = {
-            "RELIANCE": "738561",
-            "TCS": "2953213",
-            "INFY": "408065",
-            "HDFCBANK": "341249",
-            "ICICIBANK": "1270529",
-            "SBIN": "779521",
-            "BHARTIARTL": "2714625",
-            "ITC": "424961",
-            "KOTAKBANK": "492033",
-            "LT": "2939649",
-            "AXISBANK": "1510401",
-            "TITAN": "897537",
-            "EICHERMOT": "232961",
-            "TATAELXSI": "873217",
-            "PERSISTENT": "4701441",
-            "TORNTPHARM": "900609",
-            "LTM": "4561409",
-            "CUMMINSIND": "486657",
-            "TVSMOTOR": "2170625",
-            "APLAPOLLO": "5215745",
-            "ASIANPAINT": "60417",
-            "BAJFINANCE": "81153",
-            "HINDUNILVR": "356865",
-            "MARUTI": "2815745",
-            "SUNPHARMA": "857857",
-            "TATAMOTORS": "884737",
-            "WIPRO": "969473"
+            "RELIANCE": "738561", "TCS": "2953213", "INFY": "408065", "HDFCBANK": "341249",
+            "ICICIBANK": "1270529", "SBIN": "779521", "BHARTIARTL": "2714625", "ITC": "424961",
+            "KOTAKBANK": "492033", "LT": "2939649", "AXISBANK": "1510401", "TITAN": "897537",
+            "EICHERMOT": "232961", "TATAELXSI": "873217", "PERSISTENT": "4701441", "TORNTPHARM": "900609",
+            "LTM": "4561409", "CUMMINSIND": "486657", "TVSMOTOR": "2170625", "APLAPOLLO": "6599681",
+            "ASIANPAINT": "60417", "BAJFINANCE": "81153", "HINDUNILVR": "356865", "MARUTI": "2815745",
+            "SUNPHARMA": "857857", "TATAMOTORS": "884737", "WIPRO": "969473", "PNB": "2730497",
+            "INDUSTOWER": "7458561", "PATANJALI": "4359425", "MOTHERSON": "1076225", "JUBLFOOD": "4632577",
+            "ETERNAL": "1304833", "NAUKRI": "3565313", "TMCV": "884737", "OIL": "4464129",
+            "SAIL": "758529", "BHEL": "112129", "ADANIPORTS": "3861249", "NATIONALUM": "1629185"
         }
-        return registry.get(sym, "408065")
+        if sym in registry:
+            tok = registry[sym]
+            self._token_cache[sym] = tok
+            return tok
+
+        return ""
 
     def place_order(
         self,
@@ -1191,10 +1221,16 @@ class MegaBullService:
     ) -> Dict[str, Any]:
         """
         Places a manual or automated order with duplicate portfolio protection
-        and off-market staging lifecycle handling.
+        and off-market staging lifecycle handling. Normalizes action and auto-routes
+        to MARKET orders for Free-tier accounts to guarantee fills.
         """
         sym = str(symbol).strip().upper()
-        act = str(action).strip().upper()
+        raw_act = str(action).strip().upper()
+        if "SELL" in raw_act or "SHORT" in raw_act:
+            act = "SELL"
+        else:
+            act = "BUY"
+
         px = round(float(price), 2)
         try:
             qty = abs(int(quantity))
@@ -1210,7 +1246,17 @@ class MegaBullService:
             qty = calc_q["quantity"] if calc_q["quantity"] > 0 else 1
         prod = str(product).strip().upper()
         o_type = str(order_type).strip().upper()
-        if o_type == "MARKET":
+        if o_type in ("MARKET", "MKT"):
+            o_type = "MKT"
+        else:
+            o_type = "LIMIT"
+
+        # Check account premium tier: Free tier rejects LIMIT and SL orders (HTTP 402)
+        # If user is on FREE tier, auto-route as MKT order so order completes successfully
+        acct = self.get_account_details()
+        is_free_tier = acct.get("premium_type", "FREE").upper() == "FREE"
+        if is_free_tier and o_type != "MKT":
+            logger.info(f"MegaBull account is on FREE tier (LIMIT/SL requires paid upgrade). Auto-routing order for {sym} as MKT.")
             o_type = "MKT"
 
         # Strategy Enablement Guard: block order if strategy is deselected
@@ -1282,6 +1328,15 @@ class MegaBullService:
                 }
 
         token = self.get_instrument_token(sym)
+        if not token:
+            logger.error(f"Cannot place order: Unable to resolve instrument token for {sym}")
+            return {
+                "status": "ERROR",
+                "code": "MISSING_INSTRUMENT_TOKEN",
+                "error": f"Could not resolve valid NSE instrument token for {sym}.",
+                "symbol": sym
+            }
+
         target_px = round(float(target_price), 2) if target_price else round(px * (1.04 if act == "BUY" else 0.96), 2)
         sl_px = round(float(sl_price), 2) if sl_price else round(px * (0.98 if act == "BUY" else 1.02), 2)
 
@@ -1304,7 +1359,7 @@ class MegaBullService:
 
         payload = {
             "instrumentToken": token,
-            "price": px,
+            "price": 0.0 if o_type == "MKT" else px,
             "qty": qty,
             "type": act,
             "duration": prod,
@@ -1316,17 +1371,32 @@ class MegaBullService:
             url = f"{self.base_url}/api/order/buysell"
             try:
                 resp = requests.post(url, headers=self._get_headers(), json=payload, timeout=self.timeout)
+                # Automatic fallback: If broker returns HTTP 402 requiring upgrade for LIMIT, retry as MKT
+                if resp.status_code == 402 and "MARKET" in resp.text and payload.get("orderType") != "MKT":
+                    logger.warning(f"MegaBull rejected LIMIT order for {sym} (HTTP 402 Free Tier). Retrying immediately as MKT order...")
+                    payload["orderType"] = "MKT"
+                    payload["price"] = 0.0
+                    order_record["order_type"] = "MKT"
+                    resp = requests.post(url, headers=self._get_headers(), json=payload, timeout=self.timeout)
+
                 if resp.status_code == 200:
                     data = resp.json()
                     order_id = str(data.get("orderId", data.get("id", f"ORD_{sym}_{int(time.time())}")))
                     order_record["order_id"] = order_id
-                    order_record["status"] = "PLACED"
+                    is_filled = data.get("status") == "COMPLETE" or payload.get("orderType") == "MKT"
+                    order_record["status"] = "FILLED" if is_filled else "PLACED"
+                    order_record["fill_price"] = float(data.get("price") or px)
                     order_record["broker_response"] = data
                     self._cache.pop("orders", None)
+                    self._cache.pop("holdings", None)
+                    self._cache.pop("portfolio_summary", None)
                     self._persist_staged_order(order_record)
                     return {
                         "status": "SUCCESS",
-                        "message": f"Order for {qty} shares of {sym} successfully placed on MegaBull.",
+                        "case": "FILLED" if is_filled else "PENDING",
+                        "order_id": order_id,
+                        "fill_price": order_record["fill_price"],
+                        "message": f"Order for {qty} shares of {sym} successfully executed on MegaBull ({order_record['status']}).",
                         "order": order_record
                     }
                 else:

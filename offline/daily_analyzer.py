@@ -804,6 +804,14 @@ def run_daily_analysis_pipeline(
             mongo_synced = True
             mongo_synced_at = datetime.now().astimezone().isoformat()
             logger.info(f"MongoDB Sync: {mongo_sync_result.get('message')}")
+
+            # Auto-evaluate pre-market capital allocation & stage confirmed orders in MongoDB Atlas
+            try:
+                from online.services.risk_calculator import risk_calculator
+                plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+                logger.info(f"Pre-market capital allocation complete: {plan.get('confirmed_orders_count', 0)} orders confirmed & staged in MongoDB staged_orders.")
+            except Exception as alloc_err:
+                logger.warning(f"Could not auto-stage pre-market capital allocation: {alloc_err}")
         else:
             logger.warning(f"MongoDB Sync status: {mongo_sync_result.get('status')} - {mongo_sync_result.get('message')}")
     except Exception as sync_e:

@@ -647,6 +647,12 @@ class RiskCalculator:
         # Auto-stage confirmed orders into db_manager.staged_orders if requested
         if auto_stage_confirmed and db_manager.staged_orders is not None:
             try:
+                from online.services.megabull_service import megabull_service
+                is_mkt_open = megabull_service.is_market_open()
+                acct = megabull_service.get_account_details()
+                is_free_tier = acct.get("premium_type", "FREE").upper() == "FREE"
+                chosen_order_type = "MKT" if is_free_tier else "LIMIT"
+
                 # Clean up previous unexecuted auto-allocated orders
                 db_manager.staged_orders.delete_many({
                     "is_auto_allocated": True,
@@ -656,12 +662,16 @@ class RiskCalculator:
                 today_tag = datetime.now().strftime("%Y%m%d")
                 staged_docs = []
                 for o in confirmed_orders:
+                    raw_act = str(o["action"]).upper()
+                    norm_act = "SELL" if "SELL" in raw_act or "SHORT" in raw_act else "BUY"
+                    sym = o["symbol"]
+                    tok = megabull_service.get_instrument_token(sym)
                     staged_docs.append({
-                        "_id": f"STAGED_{o['symbol']}_{today_tag}",
-                        "order_id": f"STAGED_{o['symbol']}_{today_tag}",
-                        "symbol": o["symbol"],
+                        "_id": f"STAGED_{sym}_{today_tag}",
+                        "order_id": f"STAGED_{sym}_{today_tag}",
+                        "symbol": sym,
                         "name": o["name"],
-                        "action": o["action"],
+                        "action": norm_act,
                         "quantity": o["quantity"],
                         "price": o["entry_price"],
                         "entry_price": o["entry_price"],
@@ -677,13 +687,51 @@ class RiskCalculator:
                         "profit_pct": o["profit_pct"],
                         "investment_amount": o["investment_amount"],
                         "actual_risk": o["actual_risk"],
+                        "instrument_token": tok,
+                        "product": "CNC",
+                        "order_type": chosen_order_type,
                         "status": "STAGED_OFFMARKET",
                         "is_auto_allocated": True,
                         "created_at": now_ts
                     })
                 if staged_docs:
-                    db_manager.staged_orders.insert_many(staged_docs)
+                    for doc in staged_docs:
+                        db_manager.staged_orders.update_one({"_id": doc["_id"]}, {"$set": doc}, upsert=True)
                     logger.info(f"Auto-staged {len(staged_docs)} confirmed orders in MongoDB staged_orders.")
+
+                    # If market is actively open, immediately execute confirmed staged orders on MegaBull
+                    if is_mkt_open:
+                        logger.info("Market is actively OPEN: Immediately auto-submitting confirmed staged orders to MegaBull.")
+                        for doc in staged_docs:
+                            try:
+                                o_res = megabull_service.place_order(
+                                    symbol=doc["symbol"],
+                                    action=doc["action"],
+                                    quantity=doc["quantity"],
+                                    price=doc["entry_price"],
+                                    target_price=doc["target_price"],
+                                    sl_price=doc["sl_price"],
+                                    strategy=doc["strategy"],
+                                    product="CNC",
+                                    order_type="MKT" if is_free_tier else "LIMIT",
+                                    enforce_duplicate_check=False
+                                )
+                                if o_res.get("status") == "SUCCESS":
+                                    is_filled = o_res.get("case") == "FILLED" or o_res.get("order", {}).get("status") == "FILLED"
+                                    db_manager.staged_orders.update_one(
+                                        {"_id": doc["_id"]},
+                                        {"$set": {
+                                            "status": "RUNNING" if is_filled else "PENDING",
+                                            "broker_order_id": o_res.get("order_id") or o_res.get("order", {}).get("order_id"),
+                                            "submitted_at": now_ts,
+                                            "fill_price": o_res.get("fill_price") or o_res.get("order", {}).get("fill_price", doc["entry_price"]),
+                                            "order_response": o_res
+                                        }}
+                                    )
+                                    logger.info(f"Instant market execution for {doc['symbol']}: {o_res.get('message')}")
+                            except Exception as exec_err:
+                                logger.error(f"Error executing auto-staged order for {doc['symbol']}: {exec_err}")
+
                     try:
                         from online.services.orders_service import orders_service
                         orders_service.invalidate_cache()

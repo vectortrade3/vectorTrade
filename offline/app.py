@@ -1459,8 +1459,63 @@ def offline_trading_allocate_api():
     )
     return jsonify({
         "status": "SUCCESS",
-        "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for 09:15 AM execution.",
+        "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for execution.",
         "plan": plan
+    })
+
+
+@app.route("/api/trading/execute-confirmed", methods=["POST"])
+def offline_trading_execute_confirmed_api():
+    """Evaluates and immediately executes all confirmed orders from the capital allocation plan on MegaBull."""
+    from online.services.risk_calculator import risk_calculator
+    from online.services.megabull_service import megabull_service
+    from online.db import db_manager
+
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+    results = []
+    col_staged = db_manager.staged_orders
+    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for ord_doc in plan.get("confirmed_orders", []):
+        sym = ord_doc["symbol"]
+        qty = ord_doc["quantity"]
+        px = ord_doc["entry_price"]
+        act = ord_doc["action"]
+        tgt = ord_doc.get("target_1_2")
+        sl = ord_doc.get("sl_price")
+        strat = ord_doc.get("strategy", "50 MA Setup")
+
+        res = megabull_service.place_order(
+            symbol=sym,
+            action=act,
+            quantity=qty,
+            price=px,
+            target_price=tgt,
+            sl_price=sl,
+            strategy=strat,
+            order_type="MKT" if megabull_service.is_market_open() else "LIMIT",
+            enforce_duplicate_check=False
+        )
+        results.append({"symbol": sym, "result": res})
+        if col_staged is not None and res.get("status") == "SUCCESS":
+            is_filled = res.get("case") == "FILLED" or res.get("order", {}).get("status") == "FILLED"
+            col_staged.update_one(
+                {"symbol": sym, "is_auto_allocated": True},
+                {"$set": {
+                    "status": "RUNNING" if is_filled else "PENDING",
+                    "broker_order_id": res.get("order_id") or res.get("order", {}).get("order_id"),
+                    "fill_price": res.get("fill_price") or res.get("order", {}).get("fill_price", px),
+                    "executed_at": timestamp_str
+                }}
+            )
+
+    executed_count = len([r for r in results if r["result"].get("status") == "SUCCESS"])
+    return jsonify({
+        "status": "SUCCESS",
+        "message": f"Executed {executed_count} of {len(plan.get('confirmed_orders', []))} confirmed orders on MegaBull.",
+        "executed_count": executed_count,
+        "total_confirmed": len(plan.get("confirmed_orders", [])),
+        "details": results
     })
 
 

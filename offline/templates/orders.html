@@ -827,6 +827,10 @@
                             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                             <span>Re-allocate &amp; Stage</span>
                         </button>
+                        <button type="button" id="btnExecuteConfirmed" onclick="executeConfirmedOrdersNow()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30">
+                            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                            <span>Auto-Execute Confirmed</span>
+                        </button>
                     </div>
                 </div>
 
@@ -1805,6 +1809,38 @@
             }
         }
 
+        async function executeConfirmedOrdersNow() {
+            const btn = document.getElementById('btnExecuteConfirmed');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Executing Orders...</span>';
+                if (window.lucide) lucide.createIcons();
+            }
+            try {
+                const res = await fetch('/api/trading/execute-confirmed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'SUCCESS') {
+                    showToast(data.message || `Executed ${data.executed_count || 0} confirmed orders on MegaBull!`, 'success');
+                    await loadAllocationPlan();
+                    fetchOrdersAndStats();
+                } else {
+                    alert('Execution notice: ' + (data.message || data.error || 'Failed to execute orders'));
+                }
+            } catch (err) {
+                alert('Network error executing orders: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Auto-Execute Confirmed</span>';
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+        }
+
         // ==========================================
         // TRADE BOOK FILTERING & RENDERING (17 COLUMNS)
         // ==========================================
@@ -2780,6 +2816,38 @@
                 alert('Network error cancelling liquidation: ' + err.message);
             } finally {
                 if (btn) btn.disabled = false;
+            }
+        }
+
+        async function executeConfirmedOrdersNow() {
+            const btn = document.getElementById('btnExecuteConfirmed');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Executing Orders...</span>';
+                if (window.lucide) lucide.createIcons();
+            }
+            try {
+                const res = await fetch('/api/trading/execute-confirmed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'SUCCESS') {
+                    showToast(data.message || `Executed ${data.executed_count || 0} confirmed orders on MegaBull!`, 'success');
+                    await loadAllocationPlan();
+                    fetchOrdersAndStats();
+                } else {
+                    alert('Execution notice: ' + (data.message || data.error || 'Failed to execute orders'));
+                }
+            } catch (err) {
+                alert('Network error executing orders: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Auto-Execute Confirmed</span>';
+                    if (window.lucide) lucide.createIcons();
+                }
             }
         }
 

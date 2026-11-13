@@ -59,6 +59,7 @@ class LiveSyncWorker:
         self.price_cache: Dict[str, Dict[str, Any]] = {}
         self.last_summary: Dict[str, Any] = {}
         self._monitored_symbols: Set[str] = set()
+        self._exiting_symbols: Set[str] = set()
 
     def get_status(self) -> Dict[str, Any]:
         """Returns the current operational status of the live sync worker."""
@@ -204,12 +205,23 @@ class LiveSyncWorker:
         try:
             col_staged = db_manager.staged_orders
             if col_staged is not None:
+                # If market is actively OPEN and no staged orders exist for today, auto-evaluate candidate setups
+                today_tag = datetime.now().strftime("%Y%m%d")
+                staged_count_today = col_staged.count_documents({"is_auto_allocated": True, "_id": {"$regex": f"_{today_tag}$"}})
+                if market_open and staged_count_today == 0:
+                    try:
+                        from online.services.risk_calculator import risk_calculator
+                        risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+                    except Exception as alloc_e:
+                        logger.debug(f"Market-open candidate auto-allocation skipped: {alloc_e}")
+
                 staged_docs = list(col_staged.find({"status": {"$in": ["STAGED_OFFMARKET", "AMO"]}}))
                 for so in staged_docs:
                     s_id = so.get("_id")
                     s_sym = str(so.get("symbol", "")).strip().upper()
                     s_qty = int(so.get("quantity", so.get("qty", 1)))
-                    s_action = str(so.get("action", so.get("type", "BUY"))).upper()
+                    raw_act = str(so.get("action", so.get("type", "BUY"))).upper()
+                    s_action = "SELL" if "SELL" in raw_act or "SHORT" in raw_act else "BUY"
                     s_price = float(so.get("price", so.get("entry_price", 0.0)))
                     s_token = str(so.get("instrument_token", megabull_service.get_instrument_token(s_sym)))
                     is_liq = bool(so.get("is_liquidation_order", False))
@@ -222,7 +234,7 @@ class LiveSyncWorker:
 
                     # If market is OPEN, execute staged AMO order
                     if market_open:
-                        logger.info(f"Market is OPEN: Submitting staged AMO entry order for {s_sym} ({s_action} {s_qty} @ {s_price}).")
+                        logger.info(f"Market is OPEN: Submitting staged entry order for {s_sym} ({s_action} {s_qty} @ ₹{s_price:.2f}).")
                         order_res = megabull_service.place_order(
                             symbol=s_sym,
                             action=s_action,
@@ -232,16 +244,18 @@ class LiveSyncWorker:
                             sl_price=so.get("sl_price"),
                             strategy=so.get("strategy", "50 MA Setup"),
                             product=so.get("product", "CNC"),
-                            order_type=so.get("order_type", "LIMIT"),
+                            order_type="MKT" if megabull_service.is_market_open() else so.get("order_type", "LIMIT"),
                             enforce_duplicate_check=False
                         )
                         if order_res.get("status") == "SUCCESS":
+                            is_filled = order_res.get("case") == "FILLED" or order_res.get("order", {}).get("status") == "FILLED"
                             col_staged.update_one(
                                 {"_id": s_id},
                                 {"$set": {
-                                    "status": "PENDING" if order_res.get("case") != "FILLED" else "RUNNING",
-                                    "broker_order_id": order_res.get("order_id"),
+                                    "status": "RUNNING" if is_filled else "PENDING",
+                                    "broker_order_id": order_res.get("order_id") or order_res.get("order", {}).get("order_id"),
                                     "submitted_at": timestamp_str,
+                                    "fill_price": order_res.get("fill_price") or order_res.get("order", {}).get("fill_price", s_price),
                                     "order_response": order_res
                                 }}
                             )
@@ -253,6 +267,15 @@ class LiveSyncWorker:
                                 {"$set": {
                                     "status": "SKIPPED_INSUFFICIENT_CAPITAL",
                                     "stage_reason": order_res.get("error"),
+                                    "checked_at": timestamp_str
+                                }}
+                            )
+                        else:
+                            logger.warning(f"Staged order for {s_sym} rejected: {order_res.get('error')}")
+                            col_staged.update_one(
+                                {"_id": s_id},
+                                {"$set": {
+                                    "stage_reason": order_res.get("error", "Rejected by broker"),
                                     "checked_at": timestamp_str
                                 }}
                             )
@@ -295,32 +318,79 @@ class LiveSyncWorker:
             pass
 
         for sym, holding in active_symbols_map.items():
-            qty = int(holding.get("qty", 1))
+            qty = int(holding.get("qty", 0))
+            if qty == 0:
+                continue
             is_long = qty > 0
             if is_long:
                 orders_by_stage[OrderLifecycleStage.RUNNING_BOUGHT] += 1
             else:
                 orders_by_stage[OrderLifecycleStage.RUNNING_SHORT_SELLED] += 1
 
-            # Bracket Order Automation: Check if Target & SL are active on MegaBull
-            sig = signals_map.get(sym, {})
-            target_px = float(sig.get("target_price", holding.get("target_price", 0.0)))
-            sl_px = float(sig.get("sl_price", holding.get("sl_price", 0.0)))
+            # Resolve target & stoploss prices with strict boundary validation
+            entry_px = float(holding.get("avg_buy_price") or holding.get("price") or 0.0)
+            target_px = 0.0
+            sl_px = 0.0
 
-            # If target/SL not in signal, generate from standard 1:2 risk/reward geometry
-            entry_px = float(holding.get("avg_buy_price", 0.0))
-            if (target_px <= 0 or sl_px <= 0) and entry_px > 0:
+            # 1. Try reading staged order for current trade
+            try:
+                if db_manager.staged_orders is not None:
+                    stg_doc = db_manager.staged_orders.find_one({"symbol": sym, "status": {"$in": ["RUNNING", "FILLED", "ACTIVE"]}})
+                    if stg_doc:
+                        target_px = float(stg_doc.get("target_price", 0.0))
+                        sl_px = float(stg_doc.get("sl_price", 0.0))
+            except Exception:
+                pass
+
+            # 2. Try signals_watchlist
+            if target_px <= 0 or sl_px <= 0:
+                sig = signals_map.get(sym, {})
+                target_px = float(sig.get("target_price", 0.0))
+                sl_px = float(sig.get("sl_price", 0.0))
+
+            # 3. Mathematical validation: ensure target > entry > SL for Long (or vice-versa for Short)
+            if entry_px > 0:
                 if is_long:
-                    sl_px = round(entry_px * 0.98, 2)
-                    target_px = round(entry_px * 1.04, 2)
+                    if target_px <= entry_px or sl_px >= entry_px or sl_px <= 0:
+                        sl_px = round(entry_px * 0.98, 2)
+                        target_px = round(entry_px * 1.04, 2)
                 else:
-                    sl_px = round(entry_px * 1.02, 2)
-                    target_px = round(entry_px * 0.96, 2)
+                    if target_px >= entry_px or sl_px <= entry_px or sl_px <= 0:
+                        sl_px = round(entry_px * 1.02, 2)
+                        target_px = round(entry_px * 0.96, 2)
 
             has_open_bracket = any(
                 str(bo.get("instrumentName", bo.get("symbol", ""))).strip().upper() == sym
                 for bo in open_orders
             )
+
+            # Synthetic / Dynamic Target & Stop-loss execution
+            # Especially vital for Free-tier accounts where broker restricts remote LIMIT/SL brackets
+            ltp = float(holding.get("ltp") or self.price_cache.get(sym, {}).get("ltp") or entry_px)
+            if market_open and not is_liq_armed and ltp > 0 and target_px > 0 and sl_px > 0 and sym not in self._exiting_symbols:
+                target_hit = (is_long and ltp >= target_px) or (not is_long and ltp <= target_px)
+                sl_hit = (is_long and ltp <= sl_px) or (not is_long and ltp >= sl_px)
+
+                if target_hit or sl_hit:
+                    hit_reason = (
+                        f"TARGET HIT (LTP ₹{ltp:.2f} >= Target ₹{target_px:.2f})"
+                        if target_hit
+                        else f"STOP LOSS HIT (LTP ₹{ltp:.2f} <= SL ₹{sl_px:.2f})"
+                    )
+                    logger.info(f"Synthetic Exit Trigger for {sym}: {hit_reason}. Executing MARKET square off.")
+                    self._exiting_symbols.add(sym)
+                    exit_action = "SELL" if is_long else "BUY"
+                    exit_res = megabull_service.place_order(
+                        symbol=sym,
+                        action=exit_action,
+                        quantity=abs(qty),
+                        price=0.0,
+                        order_type="MKT",
+                        enforce_duplicate_check=False
+                    )
+                    if exit_res.get("status") == "SUCCESS":
+                        logger.info(f"Synthetic bracket square-off successful for {sym}: {exit_res.get('message')}")
+                        continue
 
             # If market is open and brackets are not currently placed, place them automatically!
             # Guard: DO NOT place new bracket orders if emergency liquidation is armed
@@ -350,7 +420,7 @@ class LiveSyncWorker:
         try:
             col_staged = db_manager.staged_orders
             if col_staged is not None:
-                active_tracked = list(col_staged.find({"status": "ACTIVE"}))
+                active_tracked = list(col_staged.find({"status": {"$in": ["ACTIVE", "RUNNING", "FILLED"]}}))
                 for tracked in active_tracked:
                     if not isinstance(tracked, dict):
                         continue
@@ -358,6 +428,7 @@ class LiveSyncWorker:
                     if t_sym not in active_symbols_map:
                         # Holding has been closed (Target hit, SL hit, or squared off)
                         logger.info(f"Holding {t_sym} exited! Trade completed. Cancelling opposing open brackets.")
+                        self._exiting_symbols.discard(t_sym)
                         megabull_service.cancel_open_orders(t_sym)
 
                         t_action = str(tracked.get("action", "BUY")).upper()

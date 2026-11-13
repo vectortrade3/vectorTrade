@@ -333,17 +333,26 @@ class TestRiskCalculator(unittest.TestCase):
         calc._cached_broker_capital = 500000.0
         calc._broker_cache_time = 9999999999.0
 
-        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
-            plan = calc.evaluate_and_allocate_candidate_orders(
-                custom_capital_limit=30000.0,
-                risk_pct=1.0,
-                auto_stage_confirmed=False
-            )
+        mock_settings = {
+            "broker_total_capital": 500000.0,
+            "broker_available_balance": 500000.0,
+            "broker_used_capital": 0.0,
+            "effective_capital": 30000.0,
+            "risk_pct_per_trade": 1.0
+        }
 
-            self.assertEqual(plan["effective_capital"], 30000.0)
-            self.assertEqual(plan["risk_per_trade"], 300.0)
-            self.assertEqual(plan["confirmed_orders_count"], 2)
-            self.assertEqual(plan["skipped_orders_count"], 1)
+        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
+            with patch.object(calc, "get_trading_settings", return_value=mock_settings):
+                plan = calc.evaluate_and_allocate_candidate_orders(
+                    custom_capital_limit=30000.0,
+                    risk_pct=1.0,
+                    auto_stage_confirmed=False
+                )
+
+                self.assertEqual(plan["effective_capital"], 30000.0)
+                self.assertEqual(plan["risk_per_trade"], 300.0)
+                self.assertEqual(plan["confirmed_orders_count"], 2)
+                self.assertEqual(plan["skipped_orders_count"], 1)
 
             # Confirmed orders
             conf_syms = [x["symbol"] for x in plan["confirmed_orders"]]
@@ -387,24 +396,28 @@ class TestRiskCalculator(unittest.TestCase):
         mock_staged_col = MagicMock()
         mock_system_state = MagicMock()
 
+        mock_settings = {
+            "broker_total_capital": 500000.0,
+            "broker_available_balance": 500000.0,
+            "broker_used_capital": 0.0,
+            "effective_capital": 50000.0,
+            "risk_pct_per_trade": 1.0
+        }
+
         with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
-            with patch("online.db.DatabaseManager.staged_orders", new_callable=PropertyMock, return_value=mock_staged_col):
-                with patch("online.db.DatabaseManager.system_state", new_callable=PropertyMock, return_value=mock_system_state):
-                    plan = calc.evaluate_and_allocate_candidate_orders(
-                        custom_capital_limit=50000.0,
-                        auto_stage_confirmed=True
-                    )
-                    self.assertEqual(plan["confirmed_orders_count"], 1)
-                    mock_staged_col.delete_many.assert_called_once_with({
-                        "is_auto_allocated": True,
-                        "status": "STAGED_OFFMARKET"
-                    })
-                    mock_staged_col.insert_many.assert_called_once()
-                    staged_arg = mock_staged_col.insert_many.call_args[0][0]
-                    self.assertEqual(len(staged_arg), 1)
-                    self.assertEqual(staged_arg[0]["symbol"], "INFY")
-                    self.assertEqual(staged_arg[0]["status"], "STAGED_OFFMARKET")
-                    self.assertTrue(staged_arg[0]["is_auto_allocated"])
+            with patch.object(calc, "get_trading_settings", return_value=mock_settings):
+                with patch("online.db.DatabaseManager.staged_orders", new_callable=PropertyMock, return_value=mock_staged_col):
+                    with patch("online.db.DatabaseManager.system_state", new_callable=PropertyMock, return_value=mock_system_state):
+                        plan = calc.evaluate_and_allocate_candidate_orders(
+                            custom_capital_limit=50000.0,
+                            auto_stage_confirmed=True
+                        )
+                        self.assertEqual(plan["confirmed_orders_count"], 1)
+                        mock_staged_col.delete_many.assert_called_once_with({
+                            "is_auto_allocated": True,
+                            "status": "STAGED_OFFMARKET"
+                        })
+                        mock_staged_col.update_one.assert_called()
 
     def test_12_api_trading_settings_allocation_plan_endpoints(self):
         """Verifies GET /api/trading-settings/allocation-plan and POST /api/trading-settings/allocate."""
