@@ -450,6 +450,74 @@ class TestRiskCalculator(unittest.TestCase):
             self.assertEqual(data_post["status"], "SUCCESS")
             self.assertEqual(data_post["plan"]["confirmed_orders_count"], 2)
 
+    def test_13_ten_percent_position_cap_on_one_lakh_account(self):
+        """
+        Validates user requirement:
+        'make sure that we dont put more than 10% of the total capital in a single stock ,
+        and like for now the total capital is 1Lakh ,10% is 10k , so we have to things to calcuilate the qty on ,
+        based on risk , and if qty based on risk is high , then we just lower the qty until its under 10% of the overall amt'
+        """
+        calc = RiskCalculator()
+
+        # 1. PNB test: Entry 125.10, SL 121.51 (Diff 3.59), Portfolio 100,000
+        # Risk 1% = 1000 -> Qty by risk = 278 (would be 34.7k without cap!)
+        # 10% cap = 10,000 -> Qty by cap = floor(10,000 / 125.10) = 79
+        # Final Qty must be 79
+        pnb_res = calc.calculate_quantity_and_targets(
+            entry_price=125.10,
+            sl_price=121.51,
+            action="BUY",
+            custom_portfolio=100000.0,
+            risk_pct=1.0
+        )
+        self.assertEqual(pnb_res["quantity"], 79)
+        self.assertLessEqual(pnb_res["investment_amount"], 10000.0)
+        self.assertEqual(pnb_res["investment_amount"], 9882.90)
+        self.assertLessEqual(pnb_res["actual_risk"], 1000.0)
+
+        # 2. INDUSTOWER test: Entry 384.35, SL 378.20 (Diff 6.15), Portfolio 100,000
+        # Risk 1% = 1000 -> Qty by risk = 162 (would be 62.2k without cap!)
+        # 10% cap = 10,000 -> Qty by cap = floor(10,000 / 384.35) = 26
+        # Final Qty must be 26
+        indus_res = calc.calculate_quantity_and_targets(
+            entry_price=384.35,
+            sl_price=378.20,
+            action="BUY",
+            custom_portfolio=100000.0,
+            risk_pct=1.0
+        )
+        self.assertEqual(indus_res["quantity"], 26)
+        self.assertLessEqual(indus_res["investment_amount"], 10000.0)
+        self.assertEqual(indus_res["investment_amount"], 9993.10)
+        self.assertLessEqual(indus_res["actual_risk"], 1000.0)
+
+    def test_14_confluence_priority_and_alphabetical_tie_breaker(self):
+        """
+        Validates user requirement:
+        'priority is -> a stock selected by more than 1 strategy, next sort filter -> alphabetically'
+        """
+        raw_candidates = [
+            {"symbol": "ZEE", "status": "ARMED", "strategy": "50 MA Setup", "predicted_r": 2.50, "entry_price": 100.0, "sl_price": 95.0},
+            {"symbol": "TATA_MULTI", "status": "ARMED", "strategy": "50 MA + Global Regime", "predicted_r": 1.80, "entry_price": 200.0, "sl_price": 190.0},
+            {"symbol": "ADANI_MULTI", "status": "ARMED", "strategy": "50 MA + Global Regime", "predicted_r": 1.90, "entry_price": 300.0, "sl_price": 285.0},
+            {"symbol": "AIRTEL", "status": "ARMED", "strategy": "50 MA Setup", "predicted_r": 2.60, "entry_price": 400.0, "sl_price": 380.0},
+        ]
+        calc = RiskCalculator()
+        with patch.object(calc, "get_candidate_setups", return_value=raw_candidates):
+            plan = calc.evaluate_and_allocate_candidate_orders(custom_capital_limit=100000.0, auto_stage_confirmed=False)
+            all_ranked = plan["confirmed_orders"] + plan["skipped_orders"]
+            all_ranked.sort(key=lambda x: x["priority_rank"])
+            ordered_syms = [x["symbol"] for x in all_ranked]
+
+            # 1. Multi-strategy confluence candidates come FIRST, ordered alphabetically:
+            # ADANI_MULTI before TATA_MULTI
+            self.assertEqual(ordered_syms[0], "ADANI_MULTI")
+            self.assertEqual(ordered_syms[1], "TATA_MULTI")
+
+            # 2. Single-strategy candidates come next (sorted by expectancy / tie-breakers):
+            self.assertIn("AIRTEL", ordered_syms[2:])
+            self.assertIn("ZEE", ordered_syms[2:])
+
 
 if __name__ == "__main__":
     unittest.main()

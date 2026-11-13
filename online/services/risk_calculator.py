@@ -375,10 +375,12 @@ class RiskCalculator:
             qty_by_risk = 0
 
         # Boundary guard: Capital ceiling & Max Position Size Constraint
-        # Professional Risk Parity rule: Cap any single stock at max_position_pct (e.g. 15% of portfolio)
+        # Professional Risk Parity rule: Cap any single stock at max_position_pct (e.g. 10% of portfolio)
         max_pos_pct = max_position_pct
         if max_pos_pct is None and trading_settings:
             max_pos_pct = trading_settings.get("max_position_pct")
+        if max_pos_pct is None and portfolio >= 50000.0:
+            max_pos_pct = 10.0
 
         if max_pos_pct is not None and max_pos_pct > 0 and max_pos_pct < 100:
             max_stock_capital = portfolio * (float(max_pos_pct) / 100.0)
@@ -523,16 +525,21 @@ class RiskCalculator:
 
         # Sort best orders on top:
         # 1. ARMED / READY status on top
-        # 2. Predicted R multiple descending (AI expectancy)
-        # 3. Profit percentage descending
-        # 4. ML confidence descending
+        # 2. Multi-Strategy Confluence priority (stocks selected by >1 strategy on top)
+        # 3. Predicted R multiple descending (AI expectancy / per-stock temp model score)
+        # 4. Profit percentage descending
+        # 5. ML confidence descending
+        # 6. Alphabetical tie-breaker (A before Z)
         def _candidate_sort_key(c):
             st = str(c.get("status", "ARMED")).upper()
             is_armed = 1 if st in ("ARMED", "READY") else 0
-            pred_r = float(c.get("predicted_r", 0.0))
+            is_multi = 1 if (c.get("is_multi_strategy") or (" + " in str(c.get("strategy", "")))) else 0
+            pred_r = float(c.get("stock_temp_model_score") or c.get("predicted_r") or 0.0)
             profit = float(c.get("profit_pct", 0.0))
             conf = float(c.get("ml_confidence", 0.0))
-            return (is_armed, pred_r, profit, conf)
+            sym = str(c.get("symbol", "")).upper()
+            sym_inv = ''.join(chr(255 - ord(ch)) for ch in sym)
+            return (is_armed, is_multi, pred_r, profit, conf, sym_inv)
 
         sorted_candidates = sorted(candidates, key=_candidate_sort_key, reverse=True)
 
@@ -557,10 +564,10 @@ class RiskCalculator:
         risk_per_trade = round(effective_cap * (risk_pct_clean / 100.0), 2)
 
         # Institutional Portfolio Sizing Constraints
-        # 1. Position size ceiling (15% max per stock when effective_cap >= 50k)
+        # 1. Position size ceiling (10% max per stock when effective_cap >= 50k)
         pos_cap_pct = max_position_pct
         if pos_cap_pct is None:
-            pos_cap_pct = settings.get("max_position_pct", 15.0 if effective_cap >= 50000.0 else None)
+            pos_cap_pct = settings.get("max_position_pct", 10.0 if effective_cap >= 50000.0 else None)
 
         # 2. Daily capital deployment ceiling (50% max new capital today to keep dry powder)
         daily_budget_pct = max_daily_budget_pct

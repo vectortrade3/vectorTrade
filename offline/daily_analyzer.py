@@ -36,11 +36,13 @@ import warnings
 warnings.filterwarnings('ignore')
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import joblib
+import gc
+import xgboost as xgb
 
 from offline import json_manager
 from strategies.manager import StrategyManager
@@ -703,6 +705,152 @@ def scan_all_constituents(
 
 
 # ==============================================================================
+# 5.5. PER-STOCK TEMPORARY VALIDATION & MULTI-STRATEGY CONFLUENCE PIPELINE
+# ==============================================================================
+
+def _train_single_stock_temp_model(sym: str, strategy: str) -> Tuple[float, str]:
+    """
+    Trains a fast temporary stock-specific XGBoost model on that stock's historical setups,
+    scores today's setup, and deletes the temporary model from memory immediately with zero
+    leftover files on disk.
+    """
+    fpath = GENERATED_DIR / f"{sym}_data.csv"
+    if not fpath.exists():
+        return 1.0, "+1.00 R"
+
+    try:
+        df = pd.read_csv(fpath)
+        if len(df) < 55:
+            return 1.0, "+1.00 R"
+
+        is_50ma = ("50 MA" in strategy) or ("ma50" in strategy.lower())
+        if is_50ma and "Base_Signal" in df.columns:
+            setups = df[df['Base_Signal'] == True].copy()
+        elif "max_gain_7d" in df.columns and df['max_gain_7d'].notnull().sum() >= 5:
+            setups = df[df['max_gain_7d'].notnull()].copy()
+        elif "Base_Signal" in df.columns:
+            setups = df[df['Base_Signal'] == True].copy()
+        else:
+            setups = df.copy()
+
+        if len(setups) < 5:
+            return 1.0, "+1.00 R"
+
+        from offline.model_trainer import LEAKAGE_COLS
+        feats = [
+            c for c in setups.columns
+            if c not in LEAKAGE_COLS
+            and not c.startswith('fwd_')
+            and not c.startswith('Setup_')
+            and pd.api.types.is_numeric_dtype(setups[c])
+        ]
+
+        if not feats:
+            return 1.0, "+1.00 R"
+
+        if 'High' in setups.columns and 'Low' in setups.columns:
+            risk = (setups['High'] + 1.0) - (setups['Low'] - 1.0)
+            risk = risk.replace(0, 1.0)
+        else:
+            risk = setups['Close'] * 0.02
+
+        if 'MFE' in setups.columns:
+            y = (setups['MFE'] / risk).replace([np.inf, -np.inf], np.nan).fillna(0.0).clip(-1.0, 3.0)
+        elif 'max_gain_7d' in setups.columns:
+            y = (setups['max_gain_7d'] / risk).replace([np.inf, -np.inf], np.nan).fillna(0.0).clip(-1.0, 3.0)
+        else:
+            y = np.ones(len(setups))
+
+        X = setups[feats].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+        temp_model = xgb.XGBRegressor(
+            n_estimators=25,
+            max_depth=3,
+            learning_rate=0.1,
+            n_jobs=1,
+            random_state=42
+        )
+        temp_model.fit(X, y)
+
+        latest_bar = df.iloc[-1:][feats].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        pred_val = float(temp_model.predict(latest_bar)[0])
+
+        del temp_model
+        gc.collect()
+
+        pred_r = round(pred_val, 2)
+        return pred_r, f"{pred_r:+.2f} R"
+    except Exception as e:
+        logger.debug(f"Temporary model training for {sym} skipped: {e}")
+        return 1.0, "+1.00 R"
+
+
+def process_per_stock_temporary_validation_and_confluence(
+    finalized_trades: List[Dict[str, Any]],
+    enabled_strategy_ids: List[str]
+) -> List[Dict[str, Any]]:
+    """
+    Enriches candidate trade setups with per-stock temporary model predictions
+    and prioritizes candidate setups:
+    1. Multi-Strategy Confluence Priority (if > 1 strategy enabled):
+       Stocks selected by multiple strategies are ranked at the top.
+    2. Alphabetical Sort:
+       Secondary sort (and primary sort if only 1 strategy is enabled).
+    """
+    if not finalized_trades:
+        return finalized_trades
+
+    multiple_strats_checked = len(enabled_strategy_ids) > 1
+
+    armed_trades = []
+    other_trades = []
+
+    for t in finalized_trades:
+        st = str(t.get("outcome", t.get("status", "ARMED"))).upper()
+        if st in ("ARMED", "READY") or t.get("is_latest"):
+            armed_trades.append(t)
+        else:
+            other_trades.append(t)
+
+    # 1. Multi-Strategy Confluence & Per-Stock Temporary Model for Armed Candidates
+    for t in armed_trades:
+        sym = str(t.get("symbol", "")).strip().upper()
+        strat = str(t.get("strategy", ""))
+
+        is_multi = False
+        if multiple_strats_checked:
+            if (" + " in strat) or (t.get("is_multi_strategy") is True):
+                is_multi = True
+
+        t["is_multi_strategy"] = is_multi
+        t["confluence_priority"] = 1 if is_multi else 0
+
+        # Run per-stock temporary model validation
+        pred_score, formatted_r = _train_single_stock_temp_model(sym, strat)
+        t["stock_temp_model_score"] = pred_score
+        t["stock_temp_model_r"] = formatted_r
+
+    # 2. Sort armed candidates:
+    # If multiple strategies checked:
+    #   Priority 1: Multi-strategy confluence descending (Confluence first)
+    #   Secondary: Alphabetical symbol ascending (A -> Z)
+    # If single strategy checked:
+    #   Alphabetical symbol ascending (A -> Z)
+    if multiple_strats_checked:
+        armed_sorted = sorted(
+            armed_trades,
+            key=lambda x: (-x.get("confluence_priority", 0), str(x.get("symbol", "")).upper())
+        )
+    else:
+        armed_sorted = sorted(
+            armed_trades,
+            key=lambda x: str(x.get("symbol", "")).upper()
+        )
+
+    return armed_sorted + other_trades
+
+
+# ==============================================================================
 # 6. MAIN END-TO-END PIPELINE RUNNER
 # ==============================================================================
 
@@ -762,6 +910,18 @@ def run_daily_analysis_pipeline(
     # Stage 3: Scan all 207 constituents
     finalized_trades = scan_all_constituents(models_dict, recent_sessions_count=6)
 
+    # Gather active strategies executed
+    try:
+        enabled_strategies = [s.get("strategy_id", s.get("id")) for s in StrategyManager.get_enabled_strategies()]
+    except Exception:
+        enabled_strategies = ["ma50_setup", "global_regime"]
+
+    # Stage 3.5: Per-Stock Temporary Validation Models & Multi-Strategy Confluence Prioritization
+    finalized_trades = process_per_stock_temporary_validation_and_confluence(
+        finalized_trades,
+        enabled_strategy_ids=enabled_strategies
+    )
+
     # Strategy breakdown
     strategy_counts = {}
     outcome_counts = {}
@@ -785,12 +945,6 @@ def run_daily_analysis_pipeline(
             f"Wins: {outcome_counts.get('TARGET_HIT', 0)}, Losses: {outcome_counts.get('SL_HIT', 0)}) "
             f"across {market_status_desc} in {total_duration:.1f}s."
         )
-
-    # Gather active strategies executed
-    try:
-        enabled_strategies = [s.get("strategy_id", s.get("id")) for s in StrategyManager.get_enabled_strategies()]
-    except Exception:
-        enabled_strategies = ["ma50_setup", "global_regime"]
 
     # Synchronize Finalized Setups to MongoDB Atlas for Online App
     mongo_sync_result = {"status": "SKIPPED", "synced_count": 0}

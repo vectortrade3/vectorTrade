@@ -148,6 +148,12 @@ class MongoSyncer:
         predicted_r = round(float(trade.get("predicted_r", 0.0)), 2)
         ml_confidence = round(float(trade.get("ml_confidence", min(max(predicted_r / 2.0, 0.0), 1.0))), 2)
 
+        # Multi-Strategy Confluence & Per-Stock Temporary Model Attributes
+        is_multi_strategy = bool(trade.get("is_multi_strategy", False) or (" + " in strategy))
+        confluence_priority = int(trade.get("confluence_priority", 1 if is_multi_strategy else 0))
+        stock_temp_model_score = round(float(trade.get("stock_temp_model_score", predicted_r)), 2)
+        stock_temp_model_r = str(trade.get("stock_temp_model_r", f"{stock_temp_model_score:+.2f} R"))
+
         outcome = str(trade.get("outcome", trade.get("status", "ARMED"))).strip()
         status = outcome  # For backward-compatibility with online runner
         outcome_detail = str(trade.get("outcome_detail", "")).strip()
@@ -191,6 +197,10 @@ class MongoSyncer:
             "risk_reward_num": risk_reward_num,
             "predicted_r": predicted_r,
             "ml_confidence": ml_confidence,
+            "is_multi_strategy": is_multi_strategy,
+            "confluence_priority": confluence_priority,
+            "stock_temp_model_score": stock_temp_model_score,
+            "stock_temp_model_r": stock_temp_model_r,
             "outcome": outcome,
             "status": status,
             "outcome_detail": outcome_detail,
