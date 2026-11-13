@@ -252,6 +252,8 @@ async def megabull_page(request: Request):
     is_market_open = megabull_service.is_market_open()
     from online.services.risk_calculator import risk_calculator
     trading_settings = risk_calculator.get_trading_settings()
+    custom_limit = trading_settings.get("custom_capital_limit")
+    max_limit_in_stocks = custom_limit if custom_limit is not None else summary.get("total_capital_had", 0.0)
 
     return templates.TemplateResponse(
         request=request,
@@ -263,6 +265,42 @@ async def megabull_page(request: Request):
             "armed_orders_count": stats.get("armed_orders_count", 0),
             "liquidation_status": liquidation_status,
             "trading_settings": trading_settings,
+            "custom_limit": custom_limit,
+            "max_limit_in_stocks": max_limit_in_stocks,
+            "is_market_open": is_market_open,
+            "env": settings.env
+        }
+    )
+
+
+@app.get("/megabull/report", response_class=HTMLResponse)
+async def megabull_report_page(request: Request):
+    """Renders the comprehensive MegaBull Full Report, Completed Trades, and Audit Ledger page."""
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login?next=/megabull/report", status_code=303)
+
+    summary = megabull_service.get_portfolio_summary()
+    stats = orders_service.get_order_summary_stats()
+    liquidation_status = megabull_service.get_liquidation_status()
+    is_market_open = megabull_service.is_market_open()
+    from online.services.risk_calculator import risk_calculator
+    trading_settings = risk_calculator.get_trading_settings()
+    custom_limit = trading_settings.get("custom_capital_limit")
+    max_limit_in_stocks = custom_limit if custom_limit is not None else summary.get("total_capital_had", 0.0)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="megabull_report.html",
+        context={
+            "app_name": settings.app_name,
+            "user": user,
+            "summary": summary,
+            "armed_orders_count": stats.get("armed_orders_count", 0),
+            "liquidation_status": liquidation_status,
+            "trading_settings": trading_settings,
+            "custom_limit": custom_limit,
+            "max_limit_in_stocks": max_limit_in_stocks,
             "is_market_open": is_market_open,
             "env": settings.env
         }
@@ -482,6 +520,11 @@ async def get_megabull_valid_orders_api():
 async def get_megabull_summary_api():
     """Returns aggregated MegaBull account balance, portfolio valuation, and performance."""
     summary = megabull_service.get_portfolio_summary()
+    from online.services.risk_calculator import risk_calculator
+    trading_settings = risk_calculator.get_trading_settings()
+    custom_limit = trading_settings.get("custom_capital_limit")
+    summary["custom_capital_limit"] = custom_limit
+    summary["max_limit_in_stocks"] = custom_limit if custom_limit is not None else summary.get("total_capital_had", 0.0)
     return {
         "status": "SUCCESS",
         "data": summary

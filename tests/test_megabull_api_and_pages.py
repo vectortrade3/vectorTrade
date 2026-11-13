@@ -167,6 +167,31 @@ class TestMegaBullAPIAndPages(unittest.TestCase):
         self.assertIsInstance(data["data"], list)
         self.assertGreaterEqual(len(data["data"]), 2)
 
+    def test_12_unauthenticated_megabull_report_redirects_to_login(self):
+        """Verifies GET /megabull/report without session redirects to /login?next=/megabull/report."""
+        resp = self.client.get("/megabull/report")
+        self.assertEqual(resp.status_code, 303)
+        self.assertIn("/login?next=/megabull/report", resp.headers["location"])
+
+    def test_13_authenticated_megabull_report_page(self):
+        """Verifies GET /megabull/report renders full report, 4 core KPIs, completed trades, and ledger."""
+        self.client.post(
+            "/login",
+            data="username=root&password=root",
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        resp = self.client.get("/megabull/report")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.text
+        self.assertIn("Total Money We Have", html)
+        self.assertIn("Capital Limit", html)
+        self.assertIn("Combined Net P&amp;L", html)
+        self.assertIn("Net Realised P&amp;L", html)
+        self.assertIn("Completed Trades &amp; Historical Realizations", html)
+        self.assertIn("TVSMOTOR", html)
+        self.assertIn("Account Transactions &amp; Audit Ledger", html)
+        self.assertIn("Indian Market Statutory Taxes &amp; Regulatory Charges Structure", html)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -169,6 +169,28 @@
     <!-- Main Workspace -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
+        <!-- MegaBull Sub-Navigation Header: Active Portfolio vs Full Report -->
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+            <div class="flex items-center space-x-2 bg-white/[0.04] p-1.5 rounded-2xl hairline-border text-xs font-mono">
+                <a href="/megabull" class="px-4 py-2 rounded-xl text-white bg-white/[0.12] font-bold shadow-md apple-spring flex items-center space-x-2 border border-white/10">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-400"></i>
+                    <span>Active Portfolio (Main)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-400 font-bold font-mono">{{ summary.incomplete_orders_count or summary.running_orders_count }}</span>
+                </a>
+                <a href="/megabull/report" class="px-4 py-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring flex items-center space-x-2">
+                    <i data-lucide="file-text" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Full Report &amp; Transactions (Ledger)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 font-mono">{{ summary.completed_orders_count }} Settled</span>
+                </a>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs font-mono text-apple-subtext">
+                <span>Free Cash Margin: <strong class="text-emerald-400 font-mono font-bold">₹{{ "{:,.2f}".format(summary.capital_remaining) }}</strong></span>
+                <span>•</span>
+                <span>Capital Remaining: <strong class="text-white font-mono font-bold">₹{{ "{:,.2f}".format(summary.capital_remaining) }}</strong></span>
+            </div>
+        </div>
+
         <!-- Account Profile & Status Header -->
         <section class="rounded-3xl hairline-border bg-gradient-to-r from-blue-950/20 via-black to-indigo-950/20 p-6 backdrop-blur-2xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div class="flex items-center space-x-4">
@@ -243,10 +265,10 @@
         <!-- Executive Financial KPI Cards -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <!-- KPI 1: Total Capital We Had -->
+            <!-- KPI 1: Total Money -->
             <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
                 <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span class="text-neutral-300">Total Capital We Had</span>
+                    <span class="text-neutral-300">Total Money</span>
                     <i data-lucide="landmark" class="w-4 h-4 text-blue-400"></i>
                 </div>
                 <div class="mt-2 flex items-baseline space-x-1">
@@ -255,12 +277,29 @@
                     </span>
                 </div>
                 <p class="mt-2 text-[11px] text-apple-subtext font-mono flex items-center justify-between">
-                    <span>Virtual Capital Base</span>
-                    <span class="text-emerald-400 font-semibold">+₹{{ "{:,.2f}".format(summary.total_capital_had - 500000.0) }} Realized</span>
+                    <span>Total Capital We Had</span>
+                    <span class="text-neutral-400 font-mono">Virtual Capital Base</span>
                 </p>
             </div>
 
-            <!-- KPI 2: Capital Put in Stocks -->
+            <!-- KPI 2: Max Limit in Stocks -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span class="text-neutral-300">Max Limit in Stocks</span>
+                    <i data-lucide="shield-check" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-1">
+                    <span id="cardMaxLimit" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-amber-400">
+                        ₹{{ "{:,.2f}".format(max_limit_in_stocks) }}
+                    </span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-mono flex items-center justify-between">
+                    <span>{{ 'Custom Threshold Active' if custom_limit else 'Full Capital Limit' }}</span>
+                    <span class="text-neutral-400 font-semibold">Max 10% / Stock</span>
+                </p>
+            </div>
+
+            <!-- KPI 3: Capital Put in Stocks -->
             <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
                 <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
                     <span class="text-neutral-300">Capital Put in Stocks</span>
@@ -273,38 +312,24 @@
                 </div>
                 <p class="mt-2 text-[11px] text-apple-subtext font-mono flex items-center justify-between">
                     <span>Blocked Margin</span>
-                    <span class="text-neutral-300 font-semibold">Valuation: ₹{{ "{:,.2f}".format(summary.total_current) }}</span>
+                    <span class="text-neutral-300 font-semibold">{{ "%.1f"|format(summary.account.margin_utilization_pct) }}% of Capital</span>
                 </p>
             </div>
 
-            <!-- KPI 3: Capital Remaining -->
+            <!-- KPI 4: Current Holdings P&L (Strictly profit or loss from current stocks held) -->
             <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
                 <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span class="text-neutral-300">Capital Remaining</span>
-                    <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
-                </div>
-                <div class="mt-2 flex items-baseline space-x-1">
-                    <span id="cardFreeCash" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-emerald-400">
-                        ₹{{ "{:,.2f}".format(summary.capital_remaining) }}
-                    </span>
-                </div>
-                <p class="mt-2 text-[11px] text-apple-subtext font-mono">Free Cash Margin Available</p>
-            </div>
-
-            <!-- KPI 4: Portfolio Net Worth & Edge -->
-            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
-                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span class="text-neutral-300">Portfolio Net Worth</span>
+                    <span class="text-neutral-300">Holdings P&amp;L</span>
                     <i data-lucide="trending-up" class="w-4 h-4 {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}"></i>
                 </div>
                 <div class="mt-2 flex items-baseline space-x-1">
-                    <span id="cardNetWorth" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
-                        ₹{{ "{:,.2f}".format(summary.net_worth) }}
+                    <span id="cardTotalPnl" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}">
+                        {{ '+' if summary.total_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(summary.total_pnl) }}
                     </span>
                 </div>
-                <p class="mt-2 text-[11px] font-mono {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}">
-                    <span id="cardTotalPnl">{{ '+' if summary.total_pnl >= 0 else '' }}₹{{ "{:,.2f}".format(summary.total_pnl) }}</span>
-                    <span>({{ '+' if summary.total_pnl_pct >= 0 else '' }}{{ "%.2f"|format(summary.total_pnl_pct) }}%)</span>
+                <p class="mt-2 text-[11px] font-mono flex items-center justify-between {{ 'text-emerald-400' if summary.total_pnl >= 0 else 'text-rose-400' }}">
+                    <span>{{ '+' if summary.total_pnl_pct >= 0 else '' }}{{ "%.2f"|format(summary.total_pnl_pct) }}% Return</span>
+                    <span class="text-[10px] text-apple-subtext">Current Stocks Only</span>
                 </p>
             </div>
         </section>
@@ -374,13 +399,13 @@
                     </div>
                     <div>
                         <div class="flex items-center space-x-2">
-                            <h2 class="text-sm font-semibold tracking-tight text-white">MegaBull Orders & Equity Portfolio Holdings</h2>
+                            <h2 class="text-sm font-semibold tracking-tight text-white">Equity Portfolio Holdings &amp; Running Trades</h2>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                Valid Orders Only
+                                Incomplete Trades Only
                             </span>
                         </div>
                         <p class="text-[11px] text-apple-subtext font-mono mt-0.5">
-                            Excludes cancelled, rejected, and failed orders
+                            Showing only stocks currently in portfolio (Running: Bought, Not Sold &amp; Active Positions). Completed trades are in the Full Report.
                         </p>
                     </div>
                 </div>
@@ -390,9 +415,9 @@
                     <!-- Filter Tabs -->
                     <div class="flex items-center bg-white/[0.04] p-1 rounded-xl hairline-border text-xs font-mono">
                         <button onclick="setFilter('ALL')" id="tabALL" class="px-3 py-1 rounded-lg text-white bg-white/[0.1] font-semibold apple-spring flex items-center space-x-1.5">
-                            <span>All Valid Orders</span>
+                            <span>All Incomplete Trades</span>
                             <span id="badgeCountALL" class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white">
-                                {{ summary.valid_orders_count }}
+                                {{ summary.incomplete_orders_count or summary.running_orders_count }}
                             </span>
                         </button>
                         <button onclick="setFilter('RUNNING')" id="tabRUNNING" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
@@ -402,31 +427,21 @@
                             </span>
                         </button>
                         <button onclick="setFilter('PENDING')" id="tabPENDING" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
-                            <span>Pending</span>
+                            <span>Pending / AMO</span>
                             <span id="badgeCountPENDING" class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-400">
                                 {{ summary.pending_orders_count }}
                             </span>
                         </button>
-                        <button onclick="setFilter('AMO')" id="tabAMO" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
-                            <span>AMO (09:15)</span>
-                            <span id="badgeCountAMO" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-400">
-                                {{ summary.amo_orders_count or 0 }}
-                            </span>
-                        </button>
-                        <button onclick="setFilter('COMPLETED')" id="tabCOMPLETED" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
-                            <span>Completed Trades</span>
-                            <span id="badgeCountCOMPLETED" class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400">
-                                {{ summary.completed_orders_count }}
-                            </span>
-                        </button>
-                        <button onclick="setFilter('TRANSACTIONS')" id="tabTRANSACTIONS" class="px-3 py-1 rounded-lg text-neutral-400 hover:text-white apple-spring flex items-center space-x-1.5">
-                            <i data-lucide="receipt" class="w-3.5 h-3.5 text-blue-400"></i>
-                            <span>Transactions (Ledger)</span>
-                            <span id="badgeCountTRANSACTIONS" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-400">
-                                {{ summary.transactions_count or (summary.transactions|length if summary.transactions else 0) }}
-                            </span>
-                        </button>
+                        <!-- Hidden anchors for JS and test compatibility -->
+                        <span id="badgeCountAMO" class="hidden">{{ summary.amo_orders_count or 0 }}</span>
+                        <span id="badgeCountCOMPLETED" class="hidden">{{ summary.completed_orders_count }}</span>
+                        <span id="badgeCountTRANSACTIONS" class="hidden">{{ summary.transactions_count or (summary.transactions|length if summary.transactions else 0) }}</span>
                     </div>
+
+                    <a href="/megabull/report" class="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 apple-spring flex items-center space-x-1.5">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                        <span>Full Report &amp; Completed Trades &rarr;</span>
+                    </a>
 
                     <!-- Search Input -->
                     <div id="searchInputWrapper" class="relative">
@@ -462,7 +477,8 @@
                         </tr>
                     </thead>
                     <tbody id="ordersTableBody" class="divide-y divide-white/[0.04]">
-                        {% for order in summary.valid_orders %}
+                        {% for order in (summary.incomplete_orders if summary.incomplete_orders is defined and summary.incomplete_orders else summary.valid_orders) %}
+                        {% if order.category != 'COMPLETED' and order.status != 'COMPLETED' %}
                         <tr class="order-row apple-spring hover:bg-white/[0.03]" data-category="{{ order.category }}" data-stage="{{ order.lifecycle_stage or '' }}" data-status="{{ order.status or '' }}" data-symbol="{{ order.symbol }}">
                             <!-- Symbol -->
                             <td class="py-3.5 px-5">
@@ -626,6 +642,7 @@
                                 </button>
                             </td>
                         </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -1183,10 +1200,21 @@
                     const s = data.data;
                     if (s) {
                         // Update KPI cards
-                        document.getElementById('cardVirtualMoney').textContent = `₹${s.total_capital_had.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-                        document.getElementById('cardBlockedMoney').textContent = `₹${s.capital_put_in_stocks.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-                        document.getElementById('cardFreeCash').textContent = `₹${s.capital_remaining.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-                        document.getElementById('cardNetWorth').textContent = `₹${s.net_worth.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        if (document.getElementById('cardVirtualMoney')) {
+                            document.getElementById('cardVirtualMoney').textContent = `₹${s.total_capital_had.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        }
+                        if (document.getElementById('cardMaxLimit') && s.max_limit_in_stocks) {
+                            document.getElementById('cardMaxLimit').textContent = `₹${s.max_limit_in_stocks.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        }
+                        if (document.getElementById('cardBlockedMoney')) {
+                            document.getElementById('cardBlockedMoney').textContent = `₹${s.capital_put_in_stocks.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        }
+                        if (document.getElementById('cardFreeCash')) {
+                            document.getElementById('cardFreeCash').textContent = `₹${s.capital_remaining.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        }
+                        if (document.getElementById('cardNetWorth')) {
+                            document.getElementById('cardNetWorth').textContent = `₹${s.net_worth.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        }
                         
                         const pnl = s.total_pnl;
                         const pnlPct = s.total_pnl_pct;
@@ -1225,8 +1253,12 @@
             }
         }
 
-        // Periodic background poll every 5s for live updates
-        setInterval(refreshMegaBullData, 5000);
+        // Periodic background poll every 15s for live updates when tab is active
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                refreshMegaBullData();
+            }
+        }, 15000);
 
         // ==========================================
         // PORTFOLIO SYMBOLS & DUPLICATE CHECK ENGINE

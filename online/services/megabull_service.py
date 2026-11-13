@@ -24,7 +24,7 @@ class MegaBullService:
         api_key: Optional[str] = None,
         user_id: Optional[str] = None,
         base_url: Optional[str] = None,
-        cache_ttl_seconds: int = 10
+        cache_ttl_seconds: int = 15
     ):
         self.api_key = api_key if api_key is not None else settings.megabull_api_key
         self.user_id = user_id if user_id is not None else settings.megabull_user_id
@@ -333,6 +333,18 @@ class MegaBullService:
             raw_holdings = resp.json()
             if not isinstance(raw_holdings, list):
                 return []
+
+            # Pre-fetch uncached LTPs in parallel to prevent serial HTTP waterfall latency
+            if enrich_ltp:
+                uncached_tokens = [
+                    str(item.get("instrumentToken", ""))
+                    for item in raw_holdings
+                    if str(item.get("instrumentToken", "")) and self._get_cached(f"ltp_{item.get('instrumentToken')}") is None
+                ]
+                if uncached_tokens:
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(uncached_tokens), 8)) as executor:
+                        list(executor.map(self.get_ltp, uncached_tokens))
 
             enriched = []
             for item in raw_holdings:
@@ -974,9 +986,9 @@ class MegaBullService:
         return transactions
 
     def get_portfolio_summary(self, force_refresh: bool = False) -> Dict[str, Any]:
-        """Aggregates account details, holdings valuation, and positions into unified payload (cached for 10s)."""
+        """Aggregates account details, holdings valuation, and positions into unified payload (cached for 15s)."""
         if not force_refresh:
-            cached = self._get_cached("portfolio_summary", ttl=10.0)
+            cached = self._get_cached("portfolio_summary", ttl=15.0)
             if cached is not None:
                 return cached
 
@@ -993,6 +1005,12 @@ class MegaBullService:
         pending_orders = [o for o in valid_orders if o["category"] == "PENDING" and o.get("lifecycle_stage") != "WILL_BE_PUT_AMO"]
         amo_orders = [o for o in valid_orders if o.get("lifecycle_stage") == "WILL_BE_PUT_AMO" or o.get("status") == "STAGED"]
         completed_orders = [o for o in valid_orders if o["category"] == "COMPLETED"]
+
+        # Incomplete trades: only trades/stocks currently held in portfolio or actively running
+        incomplete_orders = [
+            o for o in valid_orders
+            if o.get("category") in ("RUNNING", "PENDING") or o.get("status") in ("RUNNING", "ACTIVE", "PENDING", "STAGED")
+        ]
 
         total_invested = round(sum(h["invested_value"] for h in holdings), 2)
         total_current = round(sum(h["current_value"] for h in holdings), 2)
@@ -1023,6 +1041,10 @@ class MegaBullService:
         gross_realized_pnl = round(sum(t.get("gross_amount", 0.0) for t in settlement_txs), 2)
         net_realized_pnl = round(sum(t.get("net_amount", 0.0) for t in settlement_txs), 2)
 
+        # Combined Net P&L: includes current incomplete trades P&L + realized P&L from completed trades
+        total_net_pnl = round(net_realized_pnl + total_pnl, 2)
+        total_net_pnl_pct = round((total_net_pnl / total_capital_had * 100), 2) if total_capital_had > 0 else 0.0
+
         summary = {
             "status": account.get("status", "SUCCESS"),
             "account": account,
@@ -1036,16 +1058,21 @@ class MegaBullService:
             "total_current": total_current,
             "total_pnl": total_pnl,
             "total_pnl_pct": total_pnl_pct,
+            "holdings_unrealized_pnl": total_pnl,
+            "holdings_unrealized_pnl_pct": total_pnl_pct,
             "net_worth": net_worth,
             "positions": positions,
             "positions_count": len(positions),
             "orders": orders,
             "valid_orders": valid_orders,
             "valid_orders_count": len(valid_orders),
+            "incomplete_orders": incomplete_orders,
+            "incomplete_orders_count": len(incomplete_orders),
             "running_orders_count": len(running_orders),
             "pending_orders_count": len(all_pending_orders),
             "broker_pending_count": len(pending_orders),
             "amo_orders_count": len(amo_orders),
+            "completed_orders": completed_orders,
             "completed_orders_count": len(completed_orders),
             "orders_by_stage": {
                 "WILL_BE_PUT_AMO": len(amo_orders),
@@ -1061,6 +1088,8 @@ class MegaBullService:
             "total_charges_paid": total_charges_paid,
             "gross_realized_pnl": gross_realized_pnl,
             "net_realized_pnl": net_realized_pnl,
+            "total_net_pnl": total_net_pnl,
+            "total_net_pnl_pct": total_net_pnl_pct,
             "last_synced": time.strftime("%Y-%m-%d %H:%M:%S")
         }
         self._set_cached("portfolio_summary", summary)
