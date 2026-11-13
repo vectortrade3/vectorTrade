@@ -305,6 +305,7 @@ class RiskCalculator:
         action: str = "BUY",
         custom_portfolio: Optional[float] = None,
         risk_pct: float = 1.0,
+        max_position_pct: Optional[float] = None,
         trading_settings: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
@@ -373,8 +374,16 @@ class RiskCalculator:
         else:
             qty_by_risk = 0
 
-        # Boundary guard: Capital ceiling (Total investment cannot exceed Portfolio capital)
-        if entry > 0:
+        # Boundary guard: Capital ceiling & Max Position Size Constraint
+        # Professional Risk Parity rule: Cap any single stock at max_position_pct (e.g. 15% of portfolio)
+        max_pos_pct = max_position_pct
+        if max_pos_pct is None and trading_settings:
+            max_pos_pct = trading_settings.get("max_position_pct")
+
+        if max_pos_pct is not None and max_pos_pct > 0 and max_pos_pct < 100:
+            max_stock_capital = portfolio * (float(max_pos_pct) / 100.0)
+            qty_by_capital = int(math.floor(max_stock_capital / entry)) if entry > 0 else 0
+        elif entry > 0:
             qty_by_capital = int(math.floor(portfolio / entry))
         else:
             qty_by_capital = 0
@@ -495,12 +504,19 @@ class RiskCalculator:
         self,
         custom_capital_limit: Optional[float] = None,
         risk_pct: float = 1.0,
+        max_position_pct: Optional[float] = None,
+        max_daily_budget_pct: Optional[float] = None,
+        max_daily_trades: Optional[int] = None,
         auto_stage_confirmed: bool = True
     ) -> Dict[str, Any]:
         """
         Evaluates all candidate setups from enabled strategies, ranks them with the best orders
         on top (ARMED status, highest predicted_r, highest profit_pct), and iterates down the list,
-        allocating capital according to the 1% risk-per-trade model until the available budget is exhausted.
+        allocating capital according to institutional risk budgeting rules:
+        1. 1% Risk per Trade: Absolute loss at SL is guaranteed <= 1% of portfolio.
+        2. 15% Max Position Cap: No single stock can take more than 15% of portfolio capital.
+        3. 50% Daily Deployment Cap: Never deploy 100% of money in one day; preserves dry powder for future days.
+        4. Max 3 New Trades / Day: Confirms the top 3 highest AI expectancy setups.
         Confirmed orders are automatically staged off-market (AMO) in MongoDB for 09:15 AM execution.
         """
         candidates = self.get_candidate_setups()
@@ -540,7 +556,28 @@ class RiskCalculator:
         risk_pct_clean = max(0.1, min(10.0, float(risk_pct or settings.get("risk_pct_per_trade", 1.0))))
         risk_per_trade = round(effective_cap * (risk_pct_clean / 100.0), 2)
 
-        budget_remaining = allocated_remaining
+        # Institutional Portfolio Sizing Constraints
+        # 1. Position size ceiling (15% max per stock when effective_cap >= 50k)
+        pos_cap_pct = max_position_pct
+        if pos_cap_pct is None:
+            pos_cap_pct = settings.get("max_position_pct", 15.0 if effective_cap >= 50000.0 else None)
+
+        # 2. Daily capital deployment ceiling (50% max new capital today to keep dry powder)
+        daily_budget_pct = max_daily_budget_pct
+        if daily_budget_pct is None:
+            daily_budget_pct = settings.get("max_daily_budget_pct", 50.0 if effective_cap >= 50000.0 else None)
+
+        # 3. Maximum concurrent new trades per session (top 3 trades)
+        trades_limit = max_daily_trades
+        if trades_limit is None:
+            trades_limit = int(settings.get("max_daily_trades", 3 if effective_cap >= 50000.0 else 50))
+
+        if daily_budget_pct is not None and daily_budget_pct > 0 and daily_budget_pct < 100:
+            daily_deployment_limit = round(effective_cap * (float(daily_budget_pct) / 100.0), 2)
+            budget_remaining = round(min(allocated_remaining, daily_deployment_limit), 2)
+        else:
+            budget_remaining = allocated_remaining
+
         total_committed_capital = 0.0
         total_risk_committed = 0.0
         confirmed_orders: List[Dict[str, Any]] = []
@@ -562,7 +599,8 @@ class RiskCalculator:
                 sl_price=sl_px,
                 action=act,
                 custom_portfolio=effective_cap,
-                risk_pct=risk_pct_clean
+                risk_pct=risk_pct_clean,
+                max_position_pct=pos_cap_pct
             )
 
             qty = calc["quantity"]
@@ -589,7 +627,7 @@ class RiskCalculator:
                 })
                 continue
 
-            if investment <= budget_remaining:
+            if len(confirmed_orders) < trades_limit and investment <= budget_remaining:
                 # CONFIRMED!
                 budget_remaining = round(budget_remaining - investment, 2)
                 total_committed_capital = round(total_committed_capital + investment, 2)
@@ -618,12 +656,19 @@ class RiskCalculator:
                     "allocation_status": "CONFIRMED",
                     "can_take": True,
                     "remaining_budget_after": budget_remaining,
-                    "reason": f"Confirmed: ₹{investment:,.2f} allocated (Qty: {qty} @ ₹{entry_px:.2f}). Risk ₹{actual_risk:,.2f} <= ₹{risk_per_trade:,.2f}."
+                    "reason": f"Confirmed: ₹{investment:,.2f} allocated (Qty: {qty} @ ₹{entry_px:.2f}). Max 15% pos cap & 1% risk enforced."
                 }
                 confirmed_orders.append(order_doc)
             else:
-                # SKIPPED DUE TO INSUFFICIENT BUDGET
-                shortfall = round(investment - budget_remaining, 2)
+                # SKIPPED DUE TO INSUFFICIENT BUDGET OR DAILY LIMIT
+                shortfall = round(max(0.0, investment - budget_remaining), 2)
+                if len(confirmed_orders) >= trades_limit:
+                    skip_reason = f"Daily trade limit reached ({trades_limit} top setups confirmed today; cash buffer reserved for future days)."
+                    skip_status = "SKIPPED_DAILY_LIMIT"
+                else:
+                    skip_reason = f"Insufficient remaining capital (Requires ₹{investment:,.2f}, only ₹{budget_remaining:,.2f} available). Shortfall: ₹{shortfall:,.2f}."
+                    skip_status = "SKIPPED_INSUFFICIENT_BUDGET"
+
                 skipped_orders.append({
                     "priority_rank": idx,
                     "symbol": sym,
@@ -638,10 +683,10 @@ class RiskCalculator:
                     "actual_risk": actual_risk,
                     "predicted_r": float(cand.get("predicted_r", 0.0)),
                     "profit_pct": float(cand.get("profit_pct", 0.0)),
-                    "allocation_status": "SKIPPED_INSUFFICIENT_BUDGET",
+                    "allocation_status": skip_status,
                     "can_take": False,
                     "shortfall": shortfall,
-                    "reason": f"Insufficient remaining capital (Requires ₹{investment:,.2f}, only ₹{budget_remaining:,.2f} available). Shortfall: ₹{shortfall:,.2f}."
+                    "reason": skip_reason
                 })
 
         # Auto-stage confirmed orders into db_manager.staged_orders if requested
