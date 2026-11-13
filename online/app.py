@@ -212,28 +212,40 @@ async def orders_page(request: Request):
     if not user:
         return RedirectResponse(url="/login?next=/orders", status_code=303)
 
+    from online.services.risk_calculator import risk_calculator
     stats = orders_service.get_order_summary_stats()
     db_health = db_manager.ping()
     initial_orders = orders_service.get_orders(limit=100)
     trade_journal = orders_service.get_trade_journal()
     liquidation_status = megabull_service.get_liquidation_status()
     is_market_open = megabull_service.is_market_open()
-    from online.services.risk_calculator import risk_calculator
     trading_settings = risk_calculator.get_trading_settings()
+    summary = megabull_service.get_portfolio_summary()
+
+    # Get the latest allocation plan with confirmed & all candidate orders
+    plan = risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=False)
+    confirmed_orders = plan.get("confirmed_orders", [])
+    skipped_orders = plan.get("skipped_orders", [])
+    all_orders = plan.get("all_orders", confirmed_orders + skipped_orders)
 
     return templates.TemplateResponse(
         request=request,
         name="orders.html",
         context={
             "app_name": settings.app_name,
+            "user": user,
             "stats": stats,
             "db_health": db_health,
+            "summary": summary,
+            "trading_settings": trading_settings,
+            "liquidation_status": liquidation_status,
+            "is_market_open": is_market_open,
+            "plan": plan,
+            "confirmed_orders": confirmed_orders,
+            "skipped_orders": skipped_orders,
+            "all_orders": all_orders,
             "orders": initial_orders,
             "trade_journal": trade_journal,
-            "liquidation_status": liquidation_status,
-            "trading_settings": trading_settings,
-            "is_market_open": is_market_open,
-            "user": user,
             "env": settings.env
         }
     )
@@ -634,6 +646,44 @@ async def trigger_trading_allocation_api(req: Optional[UpdateTradingSettingsRequ
         "message": f"Evaluated candidate setups: {plan.get('confirmed_orders_count', 0)} confirmed orders staged for execution.",
         "plan": plan
     })
+
+
+class ConfirmedOrderActionRequest(BaseModel):
+    symbol: str
+
+
+@app.post("/api/orders/confirmed/remove")
+async def remove_confirmed_order_api(req: ConfirmedOrderActionRequest):
+    """Removes a stock order from the confirmed execution list."""
+    from online.services.risk_calculator import risk_calculator
+    ok = risk_calculator.dismiss_confirmed_order(req.symbol)
+    if ok:
+        plan = risk_calculator.get_allocation_plan()
+        return JSONResponse({
+            "status": "SUCCESS",
+            "message": f"Order for {req.symbol.upper()} removed from confirmed execution list.",
+            "symbol": req.symbol.upper(),
+            "plan": plan
+        })
+    else:
+        raise HTTPException(status_code=400, detail="Failed to remove confirmed order.")
+
+
+@app.post("/api/orders/confirmed/restore")
+async def restore_confirmed_order_api(req: ConfirmedOrderActionRequest):
+    """Restores a stock order to the confirmed execution evaluation."""
+    from online.services.risk_calculator import risk_calculator
+    ok = risk_calculator.restore_confirmed_order(req.symbol)
+    if ok:
+        plan = risk_calculator.get_allocation_plan()
+        return JSONResponse({
+            "status": "SUCCESS",
+            "message": f"Order for {req.symbol.upper()} restored to allocation pool.",
+            "symbol": req.symbol.upper(),
+            "plan": plan
+        })
+    else:
+        raise HTTPException(status_code=400, detail="Failed to restore confirmed order.")
 
 
 class FilterPipelineUpdateRequest(BaseModel):

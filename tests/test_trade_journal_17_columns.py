@@ -139,9 +139,14 @@ class TestTradeJournal17Columns(unittest.TestCase):
         self.assertEqual(row["net_pnl"], 1800.02)
         self.assertTrue(row["is_completed"])
 
-    def test_04_get_trade_journal_returns_live_and_historical(self):
+    @patch("online.services.megabull_service.megabull_service.get_holdings")
+    def test_04_get_trade_journal_returns_live_and_historical(self, mock_get_holdings):
         """Verifies get_trade_journal aggregates active holdings and completed trades."""
-        journal = orders_service.get_trade_journal()
+        mock_get_holdings.return_value = [
+            {"symbol": f"SYM_{i}", "name": f"Stock {i}", "qty": 10, "avg_buy_price": 100.0, "ltp": 105.0}
+            for i in range(7)
+        ]
+        journal = orders_service.get_trade_journal(force_refresh=True)
         self.assertGreaterEqual(len(journal), 8)
 
         running_trades = [r for r in journal if not r["is_completed"]]

@@ -575,6 +575,16 @@ class RiskCalculator:
         skipped_orders: List[Dict[str, Any]] = []
         seen_symbols: set = set()
 
+        # Query user-dismissed confirmed symbols if any
+        dismissed_symbols: set = set()
+        try:
+            if db_manager.trading_settings is not None:
+                d_doc = db_manager.trading_settings.find_one({"key": "dismissed_confirmed_symbols"})
+                if d_doc and isinstance(d_doc.get("symbols"), list):
+                    dismissed_symbols = set(d_doc.get("symbols", []))
+        except Exception:
+            pass
+
         for idx, cand in enumerate(sorted_candidates, start=1):
             sym = str(cand.get("symbol", "")).strip().upper()
             if not sym or sym in seen_symbols:
@@ -598,6 +608,40 @@ class RiskCalculator:
             investment = calc["investment_amount"]
             actual_risk = calc["actual_risk"]
 
+            # Check if this order was manually dismissed / deleted by the user
+            if sym in dismissed_symbols:
+                skipped_orders.append({
+                    "priority_rank": idx,
+                    "symbol": sym,
+                    "name": cand.get("name", sym),
+                    "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
+                    "action": act,
+                    "entry_price": entry_px,
+                    "buy_trigger": entry_px,
+                    "sl_price": sl_px,
+                    "stop_loss": sl_px,
+                    "target_1_1": calc["target_1_1"],
+                    "target_1_2": calc["target_1_2"],
+                    "target_1_3": calc["target_1_3"],
+                    "target_price": calc["target_1_2"],
+                    "amt_1_2": calc["amt_1_2"],
+                    "amt_1_3": calc["amt_1_3"],
+                    "sl_rupee_per_share": calc["sl_rupee_per_share"],
+                    "quantity": qty,
+                    "investment_amount": investment,
+                    "actual_risk": actual_risk,
+                    "risk_pct_per_trade": risk_pct_clean,
+                    "predicted_r": float(cand.get("predicted_r", 0.0)),
+                    "profit_pct": float(cand.get("profit_pct", 0.0)),
+                    "allocation_status": "REMOVED_BY_USER",
+                    "status": "UNCONFIRMED",
+                    "can_take": False,
+                    "is_dismissed": True,
+                    "is_confirmed": False,
+                    "reason": "Removed from confirmed plan by user."
+                })
+                continue
+
             if qty < 1 or investment <= 0:
                 skipped_orders.append({
                     "priority_rank": idx,
@@ -606,14 +650,20 @@ class RiskCalculator:
                     "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
                     "action": act,
                     "entry_price": entry_px,
+                    "buy_trigger": entry_px,
                     "sl_price": sl_px,
+                    "stop_loss": sl_px,
+                    "target_1_2": calc["target_1_2"],
+                    "target_price": calc["target_1_2"],
                     "quantity": qty,
                     "investment_amount": investment,
                     "actual_risk": actual_risk,
                     "predicted_r": float(cand.get("predicted_r", 0.0)),
                     "profit_pct": float(cand.get("profit_pct", 0.0)),
                     "allocation_status": "SKIPPED_INVALID_PRICING",
+                    "status": "UNCONFIRMED",
                     "can_take": False,
+                    "is_confirmed": False,
                     "reason": "Calculated quantity is 0 or invalid entry/SL pricing."
                 })
                 continue
@@ -631,10 +681,13 @@ class RiskCalculator:
                     "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
                     "action": act,
                     "entry_price": entry_px,
+                    "buy_trigger": entry_px,
                     "sl_price": sl_px,
+                    "stop_loss": sl_px,
                     "target_1_1": calc["target_1_1"],
                     "target_1_2": calc["target_1_2"],
                     "target_1_3": calc["target_1_3"],
+                    "target_price": calc["target_1_2"],
                     "amt_1_2": calc["amt_1_2"],
                     "amt_1_3": calc["amt_1_3"],
                     "sl_rupee_per_share": calc["sl_rupee_per_share"],
@@ -645,6 +698,8 @@ class RiskCalculator:
                     "predicted_r": float(cand.get("predicted_r", 0.0)),
                     "profit_pct": float(cand.get("profit_pct", 0.0)),
                     "allocation_status": "CONFIRMED",
+                    "status": "CONFIRMED",
+                    "is_confirmed": True,
                     "can_take": True,
                     "remaining_budget_after": budget_remaining,
                     "reason": f"Confirmed: ₹{investment:,.2f} allocated (Qty: {qty} @ ₹{entry_px:.2f}). Max 15% pos cap & 1% risk enforced."
@@ -667,14 +722,19 @@ class RiskCalculator:
                     "strategy": cand.get("strategy", cand.get("strategy_id", "50 MA Setup")),
                     "action": act,
                     "entry_price": entry_px,
+                    "buy_trigger": entry_px,
                     "sl_price": sl_px,
+                    "stop_loss": sl_px,
                     "target_1_2": calc["target_1_2"],
+                    "target_price": calc["target_1_2"],
                     "quantity": qty,
                     "investment_amount": investment,
                     "actual_risk": actual_risk,
                     "predicted_r": float(cand.get("predicted_r", 0.0)),
                     "profit_pct": float(cand.get("profit_pct", 0.0)),
                     "allocation_status": skip_status,
+                    "status": "UNCONFIRMED",
+                    "is_confirmed": False,
                     "can_take": False,
                     "shortfall": shortfall,
                     "reason": skip_reason
@@ -776,6 +836,17 @@ class RiskCalculator:
             except Exception as stage_e:
                 logger.error(f"Failed to auto-stage confirmed orders: {stage_e}")
 
+        # Construct all_orders combining confirmed and unconfirmed/skipped orders
+        all_candidate_orders = []
+        for o in confirmed_orders:
+            o_copy = dict(o)
+            o_copy["is_confirmed"] = True
+            all_candidate_orders.append(o_copy)
+        for o in skipped_orders:
+            o_copy = dict(o)
+            o_copy["is_confirmed"] = False
+            all_candidate_orders.append(o_copy)
+
         plan_summary = {
             "effective_capital": effective_cap,
             "allocated_remaining_capital": allocated_remaining,
@@ -789,6 +860,7 @@ class RiskCalculator:
             "total_candidates_evaluated": len(sorted_candidates),
             "confirmed_orders": confirmed_orders,
             "skipped_orders": skipped_orders,
+            "all_orders": all_candidate_orders,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
@@ -804,6 +876,46 @@ class RiskCalculator:
             logger.debug(f"Could not persist allocation plan: {save_e}")
 
         return plan_summary
+
+    def dismiss_confirmed_order(self, symbol: str) -> bool:
+        """Removes a symbol from confirmed orders and persists to MongoDB."""
+        sym_clean = str(symbol).strip().upper()
+        if not sym_clean:
+            return False
+        try:
+            if db_manager.trading_settings is not None:
+                db_manager.trading_settings.update_one(
+                    {"key": "dismissed_confirmed_symbols"},
+                    {"$addToSet": {"symbols": sym_clean}},
+                    upsert=True
+                )
+            if db_manager.staged_orders is not None:
+                db_manager.staged_orders.delete_many({"symbol": sym_clean})
+            # Recompute and persist allocation plan
+            self.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+            return True
+        except Exception as e:
+            logger.error(f"Error dismissing confirmed order for {symbol}: {e}")
+            return False
+
+    def restore_confirmed_order(self, symbol: str) -> bool:
+        """Restores a previously dismissed symbol so it can be confirmed again."""
+        sym_clean = str(symbol).strip().upper()
+        if not sym_clean:
+            return False
+        try:
+            if db_manager.trading_settings is not None:
+                db_manager.trading_settings.update_one(
+                    {"key": "dismissed_confirmed_symbols"},
+                    {"$pull": {"symbols": sym_clean}},
+                    upsert=True
+                )
+            # Recompute and persist allocation plan
+            self.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
+            return True
+        except Exception as e:
+            logger.error(f"Error restoring confirmed order for {symbol}: {e}")
+            return False
 
     def get_allocation_plan(self) -> Dict[str, Any]:
         """Returns the latest persisted allocation plan or computes one on the fly."""

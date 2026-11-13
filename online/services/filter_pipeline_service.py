@@ -223,8 +223,11 @@ class FilterPipelineService:
                         if sid in default_map and sid not in seen_ids:
                             merged = dict(default_map[sid])
                             merged["enabled"] = bool(saved.get("enabled", merged.get("enabled", True)))
-                            if "selected_threshold" in saved:
-                                merged["selected_threshold"] = float(saved["selected_threshold"])
+                            if "selected_threshold" in saved and saved["selected_threshold"] is not None:
+                                try:
+                                    merged["selected_threshold"] = float(saved["selected_threshold"])
+                                except (ValueError, TypeError):
+                                    pass
                             reconstructed.append(merged)
                             seen_ids.add(sid)
 
@@ -280,8 +283,11 @@ class FilterPipelineService:
             if sid in default_map and sid not in seen and sid not in ("primary_model", "final_execution_list"):
                 entry = dict(default_map[sid])
                 entry["enabled"] = bool(s.get("enabled", entry.get("enabled", True)))
-                if "selected_threshold" in s:
-                    entry["selected_threshold"] = float(s["selected_threshold"])
+                if "selected_threshold" in s and s["selected_threshold"] is not None:
+                    try:
+                        entry["selected_threshold"] = float(s["selected_threshold"])
+                    except (ValueError, TypeError):
+                        pass
                 cleaned_stages.append(entry)
                 seen.add(sid)
 

@@ -234,105 +234,348 @@
             </div>
         </section>
 
-        <!-- Executive KPI Cards -->
+        <!-- Executive KPI Cards (4 Minimal Cards) -->
         <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <!-- Metric 1: Armed Setups -->
+            <!-- Metric 1: Paper Account -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Paper Account Base</span>
+                    <i data-lucide="wallet" class="w-4 h-4 text-neutral-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span class="text-2xl lg:text-3xl font-bold font-mono tracking-tight text-white">₹{{ "{:,.2f}".format(summary.paper_capital if summary and summary.paper_capital else (stats.broker_total_capital or 532721.76)) }}</span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-normal">
+                    MegaBull Virtual Capital Pool
+                </p>
+            </div>
+
+            <!-- Metric 2: Active Trading Capital -->
+            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
+                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
+                    <span>Active Capital Limit</span>
+                    <i data-lucide="sliders" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="mt-2 flex items-baseline space-x-2">
+                    <span id="labelEffectiveCapitalCard" class="text-2xl lg:text-3xl font-bold font-mono tracking-tight text-blue-400">₹{{ "{:,.2f}".format(plan.effective_capital if plan and plan.effective_capital else (stats.effective_capital or 100000.00)) }}</span>
+                </div>
+                <p class="mt-2 text-[11px] text-apple-subtext font-normal">
+                    Max 10% / Stock (₹10,000 cap)
+                </p>
+            </div>
+
+            <!-- Metric 3: Committed Capital & Armed Orders -->
             <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
                 <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
                     <span>Armed for Execution</span>
-                    <i data-lucide="shield-alert" class="w-4 h-4 text-emerald-400"></i>
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
                 </div>
                 <div class="mt-2 flex items-baseline space-x-2">
-                    <span id="kpiArmedCount" class="text-3xl font-bold font-mono tracking-tight text-white">{{ stats.armed_orders_count }}</span>
-                    <span class="text-xs text-neutral-400 font-normal">of <span id="kpiTotalOrders">{{ stats.total_orders }}</span> Setups</span>
+                    <span id="kpiArmedCount" class="text-3xl font-bold font-mono tracking-tight text-white">{{ confirmed_orders|length }}</span>
+                    <span class="text-xs text-neutral-400 font-normal">of <span id="kpiTotalOrders">{{ all_orders|length }}</span> Setups</span>
                 </div>
-                <p class="mt-2 text-[11px] text-emerald-400/90 font-medium flex items-center space-x-1">
-                    <i data-lucide="check-circle" class="w-3 h-3 inline"></i>
-                    <span>Ready for Buy Trigger Hit</span>
+                <p class="mt-2 text-[11px] text-emerald-400 font-mono font-medium flex items-center space-x-1">
+                    <span>Committed: ₹{{ "{:,.2f}".format(plan.total_committed_capital if plan and plan.total_committed_capital else 0.00) }}</span>
                 </p>
             </div>
 
-            <!-- Metric 2: AI Expectancy -->
+            <!-- Metric 4: Remaining Deployable Cash -->
             <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
                 <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span>AI Model Expectancy</span>
-                    <i data-lucide="sparkles" class="w-4 h-4 text-blue-400"></i>
+                    <span>Remaining to Trade</span>
+                    <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
                 </div>
                 <div class="mt-2 flex items-baseline space-x-2">
-                    <span id="kpiAvgPredR" class="text-3xl font-bold font-mono tracking-tight text-blue-400">+{{ "%.2f"|format(stats.avg_predicted_r) }} R</span>
-                </div>
-                <p class="mt-2 text-[11px] text-apple-subtext font-normal">
-                    Calibrated XGBoost Payoff Edge
-                </p>
-            </div>
-
-            <!-- Metric 3: Strict Geometry -->
-            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
-                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span>Payoff Geometry</span>
-                    <i data-lucide="scale" class="w-4 h-4 text-amber-400"></i>
-                </div>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span class="text-3xl font-bold font-mono tracking-tight text-white">1 : 2.00</span>
-                    <span class="text-xs text-neutral-400 font-mono">R:R</span>
-                </div>
-                <div class="mt-2 text-[11px] text-neutral-300 font-mono flex items-center justify-between">
-                    <span>Avg Profit: <span id="kpiAvgProfit" class="text-emerald-400 font-semibold">+{{ "%.2f"|format(stats.avg_profit_pct) }}%</span></span>
-                    <span>Risk: <span id="kpiAvgLoss" class="text-rose-400 font-semibold">-{{ "%.2f"|format(stats.avg_loss_pct) }}%</span></span>
-                </div>
-            </div>
-
-            <!-- Metric 4: Capital / Risk Required -->
-            <div class="rounded-2xl hairline-border bg-white/[0.03] p-5 backdrop-blur-xl apple-spring hover:border-white/20">
-                <div class="flex items-center justify-between text-apple-subtext text-xs uppercase tracking-wider font-semibold">
-                    <span>Total Armed Capital</span>
-                    <i data-lucide="wallet" class="w-4 h-4 text-purple-400"></i>
-                </div>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span id="kpiTotalCapital" class="text-2xl lg:text-3xl font-bold font-mono tracking-tight text-white">₹{{ "{:,.0f}".format(stats.total_capital_required) }}</span>
+                    <span class="text-2xl lg:text-3xl font-bold font-mono tracking-tight text-amber-400">₹{{ "{:,.2f}".format(plan.allocated_remaining_capital if plan and plan.allocated_remaining_capital else (stats.allocated_remaining_capital or 100000.00)) }}</span>
                 </div>
                 <p class="mt-2 text-[11px] text-apple-subtext font-mono">
-                    Total Risk: <span id="kpiTotalRisk" class="text-neutral-300 font-semibold">₹{{ "{:,.0f}".format(stats.total_risk_budget) }}</span>
+                    Max 1% Risk: <span class="text-rose-400 font-semibold">₹{{ "{:,.2f}".format(plan.risk_per_trade if plan and plan.risk_per_trade else 1000.00) }}</span>
                 </p>
             </div>
         </section>
 
-        <!-- Primary View Switcher: Trade Book vs Scanned Watchlist -->
+        <!-- Primary View Switcher: Confirmed Orders vs All Orders vs Trade Book -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="inline-flex rounded-2xl hairline-border bg-white/[0.03] p-1.5 backdrop-blur-xl space-x-1">
-                <button onclick="switchMainView('TRADEBOOK')" id="tabBtnTradebook" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-lg shadow-blue-600/30 apple-spring flex items-center space-x-2">
-                    <i data-lucide="book-open" class="w-4 h-4"></i>
-                    <span>Trade Book &amp; Executed Portfolio</span>
-                    <span id="badgeTradebookCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/20 text-white">
+                <button onclick="switchMainView('CONFIRMED')" id="tabBtnConfirmed" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 apple-spring flex items-center space-x-2">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    <span>Confirmed Orders (Tomorrow)</span>
+                    <span id="badgeConfirmedCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/20 text-white">
+                        {{ confirmed_orders|length }}
+                    </span>
+                </button>
+                <button onclick="switchMainView('ALL_ORDERS')" id="tabBtnAllOrders" class="px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2">
+                    <i data-lucide="list-filter" class="w-4 h-4 text-blue-400"></i>
+                    <span>All Orders (Offline Setups)</span>
+                    <span id="badgeAllOrdersCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.06] text-neutral-300">
+                        {{ all_orders|length }}
+                    </span>
+                </button>
+                <button onclick="switchMainView('TRADEBOOK')" id="tabBtnTradebook" class="px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2">
+                    <i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i>
+                    <span>Trade Book Ledger</span>
+                    <span id="badgeTradebookCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.06] text-neutral-400">
                         {{ trade_journal|length }}
-                    </span>
-                </button>
-                <button onclick="switchMainView('WATCHLIST')" id="tabBtnWatchlist" class="px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2">
-                    <i data-lucide="crosshair" class="w-4 h-4 text-emerald-400"></i>
-                    <span>Scanned Watchlist &amp; Triggers</span>
-                    <span id="badgeWatchlistCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.06] text-neutral-300">
-                        {{ orders|length }}
-                    </span>
-                </button>
-                <button onclick="switchMainView('ALLOCATION')" id="tabBtnAllocation" class="px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2">
-                    <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
-                    <span>Confirmed Orders Plan</span>
-                    <span id="badgeAllocationCount" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300">
-                        0 Confirmed
                     </span>
                 </button>
             </div>
             <div class="text-xs text-apple-subtext font-mono flex items-center space-x-2">
                 <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Calculated from 4 Core MongoDB Geometry Parameters</span>
+                <span>Live Stock Orders &amp; Execution Triggers</span>
             </div>
         </div>
 
         <!-- ============================================================== -->
-        <!-- VIEW 1: TRADE BOOK (STOCKS BOUGHT & COMPLETED TRADES)           -->
+        <!-- VIEW 1: CONFIRMED ORDERS (TOMORROW / NEXT DAY EXECUTION)        -->
+        <!-- Sized with 10% Position Cap and 1% Risk Allocation              -->
+        <!-- ============================================================== -->
+        <div id="viewConfirmed" class="space-y-6">
+            <!-- Confirmed Orders Header & Sizing Rules Banner -->
+            <section class="rounded-2xl hairline-border bg-white/[0.02] p-5 backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h2 class="text-base font-bold text-white tracking-tight">Confirmed Orders • Next Day Execution</h2>
+                        <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Auto-Staged 09:15 AM
+                        </span>
+                        <span class="px-2 py-0.5 text-[10px] font-mono rounded-full bg-white/[0.06] text-neutral-300 hairline-border">
+                            Max 10% / Stock • 1% Risk
+                        </span>
+                    </div>
+                    <p class="text-xs text-neutral-400 mt-1">
+                        High-conviction setups staged for tomorrow's market open. Sized strictly with <strong>≤ 10% capital cap (₹10,000 max)</strong> and <strong>≤ 1% risk per trade</strong>. You can dismiss any trade using the Remove button.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2.5 flex-shrink-0">
+                    <button onclick="reevaluateAllocation()" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-neutral-200 hairline-border flex items-center space-x-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Re-evaluate Pool</span>
+                    </button>
+                    <a href="/plan" class="apple-spring px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 flex items-center space-x-1.5">
+                        <i data-lucide="target" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>Filter Pipeline</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Confirmed Orders Table -->
+            <section class="rounded-2xl hairline-border bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/80">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead>
+                            <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
+                                <th class="py-3.5 px-4 text-center w-12">#</th>
+                                <th class="py-3.5 px-4 font-semibold text-white">Stock / Symbol</th>
+                                <th class="py-3.5 px-3 font-semibold text-white">Action &amp; Rule</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Buy Trigger</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Stop Loss (SL)</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Target (1:2 R:R)</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Scheduled Qty</th>
+                                <th class="py-3.5 px-4 text-right font-semibold text-white">Capital Required</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Risk at SL</th>
+                                <th class="py-3.5 px-3 text-center font-semibold text-white">AI Expectancy</th>
+                                <th class="py-3.5 px-3 text-center font-semibold text-white">Status</th>
+                                <th class="py-3.5 px-4 text-right font-semibold text-white">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="confirmedTableBody" class="divide-y divide-white/[0.04]">
+                            {% if confirmed_orders %}
+                            {% for order in confirmed_orders %}
+                            <tr class="apple-spring hover:bg-white/[0.03] transition-colors" data-symbol="{{ order.symbol }}">
+                                <td class="py-3.5 px-4 text-center font-mono font-bold text-amber-400">
+                                    #{{ loop.index }}
+                                </td>
+                                <td class="py-3.5 px-4 font-mono">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-bold text-white text-base tracking-tight">{{ order.symbol }}</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-mono rounded-md bg-white/[0.05] text-neutral-300 hairline-border">{{ order.strategy or '50 MA Setup' }}</span>
+                                    </div>
+                                    <div class="text-[11px] text-neutral-400 truncate max-w-[200px]">{{ order.name or order.symbol }}</div>
+                                </td>
+                                <td class="py-3.5 px-3 font-mono">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                        {{ order.action or 'BUY' }}
+                                    </span>
+                                    <div class="text-[10px] text-neutral-400 mt-0.5">High + ₹1.00</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono font-bold text-white text-sm">
+                                    ₹{{ "%.2f"|format(order.entry_price or order.buy_trigger or 0.0) }}
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono">
+                                    <span class="text-rose-400 font-semibold text-xs">₹{{ "%.2f"|format(order.sl_price or order.stop_loss or 0.0) }}</span>
+                                    <div class="text-[10px] text-neutral-400">Low - ₹1.00</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono">
+                                    <span class="text-emerald-400 font-bold text-xs">₹{{ "%.2f"|format(order.target_1_2 or order.target_price or 0.0) }}</span>
+                                    <div class="text-[10px] text-emerald-400/80 font-mono">+{{ "%.1f"|format(order.profit_pct or 0.0) }}% (2x Risk)</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono font-bold text-white text-sm">
+                                    {{ order.quantity }} shares
+                                </td>
+                                <td class="py-3.5 px-4 text-right font-mono">
+                                    <span class="text-white font-bold text-sm">₹{{ "{:,.2f}".format(order.investment_amount or 0.0) }}</span>
+                                    <div class="text-[10px] text-emerald-400">Strictly ≤ 10%</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono">
+                                    <span class="text-rose-300 font-semibold text-xs">₹{{ "{:,.2f}".format(order.actual_risk or 0.0) }}</span>
+                                    <div class="text-[10px] text-neutral-400">Strictly ≤ 1%</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-center font-mono">
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                        +{{ "%.2f"|format(order.predicted_r or 0.0) }} R
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-3 text-center font-mono">
+                                    <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 inline-flex items-center space-x-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span>CONFIRMED</span>
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-4 text-right font-mono">
+                                    <button onclick="removeConfirmedOrder('{{ order.symbol }}')" class="apple-spring px-3 py-1.5 rounded-xl text-xs font-medium text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 flex items-center space-x-1.5 ml-auto active:scale-95 shadow-sm" title="Remove {{ order.symbol }} from confirmed orders">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Remove</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr id="confirmedEmptyRow">
+                                <td colspan="12" class="py-16 text-center text-apple-subtext font-mono space-y-2">
+                                    <i data-lucide="check-circle" class="w-10 h-10 mx-auto text-neutral-600"></i>
+                                    <div class="text-sm text-neutral-300 font-medium">No confirmed orders staged yet.</div>
+                                    <div class="text-xs text-neutral-500">Review candidates under the "All Orders" tab or re-evaluate the pool.</div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- VIEW 2: ALL ORDERS (OFFLINE APP SETUPS & CANDIDATES)            -->
+        <!-- Lists Confirmed and Unconfirmed Setups with Status & Reasons     -->
+        <!-- ============================================================== -->
+        <div id="viewAllOrders" class="space-y-6 hidden">
+            <!-- Filter Toolbar -->
+            <section class="rounded-2xl hairline-border bg-white/[0.02] p-4 backdrop-blur-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <!-- Search Box -->
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="allOrdersSearchInput" placeholder="Search symbol, company name, or strategy..." 
+                           oninput="onAllOrdersSearchChange()"
+                           class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
+                </div>
+
+                <!-- Status Filter Pills -->
+                <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0" id="allOrdersFilterPills">
+                    <button onclick="setAllOrdersFilter('ALL')" data-filter="ALL" class="all-filter-btn active px-3 py-1.5 rounded-xl text-xs font-semibold hairline-border bg-blue-500/20 text-blue-400 border-blue-500/30 apple-spring">
+                        All Setups ({{ all_orders|length }})
+                    </button>
+                    <button onclick="setAllOrdersFilter('CONFIRMED')" data-filter="CONFIRMED" class="all-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring flex items-center space-x-1.5">
+                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                        <span>Confirmed ({{ confirmed_orders|length }})</span>
+                    </button>
+                    <button onclick="setAllOrdersFilter('UNCONFIRMED')" data-filter="UNCONFIRMED" class="all-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring flex items-center space-x-1.5">
+                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                        <span>Unconfirmed ({{ skipped_orders|length }})</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- All Orders Table -->
+            <section class="rounded-2xl hairline-border bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/80">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead>
+                            <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
+                                <th class="py-3.5 px-4 text-center w-12">#</th>
+                                <th class="py-3.5 px-4 font-semibold text-white">Stock / Symbol</th>
+                                <th class="py-3.5 px-3 font-semibold text-white">Action</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Buy Trigger</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Stop Loss (SL)</th>
+                                <th class="py-3.5 px-3 text-right font-semibold text-white">Target (1:2 R:R)</th>
+                                <th class="py-3.5 px-3 text-center font-semibold text-white">AI Expectancy</th>
+                                <th class="py-3.5 px-4 font-semibold text-white">Confirmation Status &amp; Reason</th>
+                                <th class="py-3.5 px-4 text-right font-semibold text-white">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allOrdersTableBody" class="divide-y divide-white/[0.04]">
+                            {% for order in all_orders %}
+                            {% set is_conf = order.is_confirmed or order.allocation_status == 'CONFIRMED' %}
+                            <tr class="all-order-row apple-spring hover:bg-white/[0.03] transition-colors {{ 'bg-emerald-500/[0.02]' if is_conf else 'opacity-85' }}" 
+                                data-status="{{ 'CONFIRMED' if is_conf else 'UNCONFIRMED' }}" 
+                                data-symbol="{{ order.symbol }}">
+                                <td class="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
+                                    #{{ loop.index }}
+                                </td>
+                                <td class="py-3.5 px-4 font-mono">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-bold text-white text-base tracking-tight">{{ order.symbol }}</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-mono rounded-md bg-white/[0.05] text-neutral-300 hairline-border">{{ order.strategy or '50 MA Setup' }}</span>
+                                    </div>
+                                    <div class="text-[11px] text-neutral-400 truncate max-w-[200px]">{{ order.name or order.symbol }}</div>
+                                </td>
+                                <td class="py-3.5 px-3 font-mono">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' if 'BUY' in order.action else 'bg-blue-500/15 text-blue-400 border border-blue-500/30' }}">
+                                        {{ order.action or 'BUY' }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono font-bold text-white text-sm">
+                                    ₹{{ "%.2f"|format(order.entry_price or order.buy_trigger or 0.0) }}
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono text-rose-400 font-semibold text-xs">
+                                    ₹{{ "%.2f"|format(order.sl_price or order.stop_loss or 0.0) }}
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-mono text-emerald-400 font-bold text-xs">
+                                    ₹{{ "%.2f"|format(order.target_1_2 or order.target_price or 0.0) }}
+                                </td>
+                                <td class="py-3.5 px-3 text-center font-mono">
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                        +{{ "%.2f"|format(order.predicted_r or 0.0) }} R
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-4 font-mono">
+                                    {% if is_conf %}
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">CONFIRMED</span>
+                                        <span class="text-xs text-neutral-300">Armed for 09:15 AM (Qty: {{ order.quantity }})</span>
+                                    </div>
+                                    {% else %}
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">UNCONFIRMED</span>
+                                        <span class="text-xs text-neutral-400 truncate max-w-sm" title="{{ order.reason }}">{{ order.reason or 'Skipped due to allocation filters or budget limit.' }}</span>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3.5 px-4 text-right font-mono">
+                                    {% if is_conf %}
+                                    <button onclick="removeConfirmedOrder('{{ order.symbol }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 flex items-center space-x-1 ml-auto active:scale-95 shadow-sm" title="Remove {{ order.symbol }} from confirmed plan">
+                                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                        <span>Remove</span>
+                                    </button>
+                                    {% else %}
+                                    <button onclick="restoreConfirmedOrder('{{ order.symbol }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-600 border border-emerald-500/30 flex items-center space-x-1 ml-auto active:scale-95 shadow-sm" title="Confirm / Re-add {{ order.symbol }} to candidate pool">
+                                        <i data-lucide="plus-circle" class="w-3 h-3"></i>
+                                        <span>Restore</span>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- VIEW 3: TRADE BOOK (STOCKS BOUGHT & COMPLETED TRADES)           -->
         <!-- Exact 17 Columns with Running Blank & Completed Exit Values     -->
         <!-- ============================================================== -->
-        <div id="viewTradebook" class="space-y-6">
+        <div id="viewTradebook" class="space-y-6 hidden">
             <!-- Filter Toolbar for Trade Book -->
             <section class="rounded-2xl hairline-border bg-white/[0.02] p-4 backdrop-blur-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <!-- Search Box -->
@@ -553,381 +796,6 @@
             </section>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- VIEW 2: SCANNED WATCHLIST & ARMED TRIGGERS                      -->
-        <!-- ============================================================== -->
-        <div id="viewWatchlist" class="space-y-6 hidden">
-        <!-- Filter & Control Toolbar -->
-        <section class="rounded-2xl hairline-border bg-white/[0.02] p-4 backdrop-blur-xl space-y-4">
-            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                
-                <!-- Search Box -->
-                <div class="relative flex-1 max-w-md">
-                    <i data-lucide="search" class="w-4 h-4 text-apple-subtext absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                    <input type="text" id="searchInput" placeholder="Search stock symbol, company, or sector..." 
-                           oninput="onSearchChange()"
-                           class="w-full bg-black/60 hairline-border rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-apple-subtext focus:outline-none focus:border-blue-500/60 apple-spring font-mono">
-                </div>
-
-                <!-- Status Filter Pills -->
-                <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0" id="statusFilterPills">
-                    <button onclick="setStatusFilter('ALL')" data-status="ALL" class="status-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring">
-                        All Orders
-                    </button>
-                    <button onclick="setStatusFilter('ARMED')" data-status="ARMED" class="status-btn active px-3 py-1.5 rounded-xl text-xs font-semibold hairline-border bg-emerald-500/20 text-emerald-400 border-emerald-500/30 apple-spring flex items-center space-x-1.5">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                        <span>Armed Today</span>
-                    </button>
-                    <button onclick="setStatusFilter('ACTIVE')" data-status="ACTIVE" class="status-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring">
-                        Active In Market
-                    </button>
-                    <button onclick="setStatusFilter('RESOLVED')" data-status="RESOLVED" class="status-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring">
-                        Closed (Target/SL)
-                    </button>
-                </div>
-            </div>
-
-            <!-- Strategy & Setup Secondary Filters -->
-            <div class="flex flex-wrap items-center justify-between pt-3 hairline-bottom border-t border-white/[0.06] text-xs gap-3">
-                <!-- Strategy Pills -->
-                <div class="flex items-center space-x-2">
-                    <span class="text-apple-subtext font-medium">Strategy:</span>
-                    <button onclick="setStrategyFilter('ALL')" data-strategy="ALL" class="strat-btn active px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 apple-spring">
-                        All Strategies
-                    </button>
-                    <button onclick="setStrategyFilter('50 MA Setup')" data-strategy="50 MA Setup" class="strat-btn px-2.5 py-1 rounded-lg hairline-border bg-white/[0.03] text-neutral-400 hover:text-white apple-spring">
-                        50 MA Setup
-                    </button>
-                    <button onclick="setStrategyFilter('Global Forecast')" data-strategy="Global Forecast" class="strat-btn px-2.5 py-1 rounded-lg hairline-border bg-white/[0.03] text-neutral-400 hover:text-white apple-spring">
-                        Global Forecast
-                    </button>
-                </div>
-
-                <!-- Setup Subclass Pills -->
-                <div class="flex items-center space-x-2">
-                    <span class="text-apple-subtext font-medium">Setup:</span>
-                    <select id="setupSelect" onchange="onSetupChange()" class="bg-black/60 hairline-border rounded-lg px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-blue-500/50 apple-spring">
-                        <option value="0">All Setups (1, 2, 3)</option>
-                        <option value="1">Setup 1 • Confluence Zone (-10 to +30)</option>
-                        <option value="2">Setup 2 • Extended Trend (> +30)</option>
-                        <option value="3">Setup 3 • Mean-Reverting (< -10)</option>
-                    </select>
-                </div>
-            </div>
-        </section>
-
-        <!-- Orders Table / Board Section -->
-        <section class="rounded-2xl hairline-border bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/80">
-            <!-- Section Header -->
-            <div class="px-6 py-4 hairline-bottom flex items-center justify-between">
-                <div class="flex items-center space-x-2.5">
-                    <i data-lucide="list-ordered" class="w-4 h-4 text-blue-400"></i>
-                    <h2 class="text-sm font-semibold tracking-tight text-white">Live Stock Orders & Execution Triggers</h2>
-                    <span id="resultsCountBadge" class="px-2 py-0.5 text-[11px] font-mono rounded-full bg-white/[0.05] text-neutral-400 hairline-border">
-                        Showing {{ orders|length }} orders
-                    </span>
-                </div>
-                <div class="text-xs text-apple-subtext font-mono flex items-center space-x-2">
-                    <span>Rules: Buy = High + ₹1.00 | SL = Low - ₹1.00</span>
-                </div>
-            </div>
-
-            <!-- Orders Table Container -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                    <thead>
-                        <tr class="hairline-bottom text-[11px] uppercase tracking-wider text-apple-subtext font-semibold bg-white/[0.01]">
-                            <th class="py-3 px-5">Stock / Symbol</th>
-                            <th class="py-3 px-4">Action</th>
-                            <th class="py-3 px-4 text-right">Buy Trigger</th>
-                            <th class="py-3 px-4 text-right">Stop Loss (SL)</th>
-                            <th class="py-3 px-4 text-right">Target (1:2 R:R)</th>
-                            <th class="py-3 px-4 text-center">AI Expectancy</th>
-                            <th class="py-3 px-4 text-center">Strategy</th>
-                            <th class="py-3 px-4 text-center">Status</th>
-                            <th class="py-3 px-5 text-right">Execution / Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ordersTableBody" class="divide-y divide-white/[0.04]">
-                        <!-- Rendered by client script or server template -->
-                        {% for order in orders %}
-                        <tr class="order-row apple-spring hover:bg-white/[0.03] transition-colors" data-id="{{ order.id }}">
-                            <!-- Stock -->
-                            <td class="py-3.5 px-5">
-                                <div class="flex items-center space-x-3">
-                                    <div class="h-8 w-8 rounded-lg bg-white/[0.06] flex items-center justify-center font-mono font-bold text-xs text-white border border-white/10">
-                                        {{ order.symbol[:2] }}
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-white tracking-tight flex items-center space-x-2">
-                                            <span>{{ order.symbol }}</span>
-                                            {% if order.is_latest %}
-                                            <span class="px-1.5 py-0.2 rounded text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">TODAY</span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="text-[11px] text-apple-subtext truncate max-w-[180px]">{{ order.name }} • <span class="text-neutral-500">{{ order.sector }}</span></div>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <!-- Action -->
-                            <td class="py-3.5 px-4">
-                                <span class="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase font-mono 
-                                    {% if order.action == 'STRONG BUY' %}
-                                    bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
-                                    {% else %}
-                                    bg-blue-500/15 text-blue-400 border border-blue-500/30
-                                    {% endif %}">
-                                    {{ order.action }}
-                                </span>
-                            </td>
-
-                            <!-- Buy Trigger -->
-                            <td class="py-3.5 px-4 text-right font-mono">
-                                <div class="text-sm font-bold text-white">₹{{ "%.2f"|format(order.buy_trigger) }}</div>
-                                <div class="text-[10px] text-neutral-400 font-sans">High + ₹1.00</div>
-                            </td>
-
-                            <!-- Stop Loss -->
-                            <td class="py-3.5 px-4 text-right font-mono">
-                                <div class="text-sm font-semibold text-rose-400">₹{{ "%.2f"|format(order.sl_price) }}</div>
-                                <div class="text-[10px] text-rose-400/80 font-sans">-{{ "%.2f"|format(order.loss_pct) }}% (Low - ₹1)</div>
-                            </td>
-
-                            <!-- Target -->
-                            <td class="py-3.5 px-4 text-right font-mono">
-                                <div class="text-sm font-semibold text-emerald-400">₹{{ "%.2f"|format(order.target_price) }}</div>
-                                <div class="text-[10px] text-emerald-400/80 font-sans">+{{ "%.2f"|format(order.profit_pct) }}% (2x Risk)</div>
-                            </td>
-
-                            <!-- AI Expectancy -->
-                            <td class="py-3.5 px-4 text-center font-mono">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                                    +{{ "%.2f"|format(order.predicted_r) }} R
-                                </span>
-                            </td>
-
-                            <!-- Strategy -->
-                            <td class="py-3.5 px-4 text-center font-mono">
-                                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/[0.04] text-neutral-200 hairline-border inline-block">
-                                    {{ order.strategy }}
-                                </span>
-                                <span class="text-[10px] text-apple-subtext block mt-0.5">
-                                    {{ order.setup_subclass or ('Setup ' ~ order.setup_num) }}
-                                </span>
-                            </td>
-
-                            <!-- Status -->
-                            <td class="py-3.5 px-4 text-center">
-                                {% if order.status == 'ARMED' %}
-                                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    <span>ARMED</span>
-                                </span>
-                                {% elif order.status == 'ACTIVE' %}
-                                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-blue-400 animate-ping"></span>
-                                    <span>ACTIVE</span>
-                                </span>
-                                {% elif order.status == 'TARGET_HIT' %}
-                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 hairline-border">
-                                    TARGET HIT (+2R)
-                                </span>
-                                {% elif order.status == 'SL_HIT' %}
-                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 hairline-border">
-                                    SL HIT (-1R)
-                                </span>
-                                {% else %}
-                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-neutral-800 text-neutral-400 hairline-border">
-                                    {{ order.status }}
-                                </span>
-                                {% endif %}
-                            </td>
-
-                            <!-- Execution / Actions -->
-                            <td class="py-3.5 px-5 text-right font-mono">
-                                <div class="flex items-center justify-end space-x-2">
-                                    {% if order.is_in_portfolio %}
-                                        {% if order.portfolio_status == 'WILL_BE_PUT_AMO' %}
-                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center space-x-1 cursor-help">
-                                            <i data-lucide="clock" class="w-3 h-3 text-purple-400"></i>
-                                            <span>AMO 09:15</span>
-                                        </span>
-                                        {% elif order.portfolio_status == 'ORDER_PENDING' %}
-                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center space-x-1 cursor-help">
-                                            <i data-lucide="hourglass" class="w-3 h-3 text-amber-400"></i>
-                                            <span>Pending</span>
-                                        </span>
-                                        {% elif order.portfolio_status == 'RUNNING_HOLDING' %}
-                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1 cursor-help">
-                                            <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
-                                            <span>Holding</span>
-                                        </span>
-                                        {% else %}
-                                        <span title="{{ order.portfolio_reason }}" class="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1 cursor-help">
-                                            <i data-lucide="shield-check" class="w-3 h-3"></i>
-                                            <span>In Portfolio</span>
-                                        </span>
-                                        {% endif %}
-                                    {% elif not order.is_affordable %}
-                                    <button onclick="openPlaceOrderModal('{{ order.id }}')" title="{{ order.capital_reason }}" class="apple-spring px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-1">
-                                        <i data-lucide="alert-triangle" class="w-3 h-3 text-amber-400"></i>
-                                        <span>Cap Exceeded</span>
-                                    </button>
-                                    {% else %}
-                                    <button onclick="openPlaceOrderModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
-                                        <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
-                                        <span>Place Order</span>
-                                    </button>
-                                    {% endif %}
-                                    <button onclick="openOrderDetailModal('{{ order.id }}')" class="apple-spring px-2.5 py-1 rounded-lg text-xs font-medium hairline-border bg-white/[0.04] hover:bg-white/[0.1] text-neutral-200">
-                                        Inspect
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-                <!-- Empty State -->
-                <div id="emptyState" class="hidden py-16 text-center space-y-3">
-                    <div class="h-12 w-12 rounded-full bg-white/[0.03] hairline-border mx-auto flex items-center justify-center text-apple-subtext">
-                        <i data-lucide="inbox" class="w-6 h-6"></i>
-                    </div>
-                    <div class="text-sm font-semibold text-neutral-300">No matching orders found</div>
-                    <p class="text-xs text-apple-subtext max-w-sm mx-auto">
-                        Adjust your search query or status filter to see other trade candidates.
-                    </p>
-                </div>
-            </div>
-        </section>
-        </div><!-- End viewWatchlist -->
-
-        <!-- ============================================================== -->
-        <!-- VIEW 3: CAPITAL ALLOCATION & CONFIRMED ORDERS PLAN              -->
-        <!-- Best Orders on Top • 1% Risk Sizing • Budget Optimization       -->
-        <!-- ============================================================== -->
-        <div id="viewAllocation" class="space-y-6 hidden">
-            <!-- Header Banner -->
-            <section class="rounded-3xl hairline-border bg-gradient-to-r from-amber-950/30 via-neutral-900/60 to-orange-950/30 p-6 backdrop-blur-2xl border border-amber-500/20 shadow-2xl">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="flex items-start space-x-4">
-                        <div class="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold font-mono text-lg shadow-inner flex-shrink-0">
-                            <i data-lucide="award" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <h2 class="text-lg font-bold text-white tracking-tight">Best Orders First • Capital Allocation Engine</h2>
-                                <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                    Pre-Market Optimizer
-                                </span>
-                            </div>
-                            <p class="text-xs text-neutral-300 mt-1 max-w-2xl leading-relaxed">
-                                Setups are ranked with the <strong>best orders on top</strong> (Armed status, highest AI Payoff Expectancy R-multiple, highest profit reward). Each trade is sized with the <strong>Excel 1% Risk per Trade model</strong>. Only confirmed trades fitting within your available budget will be automatically staged off-market for 09:15 AM execution.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-2.5 flex-shrink-0">
-                        <a href="/plan" class="apple-spring px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 flex items-center space-x-1.5 shadow" title="Open Interactive Filter Workflow Map">
-                            <i data-lucide="git-merge" class="w-3.5 h-3.5 text-purple-400"></i>
-                            <span>Filter Pipeline Map</span>
-                        </a>
-                        <button type="button" onclick="openCapitalSettingsModal()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.14] text-white hairline-border flex items-center space-x-1.5 shadow">
-                            <i data-lucide="sliders" class="w-3.5 h-3.5 text-amber-400"></i>
-                            <span>Update Capital Limit</span>
-                        </button>
-                        <button type="button" id="btnReevaluateAlloc" onclick="reevaluateAllocation()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white flex items-center space-x-1.5 shadow-lg shadow-amber-600/30">
-                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                            <span>Re-allocate &amp; Stage</span>
-                        </button>
-                        <button type="button" id="btnExecuteConfirmed" onclick="executeConfirmedOrdersNow()" class="apple-spring px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30">
-                            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                            <span>Auto-Execute Confirmed</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- KPI Cards for Capital Allocation -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
-                    <div class="rounded-xl bg-black/40 hairline-border p-3">
-                        <span class="text-[10px] uppercase font-mono font-bold text-neutral-400 block">Capital Budget</span>
-                        <span id="allocStatEffectiveCap" class="text-lg font-bold font-mono text-white mt-0.5 block">₹0.00</span>
-                        <span id="allocStatLimitBadge" class="text-[10px] text-amber-400 font-mono">Active Threshold</span>
-                    </div>
-                    <div class="rounded-xl bg-black/40 hairline-border p-3">
-                        <span class="text-[10px] uppercase font-mono font-bold text-neutral-400 block">1% Risk / Trade</span>
-                        <span id="allocStatRiskPerTrade" class="text-lg font-bold font-mono text-rose-400 mt-0.5 block">₹0.00</span>
-                        <span class="text-[10px] text-neutral-400 font-mono">Strict Risk Ceiling</span>
-                    </div>
-                    <div class="rounded-xl bg-black/40 hairline-border p-3">
-                        <span class="text-[10px] uppercase font-mono font-bold text-neutral-400 block">Committed Capital</span>
-                        <span id="allocStatCommittedCap" class="text-lg font-bold font-mono text-emerald-400 mt-0.5 block">₹0.00</span>
-                        <span id="allocStatConfirmedCount" class="text-[10px] text-emerald-400 font-mono">0 Confirmed Orders</span>
-                    </div>
-                    <div class="rounded-xl bg-black/40 hairline-border p-3">
-                        <span class="text-[10px] uppercase font-mono font-bold text-neutral-400 block">Total Risk Committed</span>
-                        <span id="allocStatCommittedRisk" class="text-lg font-bold font-mono text-amber-400 mt-0.5 block">₹0.00</span>
-                        <span class="text-[10px] text-neutral-400 font-mono">Sum of Actual Risks</span>
-                    </div>
-                    <div class="rounded-xl bg-black/40 hairline-border p-3">
-                        <span class="text-[10px] uppercase font-mono font-bold text-neutral-400 block">Unallocated Cash</span>
-                        <span id="allocStatRemainingCash" class="text-lg font-bold font-mono text-neutral-200 mt-0.5 block">₹0.00</span>
-                        <span id="allocStatSkippedCount" class="text-[10px] text-neutral-400 font-mono">0 Skipped (Budget)</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Ranked Allocation Table -->
-            <section class="rounded-2xl hairline-border bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/80">
-                <div class="px-6 py-4 hairline-bottom flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="flex items-center space-x-2.5">
-                        <i data-lucide="layers" class="w-4 h-4 text-amber-400"></i>
-                        <h3 class="text-sm font-semibold tracking-tight text-white">Ranked Order Hierarchy &amp; Confirmation Decisions</h3>
-                        <span id="allocPlanUpdatedTime" class="text-[11px] font-mono text-neutral-400"></span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="inline-flex items-center space-x-1.5 text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span>Auto-Staged for 09:15 AM</span>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse min-w-[950px]">
-                        <thead>
-                            <tr class="hairline-bottom text-[11px] font-mono text-apple-subtext uppercase tracking-wider bg-white/[0.02]">
-                                <th class="py-3.5 pl-6 pr-3 font-semibold text-center w-12">Rank</th>
-                                <th class="py-3.5 px-3 font-semibold">Symbol &amp; Company</th>
-                                <th class="py-3.5 px-3 font-semibold">Strategy &amp; AI Payoff</th>
-                                <th class="py-3.5 px-3 font-semibold text-right">Entry Price</th>
-                                <th class="py-3.5 px-3 font-semibold text-right">Stop Loss (Diff)</th>
-                                <th class="py-3.5 px-3 font-semibold text-right">Qty (1% Sized)</th>
-                                <th class="py-3.5 px-3 font-semibold text-right">Investment</th>
-                                <th class="py-3.5 px-3 font-semibold text-right">Actual Risk</th>
-                                <th class="py-3.5 px-3 font-semibold text-center">Targets (1:1 / 1:2)</th>
-                                <th class="py-3.5 pr-6 pl-3 font-semibold text-center">Decision / Execution</th>
-                            </tr>
-                        </thead>
-                        <tbody id="allocationTableBody" class="divide-y divide-white/[0.04] text-xs font-mono">
-                            <!-- Populated dynamically via renderAllocationUI() -->
-                        </tbody>
-                    </table>
-
-                    <div id="allocEmptyState" class="hidden py-16 text-center space-y-3">
-                        <div class="h-12 w-12 rounded-full bg-white/[0.03] hairline-border mx-auto flex items-center justify-center text-apple-subtext">
-                            <i data-lucide="check-circle-2" class="w-6 h-6 text-amber-400"></i>
-                        </div>
-                        <div class="text-sm font-semibold text-neutral-300">No Candidate Setups Available</div>
-                        <p class="text-xs text-apple-subtext max-w-sm mx-auto">
-                            Run 4:00 PM analysis or manual scan to populate candidate setups.
-                        </p>
-                    </div>
-                </div>
-            </section>
-        </div><!-- End viewAllocation -->
 
         <!-- Order Detail Drawer Modal -->
         <div id="orderModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
@@ -1611,7 +1479,7 @@
         // State cache
         let allOrders = {{ orders|tojson|safe }};
         let allTrades = {{ trade_journal|tojson|safe }};
-        let currentMainView = 'TRADEBOOK';
+        let currentMainView = 'CONFIRMED';
         let currentTradebookStatus = 'ALL';
         let tradebookSearchQuery = '';
 
@@ -1620,52 +1488,140 @@
         let currentSetupFilter = 0;
         let searchQuery = '';
 
+        let currentAllOrdersFilter = 'ALL';
+        let allOrdersSearchQuery = '';
+
         // Initial setup
         document.addEventListener('DOMContentLoaded', () => {
+            switchMainView('CONFIRMED');
             renderTradebookTable();
-            renderTable();
-            loadAllocationPlan();
             startPolling();
         });
 
         // ==========================================
-        // MAIN VIEW SWITCHER (TRADEBOOK vs WATCHLIST vs ALLOCATION)
+        // MAIN VIEW SWITCHER (CONFIRMED vs ALL_ORDERS vs TRADEBOOK)
         // ==========================================
         function switchMainView(view) {
             currentMainView = view;
+            const viewConfirmed = document.getElementById('viewConfirmed');
+            const viewAllOrders = document.getElementById('viewAllOrders');
             const viewTradebook = document.getElementById('viewTradebook');
-            const viewWatchlist = document.getElementById('viewWatchlist');
-            const viewAllocation = document.getElementById('viewAllocation');
-            const btnTb = document.getElementById('tabBtnTradebook');
-            const btnWl = document.getElementById('tabBtnWatchlist');
-            const btnAl = document.getElementById('tabBtnAllocation');
+            const btnConfirmed = document.getElementById('tabBtnConfirmed');
+            const btnAllOrders = document.getElementById('tabBtnAllOrders');
+            const btnTradebook = document.getElementById('tabBtnTradebook');
 
-            viewTradebook.classList.add('hidden');
-            viewWatchlist.classList.add('hidden');
-            if (viewAllocation) viewAllocation.classList.add('hidden');
+            if (viewConfirmed) viewConfirmed.classList.add('hidden');
+            if (viewAllOrders) viewAllOrders.classList.add('hidden');
+            if (viewTradebook) viewTradebook.classList.add('hidden');
 
-            btnTb.className = "px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2";
-            btnWl.className = "px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2";
-            if (btnAl) btnAl.className = "px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2";
+            const defaultBtnClass = "px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white apple-spring flex items-center space-x-2";
+            if (btnConfirmed) btnConfirmed.className = defaultBtnClass;
+            if (btnAllOrders) btnAllOrders.className = defaultBtnClass;
+            if (btnTradebook) btnTradebook.className = defaultBtnClass;
 
-            if (view === 'TRADEBOOK') {
-                viewTradebook.classList.remove('hidden');
-                btnTb.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-lg shadow-blue-600/30 apple-spring flex items-center space-x-2";
+            if (view === 'CONFIRMED') {
+                if (viewConfirmed) viewConfirmed.classList.remove('hidden');
+                if (btnConfirmed) btnConfirmed.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 apple-spring flex items-center space-x-2";
+            } else if (view === 'ALL_ORDERS') {
+                if (viewAllOrders) viewAllOrders.classList.remove('hidden');
+                if (btnAllOrders) btnAllOrders.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-lg shadow-blue-600/30 apple-spring flex items-center space-x-2";
+            } else if (view === 'TRADEBOOK') {
+                if (viewTradebook) viewTradebook.classList.remove('hidden');
+                if (btnTradebook) btnTradebook.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white shadow-lg shadow-purple-600/30 apple-spring flex items-center space-x-2";
                 renderTradebookTable();
-            } else if (view === 'WATCHLIST') {
-                viewWatchlist.classList.remove('hidden');
-                btnWl.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 apple-spring flex items-center space-x-2";
-                renderTable();
-            } else if (view === 'ALLOCATION') {
-                if (viewAllocation) viewAllocation.classList.remove('hidden');
-                if (btnAl) btnAl.className = "px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 text-white shadow-lg shadow-amber-600/30 apple-spring flex items-center space-x-2";
-                if (currentAllocationPlan) {
-                    renderAllocationUI(currentAllocationPlan);
-                } else {
-                    loadAllocationPlan();
-                }
             }
-            lucide.createIcons();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ==========================================
+        // CONFIRMED ORDER REMOVAL & RESTORATION
+        // ==========================================
+        async function removeConfirmedOrder(symbol) {
+            if (!symbol) return;
+            if (!confirm(`Remove ${symbol} from the confirmed next-day execution list?`)) return;
+            try {
+                const resp = await fetch('/api/orders/confirmed/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === 'SUCCESS') {
+                    showToast('Order Removed', `${symbol} removed from confirmed execution list.`, true);
+                    setTimeout(() => window.location.reload(), 400);
+                } else {
+                    showToast('Action Failed', data.detail || data.message || 'Failed to remove order.', false);
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Network Error', 'Failed to communicate with server.', false);
+            }
+        }
+
+        async function restoreConfirmedOrder(symbol) {
+            if (!symbol) return;
+            try {
+                const resp = await fetch('/api/orders/confirmed/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === 'SUCCESS') {
+                    showToast('Order Restored', `${symbol} restored to allocation candidate pool.`, true);
+                    setTimeout(() => window.location.reload(), 400);
+                } else {
+                    showToast('Action Failed', data.detail || data.message || 'Failed to restore order.', false);
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Network Error', 'Failed to communicate with server.', false);
+            }
+        }
+
+        // ==========================================
+        // ALL ORDERS SEARCH & FILTER CONTROLS
+        // ==========================================
+        function setAllOrdersFilter(filter) {
+            currentAllOrdersFilter = filter;
+            document.querySelectorAll('.all-filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-filter') === filter) {
+                    btn.className = "all-filter-btn active px-3 py-1.5 rounded-xl text-xs font-semibold hairline-border bg-blue-500/20 text-blue-400 border-blue-500/30 apple-spring";
+                } else {
+                    btn.className = "all-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium hairline-border bg-white/[0.04] text-neutral-300 hover:text-white apple-spring flex items-center space-x-1.5";
+                }
+            });
+            applyAllOrdersFiltering();
+        }
+
+        function onAllOrdersSearchChange() {
+            const input = document.getElementById('allOrdersSearchInput');
+            allOrdersSearchQuery = (input ? input.value : '').toLowerCase().trim();
+            applyAllOrdersFiltering();
+        }
+
+        function applyAllOrdersFiltering() {
+            const rows = document.querySelectorAll('.all-order-row');
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                const symbol = (row.getAttribute('data-symbol') || '').toLowerCase();
+                const text = row.innerText.toLowerCase();
+
+                let matchesFilter = true;
+                if (currentAllOrdersFilter === 'CONFIRMED') matchesFilter = (status === 'CONFIRMED');
+                else if (currentAllOrdersFilter === 'UNCONFIRMED') matchesFilter = (status === 'UNCONFIRMED');
+
+                let matchesSearch = true;
+                if (allOrdersSearchQuery) {
+                    matchesSearch = symbol.includes(allOrdersSearchQuery) || text.includes(allOrdersSearchQuery);
+                }
+
+                if (matchesFilter && matchesSearch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         }
 
         let currentAllocationPlan = null;
@@ -2124,12 +2080,12 @@
         }
 
         function renderTable() {
-            const filtered = filterOrders();
             const tbody = document.getElementById('ordersTableBody');
+            if (!tbody) return;
+            const filtered = filterOrders();
             const emptyState = document.getElementById('emptyState');
             const badge = document.getElementById('resultsCountBadge');
-
-            badge.textContent = `Showing ${filtered.length} of ${allOrders.length} orders`;
+            if (badge) badge.textContent = `Showing ${filtered.length} of ${allOrders.length} orders`;
 
             if (filtered.length === 0) {
                 tbody.innerHTML = '';
