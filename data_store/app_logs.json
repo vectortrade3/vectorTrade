@@ -1,6 +1,54 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-15T16:56:44.170232+05:30",
+      "readable_time": "2026-11-15 16:56:44 India Standard Time",
+      "event": "DAILY_ANALYSIS_COMPLETED",
+      "status": "Success",
+      "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Weekend Closed | Using Last Trading Session (2026-11-13) in 42.0s.",
+      "error": null,
+      "extra": {
+        "session_date": "2026-11-13",
+        "finalized_count": 25,
+        "strategies_breakdown": {
+          "50 MA Setup": 23,
+          "50 MA + Global Regime": 2
+        },
+        "outcomes_breakdown": {
+          "ARMED": 3,
+          "ACTIVE": 16,
+          "TARGET_HIT": 2,
+          "NO_TRIGGER": 3,
+          "SL_HIT": 1
+        },
+        "duration": 41.96
+      }
+    },
+    {
+      "timestamp": "2026-11-15T16:54:52.845899+05:30",
+      "readable_time": "2026-11-15 16:54:52 India Standard Time",
+      "event": "DAILY_ANALYSIS_COMPLETED",
+      "status": "Success",
+      "message": "Analyzed 207 stocks. Finalized 25 setups (Armed: 3, Active: 16, Wins: 2, Losses: 1) across Weekend Closed | Using Last Trading Session (2026-11-13) in 33.4s.",
+      "error": null,
+      "extra": {
+        "session_date": "2026-11-13",
+        "finalized_count": 25,
+        "strategies_breakdown": {
+          "50 MA Setup": 23,
+          "50 MA + Global Regime": 2
+        },
+        "outcomes_breakdown": {
+          "ARMED": 3,
+          "ACTIVE": 16,
+          "TARGET_HIT": 2,
+          "NO_TRIGGER": 3,
+          "SL_HIT": 1
+        },
+        "duration": 33.35
+      }
+    },
+    {
       "timestamp": "2026-11-15T13:49:27.974391+05:30",
       "readable_time": "2026-11-15 13:49:27 India Standard Time",
       "event": "APP_STARTED",
@@ -3490,5 +3538,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-15T13:49:27.974391+05:30"
+  "last_event_time": "2026-11-15T16:56:44.170232+05:30"
 }

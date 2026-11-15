@@ -70,12 +70,15 @@ def main() -> int:
 
         if status == "SUCCESS":
             finalized_count = result.get("finalized_count", 0)
-            mongo_synced = result.get("mongo_synced", False)
+            mongo_sync_obj = result.get("mongo_sync", {})
+            mongo_synced = (mongo_sync_obj.get("status") == "SUCCESS") or result.get("mongo_synced", False)
             print("-" * 70)
             print("  PIPELINE EXECUTION SUCCESSFUL")
             print(f"  Total Duration  : {elapsed:.2f} seconds")
             print(f"  Finalized Setups: {finalized_count}")
             print(f"  MongoDB Synced  : {mongo_synced}")
+            if mongo_synced:
+                print(f"  MongoDB Message : {mongo_sync_obj.get('message', 'Synchronized successfully')}")
             print(f"  Summary Message : {result.get('message', 'Completed')}")
             print("=" * 70)
             return 0
