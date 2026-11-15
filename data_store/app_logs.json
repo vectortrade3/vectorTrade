@@ -1,6 +1,22 @@
 {
   "logs": [
     {
+      "timestamp": "2026-11-15T17:35:50.803788+05:30",
+      "readable_time": "2026-11-15 17:35:50 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Everything fine",
+      "message": "VectorTrade Offline Flask server listening on http://vectortrade:30307 (or http://localhost:30307)",
+      "error": null
+    },
+    {
+      "timestamp": "2026-11-15T17:35:50.085273+05:30",
+      "readable_time": "2026-11-15 17:35:50 India Standard Time",
+      "event": "APP_STARTED",
+      "status": "Success",
+      "message": "VectorTrade application started on port 30307.",
+      "error": null
+    },
+    {
       "timestamp": "2026-11-15T16:56:44.170232+05:30",
       "readable_time": "2026-11-15 16:56:44 India Standard Time",
       "event": "DAILY_ANALYSIS_COMPLETED",
@@ -3538,5 +3554,5 @@
       "error": null
     }
   ],
-  "last_event_time": "2026-11-15T16:56:44.170232+05:30"
+  "last_event_time": "2026-11-15T17:35:50.803788+05:30"
 }

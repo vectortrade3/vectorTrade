@@ -205,10 +205,11 @@ class LiveSyncWorker:
         try:
             col_staged = db_manager.staged_orders
             if col_staged is not None:
-                # If market is actively OPEN and no staged orders exist for today, auto-evaluate candidate setups
+                # If market is actively OPEN and no staged orders exist at all, auto-evaluate candidate setups
                 today_tag = datetime.now().strftime("%Y%m%d")
+                existing_pending_staged = col_staged.count_documents({"status": {"$in": ["STAGED_OFFMARKET", "AMO"]}})
                 staged_count_today = col_staged.count_documents({"is_auto_allocated": True, "_id": {"$regex": f"_{today_tag}$"}})
-                if market_open and staged_count_today == 0:
+                if market_open and existing_pending_staged == 0 and staged_count_today == 0:
                     try:
                         from online.services.risk_calculator import risk_calculator
                         risk_calculator.evaluate_and_allocate_candidate_orders(auto_stage_confirmed=True)
@@ -271,13 +272,20 @@ class LiveSyncWorker:
                                 }}
                             )
                         else:
-                            logger.warning(f"Staged order for {s_sym} rejected: {order_res.get('error')}")
+                            curr_attempts = int(so.get("attempt_count", 0)) + 1
+                            err_msg = order_res.get("error", "Rejected by broker")
+                            logger.warning(f"Staged order for {s_sym} attempt {curr_attempts} rejected: {err_msg}")
+                            update_fields = {
+                                "attempt_count": curr_attempts,
+                                "stage_reason": err_msg,
+                                "checked_at": timestamp_str
+                            }
+                            if curr_attempts >= 3:
+                                update_fields["status"] = "REJECTED_BY_BROKER"
+                                logger.error(f"Staged order for {s_sym} reached max retries (3). Marked as REJECTED_BY_BROKER.")
                             col_staged.update_one(
                                 {"_id": s_id},
-                                {"$set": {
-                                    "stage_reason": order_res.get("error", "Rejected by broker"),
-                                    "checked_at": timestamp_str
-                                }}
+                                {"$set": update_fields}
                             )
         except Exception as e:
             logger.error(f"Error handling STAGE 1 (WILL_BE_PUT_AMO): {e}")

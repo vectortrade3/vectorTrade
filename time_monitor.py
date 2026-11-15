@@ -1,7 +1,7 @@
 """
-VectorTrade - Ultra-Lightweight 2-Second Time Monitor Daemon
-Monitors system clock every 2 seconds with near-zero CPU and RAM footprint.
-When current time is 4:00 PM (16:00) or later and today's session has not run:
+VectorTrade - Ultra-Lightweight 2-Minute Time Monitor Daemon
+Monitors system clock every 2 minutes (120s) with near-zero CPU and RAM footprint.
+When current time is 4:00 PM (16:00 IST) or later and today's session has not run:
 - Launches run_headless_daily_pipeline.py (download -> analyse -> upload -> update logs).
 - Runs cleanly as a batch process, updates state, and returns to silent sleep.
 - No background web server or port binding is created or sustained.
@@ -18,13 +18,14 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-# Paths
+# Paths & Defaults
 BASE_DIR = Path(__file__).resolve().parent
 DATA_STORE_DIR = BASE_DIR / "data_store"
 DATA_STORE_DIR.mkdir(parents=True, exist_ok=True)
 STATE_FILE = DATA_STORE_DIR / "time_monitor_state.json"
 LOG_FILE = DATA_STORE_DIR / "time_monitor.log"
 PIPELINE_SCRIPT = BASE_DIR / "run_headless_daily_pipeline.py"
+DEFAULT_CHECK_INTERVAL = 120.0  # 2 minutes
 
 
 def log_msg(msg: str) -> None:
@@ -124,22 +125,22 @@ def execute_headless_pipeline(force: bool = False) -> int:
 
 
 def run_monitor_loop(
-    interval: float = 2.0,
+    interval: float = DEFAULT_CHECK_INTERVAL,
     target_hour: int = 16,
     run_now: bool = False,
     once: bool = False,
     verbose: bool = False
 ) -> None:
     """
-    Core monitoring loop ticking every `interval` seconds (default: 2.0s).
+    Core monitoring loop ticking every `interval` seconds (default: 120.0s = 2 minutes).
     Consumes ~0% CPU via kernel thread sleep.
     """
     state = load_monitor_state()
     last_run_date = state.get("last_run_date")
 
-    log_msg(f"VectorTrade Time Monitor started. Interval: {interval}s, Target: {target_hour}:00, Last Run: {last_run_date}")
+    log_msg(f"VectorTrade Time Monitor started. Interval: {interval:.1f}s ({interval/60:.1f}m), Target: {target_hour}:00, Last Run: {last_run_date}")
 
-    retry_delay_seconds = 60.0
+    retry_delay_seconds = 120.0
     last_error_time = 0.0
 
     while True:
@@ -197,8 +198,8 @@ def run_monitor_loop(
 
 def main() -> None:
     try:
-        parser = argparse.ArgumentParser(description="VectorTrade 2-Second Time Monitor Daemon")
-        parser.add_argument("--interval", type=float, default=2.0, help="Check interval in seconds (default: 2.0)")
+        parser = argparse.ArgumentParser(description="VectorTrade 2-Minute Time Monitor Daemon")
+        parser.add_argument("--interval", type=float, default=DEFAULT_CHECK_INTERVAL, help="Check interval in seconds (default: 120.0 = 2 minutes)")
         parser.add_argument("--target-hour", type=int, default=16, help="Hour to trigger daily pipeline in 24h format (default: 16 = 4:00 PM)")
         parser.add_argument("--run-now", action="store_true", help="Force immediate execution of daily pipeline")
         parser.add_argument("--once", action="store_true", help="Perform one check iteration and exit")

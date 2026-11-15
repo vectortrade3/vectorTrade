@@ -1,7 +1,7 @@
 ' ==============================================================================
 ' VectorTrade - Silent Background Time Monitor Script
 ' Launches time_monitor.py headlessly using pythonw.exe
-' Checks time every 2 seconds; triggers daily EOD pipeline at 4:00 PM (16:00 IST).
+' Checks time every 2 minutes (120s); triggers daily EOD pipeline at 4:00 PM (16:00 IST).
 ' WindowStyle: 0 (Invisible / Headless, No Terminal / Command Prompt Window)
 ' WaitOnReturn: False (Asynchronous Background Daemon Execution)
 ' ==============================================================================

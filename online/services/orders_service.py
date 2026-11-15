@@ -92,9 +92,9 @@ class OrdersService:
 
         risk_per_share = calc["sl_rupee_per_share"]
 
-        # Use explicitly passed document quantity if valid and > 1, else use 1% risk calculated quantity
+        # Use explicitly passed document quantity if valid and > 0, else use 1% risk calculated quantity
         raw_qty = doc.get("quantity")
-        if raw_qty is not None and int(raw_qty) > 1:
+        if raw_qty is not None and int(raw_qty) > 0:
             quantity = int(raw_qty)
         else:
             quantity = calc["quantity"] if calc["quantity"] > 0 else 1

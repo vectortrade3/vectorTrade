@@ -133,6 +133,10 @@ class TestTimeMonitor(unittest.TestCase):
         self.assertEqual(state.get("last_run_date"), today_str)
         self.assertEqual(state.get("status"), "SUCCESS")
 
+    def test_08_default_check_interval_is_120_seconds(self):
+        """Verifies default interval is set to 120.0 seconds (2 minutes)."""
+        self.assertEqual(time_monitor.DEFAULT_CHECK_INTERVAL, 120.0)
+
 
 if __name__ == "__main__":
     unittest.main()
