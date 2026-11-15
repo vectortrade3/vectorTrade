@@ -1,29 +1,27 @@
 ' ==============================================================================
-' VectorTrade - Silent Background Startup Script
-' Runs latest VectorTrade.exe headlessly in the Windows System Tray on port 30307
-' WindowStyle: 0 (Invisible / Headless, No Command Prompt / Terminal Window)
-' WaitOnReturn: False (Asynchronous Background Execution)
+' VectorTrade - Silent Background Time Monitor Script
+' Launches time_monitor.py headlessly using pythonw.exe
+' Checks time every 2 seconds; triggers daily EOD pipeline at 4:00 PM (16:00 IST).
+' WindowStyle: 0 (Invisible / Headless, No Terminal / Command Prompt Window)
+' WaitOnReturn: False (Asynchronous Background Daemon Execution)
 ' ==============================================================================
 Option Explicit
 
-Dim WshShell, fso, projectDir, exePath, pythonwPath, trayScript
+Dim WshShell, fso, projectDir, pythonwPath, monitorScript
 
 Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 projectDir = "D:\Master_Folder\vectorTrade"
-exePath = "D:\Master_Folder\vectorTrade\dist\VectorTrade.exe"
 pythonwPath = "C:\Users\bared\AppData\Local\Programs\Python\Python311\pythonw.exe"
-trayScript = "D:\Master_Folder\vectorTrade\tray_app.py"
+monitorScript = "D:\Master_Folder\vectorTrade\time_monitor.py"
 
 WshShell.CurrentDirectory = projectDir
 
-If fso.FileExists(exePath) Then
-    WshShell.Run """" & exePath & """", 0, False
-ElseIf fso.FileExists(pythonwPath) And fso.FileExists(trayScript) Then
-    WshShell.Run """" & pythonwPath & """ """ & trayScript & """", 0, False
-Else
-    WshShell.Run "pythonw.exe tray_app.py", 0, False
+If fso.FileExists(pythonwPath) And fso.FileExists(monitorScript) Then
+    WshShell.Run """" & pythonwPath & """ """ & monitorScript & """", 0, False
+ElseIf fso.FileExists(monitorScript) Then
+    WshShell.Run "pythonw.exe time_monitor.py", 0, False
 End If
 
 Set WshShell = Nothing
