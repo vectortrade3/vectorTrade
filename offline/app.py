@@ -1255,6 +1255,49 @@ def orders_page():
     )
 
 
+@app.route("/pairs", methods=["GET"])
+@app.route("/strategy/pairs", methods=["GET"])
+def pairs_strategy_page():
+    """Renders the Cointegrated Stat-Arb Pairs Strategy v4 page with curated pairs and visual charts."""
+    pairs_file = BASE_DIR / "data_store" / "curated_pairs.json"
+    pairs = []
+    total_pairs = 0
+    sectors_represented = []
+
+    if pairs_file.exists():
+        try:
+            with open(pairs_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                pairs = data.get("pairs", [])
+                total_pairs = data.get("total_pairs", len(pairs))
+                sectors_represented = sorted(data.get("sectors_represented", []))
+        except Exception as e:
+            logger.error(f"Error loading curated_pairs.json: {e}")
+
+    return render_template(
+        "pairs.html",
+        app_name="VectorTrade (Offline)",
+        pairs=pairs,
+        total_pairs=total_pairs,
+        sectors_represented=sectors_represented,
+        sectors_count=len(sectors_represented)
+    )
+
+
+@app.route("/api/pairs", methods=["GET"])
+def get_curated_pairs_api():
+    """API endpoint returning the pre-screened statistical arbitrage pairs."""
+    pairs_file = BASE_DIR / "data_store" / "curated_pairs.json"
+    if not pairs_file.exists():
+        return jsonify({"status": "ERROR", "message": "curated_pairs.json not found"}), 404
+    try:
+        with open(pairs_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify({"status": "SUCCESS", "data": data}), 200
+    except Exception as e:
+        return jsonify({"status": "ERROR", "message": str(e)}), 500
+
+
 @app.route("/api/trades/journal", methods=["GET"])
 @app.route("/api/orders/tradebook", methods=["GET"])
 def get_offline_trades_journal_api():

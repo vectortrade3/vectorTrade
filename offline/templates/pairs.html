@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VectorTrade — Cointegrated Pairs Trading v4 Strategy</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        apple: {
+                            canvas: '#000000',
+                            card: 'rgba(28, 28, 30, 0.55)',
+                            cardHover: 'rgba(44, 44, 46, 0.65)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            borderStrong: 'rgba(255, 255, 255, 0.16)',
+                            blue: '#0A84FF',
+                            green: '#30D158',
+                            amber: '#FF9F0A',
+                            red: '#FF453A',
+                            purple: '#BF5AF2',
+                            subtext: '#8E8E93',
+                            mono: '#E5E5EA'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #000000;
+            color: #F5F5F7;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-spring {
+            transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+        }
+        .hairline-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hairline-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-purple-600/30 selection:text-purple-200">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 backdrop-blur-2xl bg-black/75 hairline-bottom">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center space-x-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                        <i data-lucide="git-compare" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Stat-Arb Engine</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
+                        Home
+                    </a>
+                    <a href="/orders" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.04] apple-spring">
+                        Orders
+                    </a>
+                    <a href="/pairs" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
+                        <span>Pair Trading Strategy</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">{{ total_pairs }} Pairs</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <div class="px-3 py-1 rounded-full text-xs font-mono hairline-border bg-white/[0.04] text-neutral-300 flex items-center space-x-1.5">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>v4.0 Risk-Engineered</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Strategy Hero Banner -->
+        <div class="relative overflow-hidden rounded-2xl hairline-border bg-gradient-to-r from-purple-950/20 via-neutral-900/40 to-black p-6 sm:p-8">
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="space-y-2 max-w-2xl">
+                    <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md text-[11px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        <span>Institutional Cointegrated Pairs Strategy v4</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                        Curated Statistical Arbitrage Pairs Universe
+                    </h1>
+                    <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+                        Pre-screened intra-sector equity pairs rigorously verified via the 7-Stage Gauntlet: Engle-Granger cointegration (p &le; 0.045), correlation &ge; 0.85, Ornstein-Uhlenbeck half-life (2&ndash;24d), and Hurst exponent (&lt; 0.47). Pairs are hardcoded for instant execution and visual spread inspection.
+                    </p>
+                </div>
+
+                <!-- KPI Tiles -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                    <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Verified Pairs</p>
+                        <p class="text-xl font-bold font-mono text-purple-400 mt-0.5">{{ total_pairs }}</p>
+                    </div>
+                    <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Sectors</p>
+                        <p class="text-xl font-bold font-mono text-white mt-0.5">{{ sectors_count }}</p>
+                    </div>
+                    <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Target Win Rate</p>
+                        <p class="text-xl font-bold font-mono text-emerald-400 mt-0.5">58.0%</p>
+                    </div>
+                    <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Entry Hurdle</p>
+                        <p class="text-xl font-bold font-mono text-amber-400 mt-0.5">2.10 &sigma;</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl hairline-border bg-neutral-900/30">
+            <div class="flex items-center space-x-2 flex-1">
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="searchInput" placeholder="Search pairs by ticker e.g. TATA, LICI, POWERGRID..." 
+                           class="w-full bg-black/60 hairline-border rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500/50"
+                           oninput="filterPairs()">
+                </div>
+                <select id="sectorFilter" onchange="filterPairs()" 
+                        class="bg-black/60 hairline-border rounded-lg px-3 py-1.5 text-xs text-neutral-300 focus:outline-none focus:border-purple-500/50">
+                    <option value="ALL">All Sectors ({{ total_pairs }})</option>
+                    {% for sec in sectors_represented %}
+                    <option value="{{ sec }}">{{ sec }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="text-xs text-neutral-400 font-mono flex items-center space-x-1">
+                <span>Showing:</span>
+                <span id="pairsCountDisplay" class="font-bold text-white">{{ total_pairs }}</span>
+                <span>pairs</span>
+            </div>
+        </div>
+
+        <!-- Curated Pairs Cards Grid -->
+        <div id="pairsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for p in pairs %}
+            <div class="pair-card group cursor-pointer p-4 rounded-xl hairline-border bg-white/[0.02] hover:bg-white/[0.05] hover:border-purple-500/40 apple-spring transition duration-200"
+                 data-id="{{ p.id }}"
+                 data-sector="{{ p.sector }}"
+                 data-ticker-a="{{ p.ticker_a }}"
+                 data-ticker-b="{{ p.ticker_b }}"
+                 onclick="openPairModal('{{ p.id }}')">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base font-bold text-white group-hover:text-purple-300 apple-spring">{{ p.ticker_a }}</span>
+                            <span class="text-xs text-neutral-500">&harr;</span>
+                            <span class="text-base font-bold text-white group-hover:text-purple-300 apple-spring">{{ p.ticker_b }}</span>
+                        </div>
+                        <p class="text-[11px] text-neutral-400 mt-0.5">{{ p.sector }}</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold 
+                        {% if p.status == 'DIVERGED' %}bg-rose-500/10 text-rose-400 border border-rose-500/20
+                        {% elif p.status == 'STABLE' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                        {% else %}bg-neutral-800 text-neutral-400 border border-neutral-700{% endif %}">
+                        {{ p.status }}
+                    </span>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/[0.06] text-[11px] font-mono">
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Corr</span>
+                        <span class="text-emerald-400 font-bold">{{ p.correlation }}</span>
+                    </div>
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Coint p-val</span>
+                        <span class="text-purple-400 font-bold">{{ p.cointegration_pvalue }}</span>
+                    </div>
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Half-Life</span>
+                        <span class="text-amber-400 font-bold">{{ p.half_life_days }}d</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 mt-2 text-[11px] font-mono">
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Hurst</span>
+                        <span class="text-blue-400 font-bold">{{ p.hurst_exponent }}</span>
+                    </div>
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Hedge Ratio</span>
+                        <span class="text-neutral-300 font-bold">{{ p.hedge_ratio }}</span>
+                    </div>
+                    <div>
+                        <span class="text-neutral-500 text-[10px] block">Z-Score</span>
+                        <span class="{% if p.current_zscore|abs >= 2.1 %}text-rose-400{% else %}text-neutral-300{% endif %} font-bold">{{ p.current_zscore }}&sigma;</span>
+                    </div>
+                </div>
+
+                <!-- Footer hint -->
+                <div class="mt-3.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-neutral-400 group-hover:text-purple-400 apple-spring">
+                    <span>Inspect Spread &amp; Prices</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 transform group-hover:translate-x-0.5 apple-spring"></i>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Interactive Pair Detail Popup Modal -->
+    <div id="pairModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="relative w-full max-w-4xl bg-neutral-950 hairline-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-6 hairline-bottom flex items-start justify-between bg-white/[0.02]">
+                <div>
+                    <div class="flex items-center space-x-3">
+                        <div class="h-9 w-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-mono font-bold text-sm border border-purple-500/30">
+                            <i data-lucide="activity" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 id="modalPairTitle" class="text-xl font-bold text-white tracking-tight">TICKER_A &harr; TICKER_B</h3>
+                                <span id="modalPairStatus" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-neutral-800 text-neutral-300">MONITORING</span>
+                            </div>
+                            <p id="modalPairSector" class="text-xs text-neutral-400 mt-0.5">Sector Information</p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closePairModal()" class="h-8 w-8 rounded-full hairline-border bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-neutral-400 hover:text-white apple-spring">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 flex-1">
+                <!-- Metrics Bar -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Correlation</p>
+                        <p id="modalCorr" class="text-sm font-bold font-mono text-emerald-400 mt-0.5">0.00</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Coint p-value</p>
+                        <p id="modalPval" class="text-sm font-bold font-mono text-purple-400 mt-0.5">0.00</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">ADF t-stat</p>
+                        <p id="modalAdf" class="text-sm font-bold font-mono text-white mt-0.5">0.00</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Half-Life</p>
+                        <p id="modalHL" class="text-sm font-bold font-mono text-amber-400 mt-0.5">0.0d</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Hurst Exp</p>
+                        <p id="modalHurst" class="text-sm font-bold font-mono text-blue-400 mt-0.5">0.00</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Current Z-Score</p>
+                        <p id="modalZScore" class="text-sm font-bold font-mono text-white mt-0.5">0.00&sigma;</p>
+                    </div>
+                </div>
+
+                <!-- Price Graph Section -->
+                <div class="p-4 rounded-xl hairline-border bg-white/[0.02] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
+                            <span class="text-xs font-semibold text-white">Normalized Price Trajectory (Base 100)</span>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs font-mono">
+                            <span class="flex items-center space-x-1.5"><span class="h-2 w-2 rounded-full bg-purple-500"></span><span id="legendTickerA">Stock A</span></span>
+                            <span class="flex items-center space-x-1.5"><span class="h-2 w-2 rounded-full bg-sky-400"></span><span id="legendTickerB">Stock B</span></span>
+                        </div>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Spread Z-Score Graph Section -->
+                <div class="p-4 rounded-xl hairline-border bg-white/[0.02] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i>
+                            <span class="text-xs font-semibold text-white">Spread Z-Score &amp; Thresholds (&plusmn;2.10&sigma; Entry, &plusmn;2.85&sigma; Stop)</span>
+                        </div>
+                        <span id="modalHedgeRatio" class="text-xs font-mono text-neutral-400">Hedge Ratio &beta;: 1.00</span>
+                    </div>
+                    <div class="relative h-48 w-full">
+                        <canvas id="zscoreChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 hairline-top bg-white/[0.02] flex items-center justify-between">
+                <span class="text-xs text-neutral-400">Data derived from 5-year verified price series across 207 constituents</span>
+                <button onclick="closePairModal()" class="px-4 py-2 rounded-xl text-xs font-semibold hairline-border bg-white/[0.06] hover:bg-white/[0.1] text-white apple-spring">
+                    Close Inspector
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Data & Logic -->
+    <script>
+        const pairsData = {{ pairs | tojson }};
+        const pairsMap = {};
+        pairsData.forEach(p => { pairsMap[p.id] = p; });
+
+        let priceChartInstance = null;
+        let zscoreChartInstance = null;
+
+        function filterPairs() {
+            const query = (document.getElementById('searchInput').value || '').trim().toUpperCase();
+            const sector = document.getElementById('sectorFilter').value;
+            let visibleCount = 0;
+
+            document.querySelectorAll('.pair-card').forEach(card => {
+                const cardSector = card.getAttribute('data-sector');
+                const tickerA = card.getAttribute('data-ticker-a').toUpperCase();
+                const tickerB = card.getAttribute('data-ticker-b').toUpperCase();
+
+                const matchQuery = !query || tickerA.includes(query) || tickerB.includes(query);
+                const matchSector = sector === 'ALL' || cardSector === sector;
+
+                if (matchQuery && matchSector) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('pairsCountDisplay').textContent = visibleCount;
+        }
+
+        function openPairModal(pairId) {
+            const pair = pairsMap[pairId];
+            if (!pair) return;
+
+            document.getElementById('modalPairTitle').innerHTML = `${pair.ticker_a} &harr; ${pair.ticker_b}`;
+            document.getElementById('modalPairSector').textContent = `${pair.sector} &bull; Hedge Ratio &beta; = ${pair.hedge_ratio}`;
+            
+            const statusEl = document.getElementById('modalPairStatus');
+            statusEl.textContent = pair.status;
+            statusEl.className = `px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                pair.status === 'DIVERGED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                pair.status === 'STABLE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                'bg-neutral-800 text-neutral-300 border border-neutral-700'
+            }`;
+
+            document.getElementById('modalCorr').textContent = pair.correlation.toFixed(4);
+            document.getElementById('modalPval').textContent = pair.cointegration_pvalue.toFixed(4);
+            document.getElementById('modalAdf').textContent = pair.adf_t_stat.toFixed(3);
+            document.getElementById('modalHL').textContent = `${pair.half_life_days}d`;
+            document.getElementById('modalHurst').textContent = pair.hurst_exponent.toFixed(4);
+            document.getElementById('modalZScore').textContent = `${pair.current_zscore}\u03C3`;
+            document.getElementById('modalHedgeRatio').textContent = `Hedge Ratio \u03B2: ${pair.hedge_ratio} (${pair.ticker_a} = ${pair.hedge_ratio} \u00D7 ${pair.ticker_b})`;
+
+            document.getElementById('legendTickerA').textContent = `${pair.ticker_a} (\u20B9${pair.price_a.toFixed(2)})`;
+            document.getElementById('legendTickerB').textContent = `${pair.ticker_b} (\u20B9${pair.price_b.toFixed(2)})`;
+
+            renderCharts(pair);
+            document.getElementById('pairModal').classList.remove('hidden');
+        }
+
+        function closePairModal() {
+            document.getElementById('pairModal').classList.add('hidden');
+        }
+
+        function renderCharts(pair) {
+            const cd = pair.chart_data;
+            if (!cd) return;
+
+            // 1. Normalized Price Chart
+            if (priceChartInstance) priceChartInstance.destroy();
+            const ctxPrice = document.getElementById('priceChart').getContext('2d');
+            priceChartInstance = new Chart(ctxPrice, {
+                type: 'line',
+                data: {
+                    labels: cd.dates,
+                    datasets: [
+                        {
+                            label: pair.ticker_a,
+                            data: cd.norm_a,
+                            borderColor: '#BF5AF2',
+                            backgroundColor: 'rgba(191, 90, 242, 0.08)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: pair.ticker_b,
+                            data: cd.norm_b,
+                            borderColor: '#38BDF8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.85)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#8E8E93', font: { family: 'SF Mono', size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // 2. Spread Z-Score Chart
+            if (zscoreChartInstance) zscoreChartInstance.destroy();
+            const ctxZ = document.getElementById('zscoreChart').getContext('2d');
+            zscoreChartInstance = new Chart(ctxZ, {
+                type: 'line',
+                data: {
+                    labels: cd.dates,
+                    datasets: [
+                        {
+                            label: 'Z-Score',
+                            data: cd.zscore,
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.85)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#8E8E93', font: { family: 'SF Mono', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('pairModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('pairModal')) closePairModal();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
