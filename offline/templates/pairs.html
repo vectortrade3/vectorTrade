@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VectorTrade — Cointegrated Pairs Trading v4 Strategy</title>
+    <title>VectorTrade — Intra-Sector Trading Pairs</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -81,7 +81,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <span class="text-base font-semibold tracking-tight text-white">VectorTrade</span>
-                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Stat-Arb Engine</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Pair Trading</span>
                         </div>
                     </div>
                 </div>
@@ -95,7 +95,7 @@
                         Orders
                     </a>
                     <a href="/pairs" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.08] text-white hairline-border apple-spring flex items-center space-x-1.5">
-                        <span>Pair Trading Strategy</span>
+                        <span>Trading Pairs</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">{{ total_pairs }} Pairs</span>
                     </a>
                 </nav>
@@ -104,7 +104,7 @@
             <div class="flex items-center space-x-3">
                 <div class="px-3 py-1 rounded-full text-xs font-mono hairline-border bg-white/[0.04] text-neutral-300 flex items-center space-x-1.5">
                     <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>v4.0 Risk-Engineered</span>
+                    <span>Intra-Sector Co-Movement</span>
                 </div>
             </div>
         </div>
@@ -119,20 +119,20 @@
                 <div class="space-y-2 max-w-2xl">
                     <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md text-[11px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/20">
                         <i data-lucide="layers" class="w-3.5 h-3.5"></i>
-                        <span>Institutional Cointegrated Pairs Strategy v4</span>
+                        <span>Intra-Sector Statistical Pairs Engine</span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                        Curated Statistical Arbitrage Pairs Universe
+                        Curated Intra-Industry Trading Pairs
                     </h1>
                     <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">
-                        Pre-screened intra-sector equity pairs rigorously verified via the 7-Stage Gauntlet: Engle-Granger cointegration (p &le; 0.045), correlation &ge; 0.85, Ornstein-Uhlenbeck half-life (2&ndash;24d), and Hurst exponent (&lt; 0.47). Pairs are hardcoded for instant execution and visual spread inspection.
+                        Formed directly from 5-year verified price series across 207 constituents using core fundamental co-movement criteria: intra-sector pairing, minimum 5-year correlation &ge; 0.85, and 1-year confirmation. Pairs are hardcoded for persistent performance without recurring daily re-scanning. Click any pair to inspect price co-movement and spread deviation graphs.
                     </p>
                 </div>
 
                 <!-- KPI Tiles -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
                     <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
-                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Verified Pairs</p>
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Formed Pairs</p>
                         <p class="text-xl font-bold font-mono text-purple-400 mt-0.5">{{ total_pairs }}</p>
                     </div>
                     <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
@@ -140,12 +140,12 @@
                         <p class="text-xl font-bold font-mono text-white mt-0.5">{{ sectors_count }}</p>
                     </div>
                     <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
-                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Target Win Rate</p>
-                        <p class="text-xl font-bold font-mono text-emerald-400 mt-0.5">58.0%</p>
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Min 5Y Corr</p>
+                        <p class="text-xl font-bold font-mono text-emerald-400 mt-0.5">&ge; 0.85</p>
                     </div>
                     <div class="px-4 py-3 rounded-xl bg-white/[0.03] hairline-border">
-                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Entry Hurdle</p>
-                        <p class="text-xl font-bold font-mono text-amber-400 mt-0.5">2.10 &sigma;</p>
+                        <p class="text-[10px] uppercase font-mono tracking-wider text-neutral-500">Data History</p>
+                        <p class="text-xl font-bold font-mono text-amber-400 mt-0.5">5 Years</p>
                     </div>
                 </div>
             </div>
@@ -156,7 +156,7 @@
             <div class="flex items-center space-x-2 flex-1">
                 <div class="relative flex-1 max-w-md">
                     <i data-lucide="search" class="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                    <input type="text" id="searchInput" placeholder="Search pairs by ticker e.g. TATA, LICI, POWERGRID..." 
+                    <input type="text" id="searchInput" placeholder="Search pairs by ticker e.g. SBIN, NTPC, HINDALCO..." 
                            class="w-full bg-black/60 hairline-border rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500/50"
                            oninput="filterPairs()">
                 </div>
@@ -195,7 +195,7 @@
                     </div>
                     <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold 
                         {% if p.status == 'DIVERGED' %}bg-rose-500/10 text-rose-400 border border-rose-500/20
-                        {% elif p.status == 'STABLE' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                        {% elif p.status == 'IN_SYNC' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                         {% else %}bg-neutral-800 text-neutral-400 border border-neutral-700{% endif %}">
                         {{ p.status }}
                     </span>
@@ -204,37 +204,37 @@
                 <!-- Metrics Grid -->
                 <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/[0.06] text-[11px] font-mono">
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Corr</span>
-                        <span class="text-emerald-400 font-bold">{{ p.correlation }}</span>
+                        <span class="text-neutral-500 text-[10px] block">5Y Corr</span>
+                        <span class="text-emerald-400 font-bold">{{ p.correlation_5y }}</span>
                     </div>
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Coint p-val</span>
-                        <span class="text-purple-400 font-bold">{{ p.cointegration_pvalue }}</span>
+                        <span class="text-neutral-500 text-[10px] block">1Y Corr</span>
+                        <span class="text-purple-400 font-bold">{{ p.correlation_1y }}</span>
                     </div>
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Half-Life</span>
-                        <span class="text-amber-400 font-bold">{{ p.half_life_days }}d</span>
+                        <span class="text-neutral-500 text-[10px] block">Hedge Ratio</span>
+                        <span class="text-neutral-300 font-bold">&beta; {{ p.hedge_ratio }}</span>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 mt-2 text-[11px] font-mono">
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Hurst</span>
-                        <span class="text-blue-400 font-bold">{{ p.hurst_exponent }}</span>
+                        <span class="text-neutral-500 text-[10px] block">{{ p.ticker_a }} LTP</span>
+                        <span class="text-neutral-300 font-bold">&#8377;{{ p.price_a|round(1) }}</span>
                     </div>
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Hedge Ratio</span>
-                        <span class="text-neutral-300 font-bold">{{ p.hedge_ratio }}</span>
+                        <span class="text-neutral-500 text-[10px] block">{{ p.ticker_b }} LTP</span>
+                        <span class="text-neutral-300 font-bold">&#8377;{{ p.price_b|round(1) }}</span>
                     </div>
                     <div>
-                        <span class="text-neutral-500 text-[10px] block">Z-Score</span>
-                        <span class="{% if p.current_zscore|abs >= 2.1 %}text-rose-400{% else %}text-neutral-300{% endif %} font-bold">{{ p.current_zscore }}&sigma;</span>
+                        <span class="text-neutral-500 text-[10px] block">Spread Z</span>
+                        <span class="{% if p.current_zscore|abs >= 2.0 %}text-rose-400{% else %}text-neutral-300{% endif %} font-bold">{{ p.current_zscore }}&sigma;</span>
                     </div>
                 </div>
 
                 <!-- Footer hint -->
                 <div class="mt-3.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-neutral-400 group-hover:text-purple-400 apple-spring">
-                    <span>Inspect Spread &amp; Prices</span>
+                    <span>Inspect Normalized Price &amp; Spread Graph</span>
                     <i data-lucide="arrow-right" class="w-3.5 h-3.5 transform group-hover:translate-x-0.5 apple-spring"></i>
                 </div>
             </div>
@@ -270,26 +270,22 @@
             <!-- Modal Body (Scrollable) -->
             <div class="p-6 overflow-y-auto space-y-6 flex-1">
                 <!-- Metrics Bar -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
                     <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
-                        <p class="text-[10px] uppercase font-mono text-neutral-500">Correlation</p>
-                        <p id="modalCorr" class="text-sm font-bold font-mono text-emerald-400 mt-0.5">0.00</p>
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">5-Year Correlation</p>
+                        <p id="modalCorr5y" class="text-sm font-bold font-mono text-emerald-400 mt-0.5">0.00</p>
                     </div>
                     <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
-                        <p class="text-[10px] uppercase font-mono text-neutral-500">Coint p-value</p>
-                        <p id="modalPval" class="text-sm font-bold font-mono text-purple-400 mt-0.5">0.00</p>
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">1-Year Correlation</p>
+                        <p id="modalCorr1y" class="text-sm font-bold font-mono text-purple-400 mt-0.5">0.00</p>
                     </div>
                     <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
-                        <p class="text-[10px] uppercase font-mono text-neutral-500">ADF t-stat</p>
-                        <p id="modalAdf" class="text-sm font-bold font-mono text-white mt-0.5">0.00</p>
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Hedge Ratio &beta;</p>
+                        <p id="modalHedgeRatio" class="text-sm font-bold font-mono text-white mt-0.5">0.00</p>
                     </div>
                     <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
-                        <p class="text-[10px] uppercase font-mono text-neutral-500">Half-Life</p>
-                        <p id="modalHL" class="text-sm font-bold font-mono text-amber-400 mt-0.5">0.0d</p>
-                    </div>
-                    <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
-                        <p class="text-[10px] uppercase font-mono text-neutral-500">Hurst Exp</p>
-                        <p id="modalHurst" class="text-sm font-bold font-mono text-blue-400 mt-0.5">0.00</p>
+                        <p class="text-[10px] uppercase font-mono text-neutral-500">Current Spread</p>
+                        <p id="modalSpread" class="text-sm font-bold font-mono text-amber-400 mt-0.5">&#8377;0.00</p>
                     </div>
                     <div class="p-3 rounded-xl bg-white/[0.02] hairline-border">
                         <p class="text-[10px] uppercase font-mono text-neutral-500">Current Z-Score</p>
@@ -319,9 +315,9 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
                             <i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i>
-                            <span class="text-xs font-semibold text-white">Spread Z-Score &amp; Thresholds (&plusmn;2.10&sigma; Entry, &plusmn;2.85&sigma; Stop)</span>
+                            <span class="text-xs font-semibold text-white">Spread Z-Score Divergence Graph</span>
                         </div>
-                        <span id="modalHedgeRatio" class="text-xs font-mono text-neutral-400">Hedge Ratio &beta;: 1.00</span>
+                        <span id="modalSpreadFormula" class="text-xs font-mono text-neutral-400">Spread = A - &beta;&times;B</span>
                     </div>
                     <div class="relative h-48 w-full">
                         <canvas id="zscoreChart"></canvas>
@@ -331,7 +327,7 @@
 
             <!-- Modal Footer -->
             <div class="p-4 hairline-top bg-white/[0.02] flex items-center justify-between">
-                <span class="text-xs text-neutral-400">Data derived from 5-year verified price series across 207 constituents</span>
+                <span class="text-xs text-neutral-400">Formed from verified 5-year historical price data across 207 constituents</span>
                 <button onclick="closePairModal()" class="px-4 py-2 rounded-xl text-xs font-semibold hairline-border bg-white/[0.06] hover:bg-white/[0.1] text-white apple-spring">
                     Close Inspector
                 </button>
@@ -377,23 +373,22 @@
             if (!pair) return;
 
             document.getElementById('modalPairTitle').innerHTML = `${pair.ticker_a} &harr; ${pair.ticker_b}`;
-            document.getElementById('modalPairSector').textContent = `${pair.sector} &bull; Hedge Ratio &beta; = ${pair.hedge_ratio}`;
+            document.getElementById('modalPairSector').textContent = `${pair.sector} \u2022 Hedge Ratio \u03B2 = ${pair.hedge_ratio}`;
             
             const statusEl = document.getElementById('modalPairStatus');
             statusEl.textContent = pair.status;
             statusEl.className = `px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                 pair.status === 'DIVERGED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
-                pair.status === 'STABLE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                pair.status === 'IN_SYNC' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                 'bg-neutral-800 text-neutral-300 border border-neutral-700'
             }`;
 
-            document.getElementById('modalCorr').textContent = pair.correlation.toFixed(4);
-            document.getElementById('modalPval').textContent = pair.cointegration_pvalue.toFixed(4);
-            document.getElementById('modalAdf').textContent = pair.adf_t_stat.toFixed(3);
-            document.getElementById('modalHL').textContent = `${pair.half_life_days}d`;
-            document.getElementById('modalHurst').textContent = pair.hurst_exponent.toFixed(4);
+            document.getElementById('modalCorr5y').textContent = pair.correlation_5y.toFixed(4);
+            document.getElementById('modalCorr1y').textContent = pair.correlation_1y.toFixed(4);
+            document.getElementById('modalHedgeRatio').textContent = pair.hedge_ratio.toFixed(4);
+            document.getElementById('modalSpread').textContent = `\u20B9${pair.current_spread.toFixed(2)}`;
             document.getElementById('modalZScore').textContent = `${pair.current_zscore}\u03C3`;
-            document.getElementById('modalHedgeRatio').textContent = `Hedge Ratio \u03B2: ${pair.hedge_ratio} (${pair.ticker_a} = ${pair.hedge_ratio} \u00D7 ${pair.ticker_b})`;
+            document.getElementById('modalSpreadFormula').textContent = `Spread = ${pair.ticker_a} - (${pair.hedge_ratio} \u00D7 ${pair.ticker_b})`;
 
             document.getElementById('legendTickerA').textContent = `${pair.ticker_a} (\u20B9${pair.price_a.toFixed(2)})`;
             document.getElementById('legendTickerB').textContent = `${pair.ticker_b} (\u20B9${pair.price_b.toFixed(2)})`;
