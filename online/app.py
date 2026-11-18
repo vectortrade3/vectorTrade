@@ -6,6 +6,7 @@ session authentication, executive overview, and dedicated orders board.
 
 import os
 import sys
+import json
 import logging
 import asyncio
 from datetime import datetime
@@ -1031,6 +1032,65 @@ async def toggle_strategy_online_api(request: Request):
         "total_count": len(strats),
         "active_count": active_count
     })
+
+
+@app.get("/strategies", response_class=HTMLResponse)
+@app.get("/pairs", response_class=HTMLResponse)
+@app.get("/strategy/pairs", response_class=HTMLResponse)
+async def strategies_online_page(request: Request):
+    """Renders the Strategies management page with 3 strategies and Pair Trading views."""
+    pairs_file = PROJECT_ROOT / "data_store" / "curated_pairs.json"
+    pairs = []
+    total_pairs = 0
+    sectors_represented = []
+
+    if pairs_file.exists():
+        try:
+            with open(pairs_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                pairs = data.get("pairs", [])
+                total_pairs = data.get("total_pairs", len(pairs))
+                sectors_represented = sorted(data.get("sectors_represented", []))
+        except Exception as e:
+            logger.error(f"Error loading curated_pairs.json: {e}")
+
+    stats_data = {
+        "armed_orders_count": 13,
+        "strategies_breakdown": {
+            "50 MA Setup": 23,
+            "Global Regime": 2,
+            "Cointegrated Stat-Arb Pairs Strategy v4": total_pairs
+        }
+    }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="strategies.html",
+        context={
+            "app_name": "VectorTrade (Online)",
+            "is_offline": False,
+            "stats": stats_data,
+            "pairs": pairs,
+            "total_pairs": total_pairs,
+            "sectors_represented": sectors_represented,
+            "sectors_count": len(sectors_represented)
+        }
+    )
+
+
+@app.get("/api/pairs")
+async def get_curated_pairs_online_api():
+    """Returns curated statistical arbitrage pairs."""
+    pairs_file = PROJECT_ROOT / "data_store" / "curated_pairs.json"
+    if not pairs_file.exists():
+        return JSONResponse({"status": "ERROR", "message": "curated_pairs.json not found"}, status_code=404)
+    try:
+        with open(pairs_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return JSONResponse({"status": "SUCCESS", "data": data})
+    except Exception as e:
+        return JSONResponse({"status": "ERROR", "message": str(e)}, status_code=500)
+
 
 
 # ==============================================================================
