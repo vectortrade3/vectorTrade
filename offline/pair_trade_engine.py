@@ -344,8 +344,12 @@ class PairTradeEngine:
                     break
 
         if exit_idx is None:
-            exit_idx = min(n_bars - 1, entry_idx + max_holding_limit)
-            exit_reason = "TIME_STOP_CAP"
+            if entry_idx + max_holding_limit < n_bars:
+                exit_idx = entry_idx + max_holding_limit
+                exit_reason = "TIME_STOP_CAP"
+            else:
+                exit_idx = n_bars - 1
+                exit_reason = "DATA_END_TRUNCATION"
 
         exit_row = pair_df.iloc[exit_idx]
         exit_date = exit_row["Date"]
@@ -357,12 +361,18 @@ class PairTradeEngine:
         # Calculate Net Return
         net_return_pct = trade_dir * (((p_a_exit - p_a_entry) / p_a_entry) - beta_entry * ((p_b_exit - p_b_entry) / p_b_entry)) * 100.0
 
-        # Outcome Labeling
-        # 1 = Success, 0 = Fail, 2 = Neutral
-        if exit_reason == "TARGET_REACHED" or net_return_pct >= 1.50:
+        # Outcome Labeling strictly adhering to Phase 2:
+        # If STOP_LOSS_BARRIER is triggered, the divergence broke out -> FAIL (0)
+        # If TARGET_REACHED or positive return >= +1.50% without hitting stop barrier -> SUCCESS (1)
+        # If STOP_LOSS_BARRIER or negative return < -1.00% -> FAIL (0)
+        # Otherwise (time stop with -1.00% <= return < +1.50%) -> NEUTRAL (2)
+        if exit_reason == "STOP_LOSS_BARRIER":
+            outcome_label = 0
+            outcome_text = "FAIL"
+        elif exit_reason == "TARGET_REACHED" or net_return_pct >= 1.50:
             outcome_label = 1
             outcome_text = "SUCCESS"
-        elif exit_reason == "STOP_LOSS_BARRIER" or net_return_pct < -1.00:
+        elif net_return_pct < -1.00:
             outcome_label = 0
             outcome_text = "FAIL"
         else:

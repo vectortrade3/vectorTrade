@@ -12,8 +12,8 @@
     "2025-11-19",
     "2026-11-06"
   ],
-  "train_win_rate_pct": 40.94,
-  "test_win_rate_pct": 47.64,
+  "train_win_rate_pct": 33.19,
+  "test_win_rate_pct": 40.88,
   "avg_holding_days_train": 14.63,
   "avg_holding_days_test": 15.85,
   "avg_return_pct_train": -0.33,
@@ -25,20 +25,21 @@
       "TARGET_REACHED": 151
     },
     "test": {
-      "TIME_STOP_CAP": 193,
+      "TIME_STOP_CAP": 165,
       "STOP_LOSS_BARRIER": 68,
-      "TARGET_REACHED": 35
+      "TARGET_REACHED": 35,
+      "DATA_END_TRUNCATION": 28
     }
   },
   "outcome_labels_breakdown": {
     "train": {
-      "FAIL": 712,
-      "SUCCESS": 565,
+      "FAIL": 819,
+      "SUCCESS": 458,
       "NEUTRAL": 103
     },
     "test": {
-      "SUCCESS": 141,
-      "FAIL": 131,
+      "FAIL": 151,
+      "SUCCESS": 121,
       "NEUTRAL": 24
     }
   }

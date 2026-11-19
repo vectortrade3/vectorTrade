@@ -1,0 +1,109 @@
+{
+  "status": "SUCCESS",
+  "phase": 2,
+  "strategy": "Institutional Cointegrated Stat-Arb v4",
+  "train_4y_analytics": {
+    "split_name": "4Y Training (Historical)",
+    "total_trades": 1380,
+    "date_range": [
+      "2022-01-03",
+      "2025-11-18"
+    ],
+    "win_rate_pct": 33.19,
+    "loss_rate_pct": 59.35,
+    "neutral_rate_pct": 7.46,
+    "profit_factor": 0.85,
+    "max_drawdown_pct": 100.0,
+    "avg_net_return_pct": -0.33,
+    "median_net_return_pct": -0.12,
+    "avg_mfe_pct": 4.45,
+    "avg_mae_pct": -4.85,
+    "holding_time_stats": {
+      "mean_days": 14.63,
+      "median_days": 22.0,
+      "std_days": 9.3,
+      "p25_days": 2.0,
+      "p75_days": 22.0,
+      "min_days": 1,
+      "max_days": 22
+    },
+    "exit_reasons_breakdown": {
+      "TARGET_REACHED": {
+        "count": 151,
+        "pct_of_total": 10.94,
+        "mean_holding_days": 14.67,
+        "avg_return_pct": 0.06,
+        "avg_mfe_pct": 6.55,
+        "avg_mae_pct": -6.38
+      },
+      "STOP_LOSS_BARRIER": {
+        "count": 462,
+        "pct_of_total": 33.48,
+        "mean_holding_days": 2.42,
+        "avg_return_pct": -0.11,
+        "avg_mfe_pct": 0.68,
+        "avg_mae_pct": -0.89
+      },
+      "TIME_STOP_CAP": {
+        "count": 767,
+        "pct_of_total": 55.58,
+        "mean_holding_days": 21.98,
+        "avg_return_pct": -0.54,
+        "avg_mfe_pct": 6.31,
+        "avg_mae_pct": -6.93
+      }
+    }
+  },
+  "test_1y_analytics": {
+    "split_name": "1Y Testing (Holdout Out-of-Sample)",
+    "total_trades": 296,
+    "date_range": [
+      "2025-11-19",
+      "2026-11-06"
+    ],
+    "win_rate_pct": 40.88,
+    "loss_rate_pct": 51.01,
+    "neutral_rate_pct": 8.11,
+    "profit_factor": 1.13,
+    "max_drawdown_pct": 70.98,
+    "avg_net_return_pct": 0.24,
+    "median_net_return_pct": 0.17,
+    "avg_mfe_pct": 4.15,
+    "avg_mae_pct": -3.91,
+    "holding_time_stats": {
+      "mean_days": 15.85,
+      "median_days": 22.0,
+      "std_days": 8.4,
+      "p25_days": 9.0,
+      "p75_days": 22.0,
+      "min_days": 1,
+      "max_days": 22
+    },
+    "exit_reasons_breakdown": {
+      "TARGET_REACHED": {
+        "count": 35,
+        "pct_of_total": 11.82,
+        "mean_holding_days": 14.86,
+        "avg_return_pct": 0.14,
+        "avg_mfe_pct": 3.63,
+        "avg_mae_pct": -3.98
+      },
+      "STOP_LOSS_BARRIER": {
+        "count": 68,
+        "pct_of_total": 22.97,
+        "mean_holding_days": 2.18,
+        "avg_return_pct": 0.1,
+        "avg_mfe_pct": 0.76,
+        "avg_mae_pct": -0.17
+      },
+      "TIME_STOP_CAP": {
+        "count": 165,
+        "pct_of_total": 55.74,
+        "mean_holding_days": 22.0,
+        "avg_return_pct": 1.12,
+        "avg_mfe_pct": 5.88,
+        "avg_mae_pct": -4.79
+      }
+    }
+  }
+}
