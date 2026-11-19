@@ -1285,6 +1285,26 @@ def pairs_strategy_page():
             "Cointegrated Stat-Arb Pairs Strategy v4": total_pairs
         }
     }
+    # Load Phase 3 Model Metrics & Phase 2 Analytics if available
+    pair_model_metrics = {}
+    pair_analytics_report = {}
+    metrics_path = BASE_DIR / "models" / "pair_trading_model_metrics.json"
+    analytics_path = BASE_DIR / "data_store" / "pair_strategy" / "phase2_analytics_report.json"
+
+    if metrics_path.exists():
+        try:
+            with open(metrics_path, "r", encoding="utf-8") as f:
+                pair_model_metrics = json.load(f)
+        except Exception:
+            pass
+
+    if analytics_path.exists():
+        try:
+            with open(analytics_path, "r", encoding="utf-8") as f:
+                pair_analytics_report = json.load(f)
+        except Exception:
+            pass
+
     return render_template(
         template_name,
         app_name="VectorTrade (Offline)",
@@ -1293,7 +1313,9 @@ def pairs_strategy_page():
         pairs=pairs,
         total_pairs=total_pairs,
         sectors_represented=sectors_represented,
-        sectors_count=len(sectors_represented)
+        sectors_count=len(sectors_represented),
+        pair_model_metrics=pair_model_metrics,
+        pair_analytics_report=pair_analytics_report
     )
 
 
@@ -1309,6 +1331,50 @@ def get_curated_pairs_api():
         return jsonify({"status": "SUCCESS", "data": data}), 200
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
+
+
+@app.route("/api/pairs/model-metrics", methods=["GET"])
+def get_pair_model_metrics_api():
+    """API endpoint returning the trained Pair Trading Quality Classifier metrics and feature importances."""
+    metrics_path = BASE_DIR / "models" / "pair_trading_model_metrics.json"
+    analytics_path = BASE_DIR / "data_store" / "pair_strategy" / "phase2_analytics_report.json"
+    metadata_path = BASE_DIR / "data_store" / "pair_strategy" / "pair_trades_metadata.json"
+
+    res = {"status": "SUCCESS"}
+    if metrics_path.exists():
+        with open(metrics_path, "r", encoding="utf-8") as f:
+            res["model_metrics"] = json.load(f)
+    if analytics_path.exists():
+        with open(analytics_path, "r", encoding="utf-8") as f:
+            res["analytics_report"] = json.load(f)
+    if metadata_path.exists():
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            res["metadata"] = json.load(f)
+
+    return jsonify(res), 200
+
+
+@app.route("/api/pairs/trades", methods=["GET"])
+def get_pair_trades_history_api():
+    """Returns extracted historical pair trades with optional filtering by split (TRAIN or TEST)."""
+    split_filter = request.args.get("split", "ALL").upper()
+    csv_file = BASE_DIR / "data_store" / "pair_strategy" / "pair_trades_all.csv"
+    if not csv_file.exists():
+        return jsonify({"status": "ERROR", "message": "pair_trades_all.csv not found"}), 404
+
+    import pandas as pd
+    df = pd.read_csv(csv_file)
+    if split_filter in ["TRAIN", "TEST"]:
+        df = df[df["split_type"] == split_filter]
+
+    limit = int(request.args.get("limit", 100))
+    trades = df.head(limit).to_dict(orient="records")
+    return jsonify({
+        "status": "SUCCESS",
+        "total_count": len(df),
+        "returned_count": len(trades),
+        "trades": trades
+    }), 200
 
 
 @app.route("/api/trades/journal", methods=["GET"])

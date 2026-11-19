@@ -1063,6 +1063,26 @@ async def strategies_online_page(request: Request):
         }
     }
 
+    # Load Phase 3 Model Metrics & Phase 2 Analytics if available
+    pair_model_metrics = {}
+    pair_analytics_report = {}
+    metrics_path = PROJECT_ROOT / "models" / "pair_trading_model_metrics.json"
+    analytics_path = PROJECT_ROOT / "data_store" / "pair_strategy" / "phase2_analytics_report.json"
+
+    if metrics_path.exists():
+        try:
+            with open(metrics_path, "r", encoding="utf-8") as f:
+                pair_model_metrics = json.load(f)
+        except Exception:
+            pass
+
+    if analytics_path.exists():
+        try:
+            with open(analytics_path, "r", encoding="utf-8") as f:
+                pair_analytics_report = json.load(f)
+        except Exception:
+            pass
+
     return templates.TemplateResponse(
         request=request,
         name="strategies.html",
@@ -1073,7 +1093,9 @@ async def strategies_online_page(request: Request):
             "pairs": pairs,
             "total_pairs": total_pairs,
             "sectors_represented": sectors_represented,
-            "sectors_count": len(sectors_represented)
+            "sectors_count": len(sectors_represented),
+            "pair_model_metrics": pair_model_metrics,
+            "pair_analytics_report": pair_analytics_report
         }
     )
 
@@ -1090,6 +1112,49 @@ async def get_curated_pairs_online_api():
         return JSONResponse({"status": "SUCCESS", "data": data})
     except Exception as e:
         return JSONResponse({"status": "ERROR", "message": str(e)}, status_code=500)
+
+
+@app.get("/api/pairs/model-metrics")
+async def get_pair_model_metrics_online_api():
+    """API endpoint returning trained Pair Trading Quality Classifier metrics and feature importances."""
+    metrics_path = PROJECT_ROOT / "models" / "pair_trading_model_metrics.json"
+    analytics_path = PROJECT_ROOT / "data_store" / "pair_strategy" / "phase2_analytics_report.json"
+    metadata_path = PROJECT_ROOT / "data_store" / "pair_strategy" / "pair_trades_metadata.json"
+
+    res = {"status": "SUCCESS"}
+    if metrics_path.exists():
+        with open(metrics_path, "r", encoding="utf-8") as f:
+            res["model_metrics"] = json.load(f)
+    if analytics_path.exists():
+        with open(analytics_path, "r", encoding="utf-8") as f:
+            res["analytics_report"] = json.load(f)
+    if metadata_path.exists():
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            res["metadata"] = json.load(f)
+
+    return JSONResponse(res)
+
+
+@app.get("/api/pairs/trades")
+async def get_pair_trades_history_online_api(split: str = "ALL", limit: int = 100):
+    """Returns extracted historical pair trades with optional filtering by split (TRAIN or TEST)."""
+    csv_file = PROJECT_ROOT / "data_store" / "pair_strategy" / "pair_trades_all.csv"
+    if not csv_file.exists():
+        return JSONResponse({"status": "ERROR", "message": "pair_trades_all.csv not found"}, status_code=404)
+
+    import pandas as pd
+    df = pd.read_csv(csv_file)
+    split_upper = split.upper()
+    if split_upper in ["TRAIN", "TEST"]:
+        df = df[df["split_type"] == split_upper]
+
+    trades = df.head(limit).to_dict(orient="records")
+    return JSONResponse({
+        "status": "SUCCESS",
+        "total_count": len(df),
+        "returned_count": len(trades),
+        "trades": trades
+    })
 
 
 

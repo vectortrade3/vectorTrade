@@ -72,10 +72,26 @@ def main() -> int:
             finalized_count = result.get("finalized_count", 0)
             mongo_sync_obj = result.get("mongo_sync", {})
             mongo_synced = (mongo_sync_obj.get("status") == "SUCCESS") or result.get("mongo_synced", False)
+
+            # Daily Cointegrated Stat-Arb Pairs Strategy scan
+            pair_scan_info = "Skipped"
+            try:
+                print("[*] Running Daily Pair Trading Model Evaluation across 156 pairs...")
+                from online.services.pair_inference_service import PairInferenceService
+                pair_res = PairInferenceService.evaluate_daily_pairs()
+                if pair_res.get("status") == "SUCCESS":
+                    q_count = pair_res.get("qualified_signals_count", 0)
+                    c_count = pair_res.get("candidates_found_count", 0)
+                    pair_scan_info = f"{q_count} ML-qualified signals from {c_count} hurdle candidates"
+                    print(f"[*] Pair Trading Engine: {pair_scan_info}")
+            except Exception as p_err:
+                print(f"[!] Pair Trading scan notice: {p_err}")
+
             print("-" * 70)
             print("  PIPELINE EXECUTION SUCCESSFUL")
             print(f"  Total Duration  : {elapsed:.2f} seconds")
             print(f"  Finalized Setups: {finalized_count}")
+            print(f"  Pairs Qualified : {pair_scan_info}")
             print(f"  MongoDB Synced  : {mongo_synced}")
             if mongo_synced:
                 print(f"  MongoDB Message : {mongo_sync_obj.get('message', 'Synchronized successfully')}")
