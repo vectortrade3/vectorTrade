@@ -1,0 +1,157 @@
+{
+  "strategy": "Institutional Cointegrated Stat-Arb v4 Quality Classifier",
+  "model_type": "Calibrated XGBoost Classifier (5-Fold Purged Cross-Validated)",
+  "roc_auc_score": 0.6732,
+  "optimal_threshold": 0.53,
+  "holdout_test_comparison": {
+    "raw_rules_baseline": {
+      "total_trades": 272,
+      "win_rate_pct": 50.74,
+      "profit_factor": 1.09,
+      "avg_return_pct": 0.25,
+      "total_return_pct": 68.35
+    },
+    "with_ml_quality_filter": {
+      "threshold": 0.53,
+      "trades_selected": 29,
+      "total_available": 272,
+      "selection_rate_pct": 10.66,
+      "win_rate_pct": 55.17,
+      "profit_factor": 1.67,
+      "precision": 0.6552,
+      "recall": 0.157,
+      "accuracy": 0.5882,
+      "avg_return_pct": 1.64,
+      "total_return_pct": 47.56
+    }
+  },
+  "confusion_matrix": {
+    "true_negative": 141,
+    "false_positive": 10,
+    "false_negative": 102,
+    "true_positive": 19
+  },
+  "gate_compliance": {
+    "win_rate_gate_met": false,
+    "profit_factor_gate_met": true,
+    "precision_gate_met": true
+  },
+  "ranked_feature_importances": [
+    {
+      "feature": "z_score_entry",
+      "importance": 0.1031,
+      "importance_pct": 10.31
+    },
+    {
+      "feature": "half_life_days",
+      "importance": 0.0538,
+      "importance_pct": 5.38
+    },
+    {
+      "feature": "a_rsi_14",
+      "importance": 0.0443,
+      "importance_pct": 4.43
+    },
+    {
+      "feature": "b_sma_20_ratio",
+      "importance": 0.0443,
+      "importance_pct": 4.43
+    },
+    {
+      "feature": "rsi_diff_a_minus_b",
+      "importance": 0.0443,
+      "importance_pct": 4.43
+    },
+    {
+      "feature": "hedge_ratio_beta",
+      "importance": 0.0432,
+      "importance_pct": 4.32
+    },
+    {
+      "feature": "rolling_corr_90",
+      "importance": 0.0428,
+      "importance_pct": 4.28
+    },
+    {
+      "feature": "b_sma_200_ratio",
+      "importance": 0.0425,
+      "importance_pct": 4.25
+    },
+    {
+      "feature": "a_sma_50_ratio",
+      "importance": 0.0424,
+      "importance_pct": 4.24
+    },
+    {
+      "feature": "adf_stat",
+      "importance": 0.0415,
+      "importance_pct": 4.15
+    },
+    {
+      "feature": "b_sma_50_ratio",
+      "importance": 0.0409,
+      "importance_pct": 4.09
+    },
+    {
+      "feature": "b_rsi_14",
+      "importance": 0.0407,
+      "importance_pct": 4.07
+    },
+    {
+      "feature": "delta_z_entry",
+      "importance": 0.0406,
+      "importance_pct": 4.06
+    },
+    {
+      "feature": "a_sma_200_ratio",
+      "importance": 0.0405,
+      "importance_pct": 4.05
+    },
+    {
+      "feature": "a_histvol_20",
+      "importance": 0.0396,
+      "importance_pct": 3.96
+    },
+    {
+      "feature": "spread_vol_pct_90",
+      "importance": 0.0396,
+      "importance_pct": 3.96
+    },
+    {
+      "feature": "b_atr_14_pct",
+      "importance": 0.0378,
+      "importance_pct": 3.78
+    },
+    {
+      "feature": "a_sma_20_ratio",
+      "importance": 0.0373,
+      "importance_pct": 3.73
+    },
+    {
+      "feature": "b_vol_ratio_20",
+      "importance": 0.0373,
+      "importance_pct": 3.73
+    },
+    {
+      "feature": "a_atr_14_pct",
+      "importance": 0.037,
+      "importance_pct": 3.7
+    },
+    {
+      "feature": "vol_ratio_a_to_b",
+      "importance": 0.0363,
+      "importance_pct": 3.63
+    },
+    {
+      "feature": "b_histvol_20",
+      "importance": 0.0359,
+      "importance_pct": 3.59
+    },
+    {
+      "feature": "a_vol_ratio_20",
+      "importance": 0.0344,
+      "importance_pct": 3.44
+    }
+  ],
+  "features_count": 23
+}

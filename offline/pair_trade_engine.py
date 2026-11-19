@@ -45,21 +45,15 @@ def load_strategy_config() -> Dict[str, Any]:
 
 
 def compute_rsi(series: pd.Series, period: int = 14) -> pd.Series:
-    """Computes standard Relative Strength Index (RSI)."""
+    """Computes standard Relative Strength Index (RSI) using exponential Wilder smoothing."""
     delta = series.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    avg_gain = gain.rolling(window=period, min_periods=period).mean()
-    avg_loss = loss.rolling(window=period, min_periods=period).mean()
-
-    # Wilder's smoothing
-    for i in range(period, len(series)):
-        avg_gain.iloc[i] = (avg_gain.iloc[i - 1] * (period - 1) + gain.iloc[i]) / period
-        avg_loss.iloc[i] = (avg_loss.iloc[i - 1] * (period - 1) + loss.iloc[i]) / period
-
+    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
     rs = avg_gain / (avg_loss + 1e-9)
-    rsi = 100 - (100 / (1 + rs))
-    return rsi.fillna(50.0)
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    return rsi.bfill().fillna(50.0)
 
 
 def compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
