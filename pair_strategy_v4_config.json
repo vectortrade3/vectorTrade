@@ -1,0 +1,77 @@
+{
+  "version": "4.0.0",
+  "strategy_name": "Cointegrated Stat-Arb v4 (Risk-Engineered Pure Alpha)",
+  "description": "Institutional Quantitative Pairs Trading Strategy engineered to solve the 78% drawdown and 44% win-rate bottlenecks of Strategy 1 and Strategy 3. Features Volatility-Inverse Sizing, Tight Dynamic Stops (2.85 sigma), 2x Half-Life Time Stops, Momentum Flattening Confirmation, Realistic Exits (Z=0.40), Earnings Shield, and VIX Macro Overlay.",
+  "divergence_triggers": {
+    "z_score_entry_hurdle": 2.10,
+    "z_score_entry_max": 3.00,
+    "entry_velocity_confirmation": true,
+    "max_entry_momentum_slope": 0.05,
+    "z_score_exit_target": 0.40,
+    "z_score_stop_loss_barrier": 2.85,
+    "stop_loss_cushion": 1.15,
+    "fill_at_barrier": true,
+    "lookback_days": 90,
+    "historical_period": "5y",
+    "min_valid_bars": 30
+  },
+  "volatility_inverse_sizing": {
+    "model": "volatility_parity_inverse",
+    "target_spread_vol_pct": 3.5,
+    "min_capital_multiplier": 0.40,
+    "max_capital_multiplier": 1.25,
+    "drawdown_dampener_enabled": true,
+    "drawdown_threshold_pct": 20.0,
+    "drawdown_scaling_factor": 0.70
+  },
+  "time_and_event_stops": {
+    "half_life_time_stop_multiplier": 2.5,
+    "min_holding_days_floor": 4,
+    "max_holding_days_cap": 22,
+    "earnings_blackout_days_pre": 5,
+    "earnings_blackout_days_post": 2
+  },
+  "macro_regime_overlay": {
+    "vix_overlay_enabled": true,
+    "vix_panic_threshold": 25.0,
+    "vix_freeze_new_entries": true,
+    "vix_extreme_panic_threshold": 32.0,
+    "vix_panic_position_reduction": 0.50
+  },
+  "gauntlet_screening_thresholds": {
+    "min_correlation": 0.85,
+    "max_cointegration_pvalue": 0.045,
+    "min_zero_crossings_per_year": 10,
+    "min_half_life_days": 2.0,
+    "max_half_life_days": 24.0,
+    "max_hurst_exponent": 0.47,
+    "max_adf_t_stat": -2.85,
+    "min_adv_shares": 1500000,
+    "min_r_squared": 0.40,
+    "min_overlap_score": 55.0
+  },
+  "spread_volatility_tiers": {
+    "max_allowed_spread_vol_pct": 5.5,
+    "ultra_tight_max_pct": 2.2,
+    "tight_max_pct": 3.8,
+    "medium_max_pct": 5.5,
+    "blowout_penalty_z_sigma": 3.0
+  },
+  "composite_scoring_weights": {
+    "overlap_weight": 0.25,
+    "co_movement_weight": 0.35,
+    "spread_tightness_weight": 0.25,
+    "divergence_weight": 0.15,
+    "prime_setup_min_score": 80.0,
+    "strong_setup_min_score": 70.0
+  },
+  "performance_benchmarks_expected": {
+    "target_win_rate_pct": 58.0,
+    "target_max_drawdown_pct_max": 24.0,
+    "target_profit_factor_min": 1.65,
+    "target_1y_net_profit_pct": 95.0,
+    "target_2y_net_profit_pct": 125.0,
+    "target_3y_net_profit_pct": 165.0,
+    "target_5y_net_profit_pct": 175.0
+  }
+}

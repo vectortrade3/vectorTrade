@@ -1,0 +1,45 @@
+{
+  "status": "SUCCESS",
+  "total_trades": 1676,
+  "train_trades_count": 1380,
+  "test_trades_count": 296,
+  "split_date_cutoff": "2025-11-18",
+  "train_date_range": [
+    "2022-01-03",
+    "2025-11-18"
+  ],
+  "test_date_range": [
+    "2025-11-19",
+    "2026-11-06"
+  ],
+  "train_win_rate_pct": 40.94,
+  "test_win_rate_pct": 47.64,
+  "avg_holding_days_train": 14.63,
+  "avg_holding_days_test": 15.85,
+  "avg_return_pct_train": -0.33,
+  "avg_return_pct_test": 0.24,
+  "exit_reasons_breakdown": {
+    "train": {
+      "TIME_STOP_CAP": 767,
+      "STOP_LOSS_BARRIER": 462,
+      "TARGET_REACHED": 151
+    },
+    "test": {
+      "TIME_STOP_CAP": 193,
+      "STOP_LOSS_BARRIER": 68,
+      "TARGET_REACHED": 35
+    }
+  },
+  "outcome_labels_breakdown": {
+    "train": {
+      "FAIL": 712,
+      "SUCCESS": 565,
+      "NEUTRAL": 103
+    },
+    "test": {
+      "SUCCESS": 141,
+      "FAIL": 131,
+      "NEUTRAL": 24
+    }
+  }
+}
